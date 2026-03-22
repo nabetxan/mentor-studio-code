@@ -1,0 +1,71 @@
+{
+  "name": "mentor-studio-code",
+  "displayName": "Mentor Studio Code",
+  "description": "Learning dashboard for AI mentor sessions",
+  "version": "0.0.1",
+  "publisher": "nabetxan",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Education"
+  ],
+  "activationEvents": [
+    "workspaceContains:.mentor-studio.json"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "mentor-studio",
+          "title": "Mentor Studio",
+          "icon": "$(mortar-board)"
+        }
+      ]
+    },
+    "views": {
+      "mentor-studio": [
+        {
+          "type": "webview",
+          "id": "mentor-studio.sidebar",
+          "name": "Dashboard",
+          "icon": "$(mortar-board)"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "mentor-studio.setup",
+        "title": "Setup Mentor",
+        "category": "Mentor Studio"
+      }
+    ],
+    "configuration": {
+      "title": "Mentor Studio",
+      "properties": {
+        "mentor-studio.mentorFilesPath": {
+          "type": "string",
+          "default": "docs/mentor",
+          "description": "Path to mentor data files relative to workspace root"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.config.mjs",
+    "watch": "node esbuild.config.mjs --watch",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@mentor-studio/shared": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.130",
+    "@types/vscode": "^1.85.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}
