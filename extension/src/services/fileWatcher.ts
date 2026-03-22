@@ -56,24 +56,29 @@ export class FileWatcherService implements vscode.Disposable {
       "question-history.json",
     );
 
+    let progressRaw: string;
     try {
-      const [progressRaw, historyRaw] = await Promise.all([
-        readFile(progressPath, "utf-8"),
-        readFile(historyPath, "utf-8"),
-      ]);
-
-      const progress = parseProgressData(progressRaw);
-      if (!progress) {
-        return;
-      }
-
-      const history = parseQuestionHistory(historyRaw);
-      const topics = this.config?.topics ?? [];
-      const data = computeDashboardData(progress, history, topics);
-      this.onDataChanged(data);
+      progressRaw = await readFile(progressPath, "utf-8");
     } catch {
-      // Files may not exist yet
+      return; // progress.json not available yet
     }
+
+    const progress = parseProgressData(progressRaw);
+    if (!progress) {
+      return;
+    }
+
+    let historyRaw: string | null = null;
+    try {
+      historyRaw = await readFile(historyPath, "utf-8");
+    } catch {
+      // question-history.json may not exist yet — use empty history
+    }
+
+    const history = parseQuestionHistory(historyRaw ?? '{"history":[]}');
+    const topics = this.config?.topics ?? [];
+    const data = computeDashboardData(progress, history, topics);
+    this.onDataChanged(data);
   }
 
   getConfig(): MentorStudioConfig | null {

@@ -2,21 +2,41 @@ import type {
   DashboardData,
   ProgressData,
   QuestionHistory,
+  QuestionHistoryEntry,
   TopicConfig,
   TopicStats,
 } from "@mentor-studio/shared";
 
 export function parseProgressData(raw: string): ProgressData | null {
   try {
-    const data = JSON.parse(raw);
+    const data: unknown = JSON.parse(raw);
+    if (typeof data !== "object" || data === null) {
+      return null;
+    }
+    const obj = data as Record<string, unknown>;
     if (
-      typeof data.version !== "string" ||
-      typeof data.current_task !== "string" ||
-      !Array.isArray(data.completed_tasks)
+      typeof obj.version !== "string" ||
+      typeof obj.current_task !== "string" ||
+      !Array.isArray(obj.completed_tasks)
     ) {
       return null;
     }
-    return data as ProgressData;
+    return {
+      version: obj.version,
+      current_task: obj.current_task,
+      current_step:
+        typeof obj.current_step === "number" ? obj.current_step : null,
+      next_suggest:
+        typeof obj.next_suggest === "string" ? obj.next_suggest : "",
+      resume_context:
+        typeof obj.resume_context === "string" ? obj.resume_context : "",
+      completed_tasks: obj.completed_tasks,
+      skipped_tasks: Array.isArray(obj.skipped_tasks) ? obj.skipped_tasks : [],
+      in_progress: Array.isArray(obj.in_progress) ? obj.in_progress : [],
+      unresolved_gaps: Array.isArray(obj.unresolved_gaps)
+        ? obj.unresolved_gaps
+        : [],
+    };
   } catch {
     return null;
   }
@@ -24,11 +44,22 @@ export function parseProgressData(raw: string): ProgressData | null {
 
 export function parseQuestionHistory(raw: string): QuestionHistory {
   try {
-    const data = JSON.parse(raw);
-    if (!Array.isArray(data.history)) {
+    const data: unknown = JSON.parse(raw);
+    if (typeof data !== "object" || data === null) {
       return { history: [] };
     }
-    return data as QuestionHistory;
+    const obj = data as Record<string, unknown>;
+    if (!Array.isArray(obj.history)) {
+      return { history: [] };
+    }
+    const history = obj.history.filter(
+      (entry): entry is QuestionHistoryEntry =>
+        typeof entry === "object" &&
+        entry !== null &&
+        typeof (entry as Record<string, unknown>).topic === "string" &&
+        typeof (entry as Record<string, unknown>).isCorrect === "boolean",
+    );
+    return { history };
   } catch {
     return { history: [] };
   }
