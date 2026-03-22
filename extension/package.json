@@ -11,7 +11,7 @@
     "Education"
   ],
   "activationEvents": [
-    "onStartupFinished"
+    "workspaceContains:.mentor-studio.json"
   ],
   "main": "./dist/extension.js",
   "contributes": {

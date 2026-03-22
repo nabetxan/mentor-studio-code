@@ -119,14 +119,20 @@ export function activate(context: vscode.ExtensionContext): void {
     (data) => sidebarProvider.sendUpdate(data),
   );
 
-  watcher.start().then(() => {
-    const config = watcher.getConfig();
-    if (config) {
-      sidebarProvider.sendConfig(config);
-    } else {
+  void watcher
+    .start()
+    .then(() => {
+      const config = watcher.getConfig();
+      if (config) {
+        sidebarProvider.sendConfig(config);
+      } else {
+        sidebarProvider.sendNoConfig();
+      }
+    })
+    .catch((err: unknown) => {
+      console.error("Mentor Studio: failed to start file watcher", err);
       sidebarProvider.sendNoConfig();
-    }
-  });
+    });
 
   context.subscriptions.push(watcher);
 
