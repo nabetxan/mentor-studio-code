@@ -3,7 +3,9 @@ import { FileWatcherService } from "./services/fileWatcher";
 import { SidebarProvider } from "./views/sidebarProvider";
 
 export function activate(context: vscode.ExtensionContext): void {
-  // Task 11 — register setup command (before workspace check so it always works)
+  const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
+
+  // Setup command — always available
   const setupCommand = vscode.commands.registerCommand(
     "mentor-studio.setup",
     async () => {
@@ -25,8 +27,14 @@ export function activate(context: vscode.ExtensionContext): void {
         // file doesn't exist — create it
       }
 
+      const mentorFilesPath = vscode.workspace
+        .getConfiguration("mentor-studio")
+        .get<string>("mentorFilesPath", "docs/mentor");
+
       const folderName =
         vscode.workspace.workspaceFolders?.[0]?.name ?? "my-project";
+
+      // Create .mentor-studio.json
       const config = {
         repositoryName: folderName,
         topics: [
@@ -36,17 +44,57 @@ export function activate(context: vscode.ExtensionContext): void {
           { key: "typescript", label: "TypeScript" },
         ],
       };
-
-      const content = Buffer.from(JSON.stringify(config, null, 2) + "\n");
-      await vscode.workspace.fs.writeFile(configUri, content);
-      vscode.window.showInformationMessage(
-        "Created .mentor-studio.json. Reload window to activate.",
+      await vscode.workspace.fs.writeFile(
+        configUri,
+        Buffer.from(JSON.stringify(config, null, 2) + "\n"),
       );
+
+      // Create progress.json
+      const progressUri = vscode.Uri.joinPath(
+        wsRoot,
+        mentorFilesPath,
+        "progress.json",
+      );
+      const progress = {
+        version: "1.0",
+        current_task: "1",
+        current_step: null,
+        next_suggest: null,
+        resume_context: null,
+        completed_tasks: [],
+        skipped_tasks: [],
+        in_progress: [],
+        unresolved_gaps: [],
+      };
+      await vscode.workspace.fs.writeFile(
+        progressUri,
+        Buffer.from(JSON.stringify(progress, null, 2) + "\n"),
+      );
+
+      // Create question-history.json
+      const historyUri = vscode.Uri.joinPath(
+        wsRoot,
+        mentorFilesPath,
+        "question-history.json",
+      );
+      await vscode.workspace.fs.writeFile(
+        historyUri,
+        Buffer.from(JSON.stringify({ history: [] }, null, 2) + "\n"),
+      );
+
+      // Prompt reload with a button
+      const choice = await vscode.window.showInformationMessage(
+        "Mentor Studio setup complete! Reload to activate the dashboard.",
+        "Reload Window",
+      );
+      if (choice === "Reload Window") {
+        vscode.commands.executeCommand("workbench.action.reloadWindow");
+      }
     },
   );
   context.subscriptions.push(setupCommand);
 
-  const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
+  // If no workspace, nothing more to do
   if (!workspaceRoot) {
     return;
   }
@@ -55,7 +103,7 @@ export function activate(context: vscode.ExtensionContext): void {
     .getConfiguration("mentor-studio")
     .get<string>("mentorFilesPath", "docs/mentor");
 
-  // Task 7 — register sidebar provider
+  // Sidebar provider
   const sidebarProvider = new SidebarProvider(context.extensionUri);
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
@@ -64,7 +112,7 @@ export function activate(context: vscode.ExtensionContext): void {
     ),
   );
 
-  // Task 6 — register file watcher
+  // File watcher
   const watcher = new FileWatcherService(
     workspaceRoot.fsPath,
     mentorPath,
