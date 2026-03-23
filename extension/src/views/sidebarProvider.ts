@@ -1,9 +1,11 @@
 import type {
   DashboardData,
   ExtensionMessage,
+  FileField,
   MentorStudioConfig,
   WebviewMessage,
 } from "@mentor-studio/shared";
+import * as path from "node:path";
 import * as vscode from "vscode";
 import { getNonce } from "../utils/nonce";
 
@@ -51,15 +53,16 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             }
             const selectedPath = uris[0].fsPath;
             const wsPath = wsRoot.fsPath;
-            if (!selectedPath.startsWith(wsPath)) {
+            const relativePath = path.relative(wsPath, selectedPath);
+            if (
+              path.isAbsolute(relativePath) ||
+              relativePath.startsWith("..")
+            ) {
               vscode.window.showErrorMessage(
                 "File must be inside the workspace.",
               );
               return;
             }
-            const relativePath = selectedPath
-              .slice(wsPath.length)
-              .replace(/^[/\\]/, "");
             await this.updateMentorFile(message.field, relativePath);
           }
         } else if (message.type === "clearFile") {
@@ -103,7 +106,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
   }
 
   private async updateMentorFile(
-    field: "appDesign" | "roadmap",
+    field: FileField,
     value: string | null,
   ): Promise<void> {
     const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri;

@@ -1,6 +1,7 @@
 export type {
   DashboardData,
   ExtensionMessage,
+  FileField,
   MentorStudioConfig,
   ProgressData,
   QuestionHistory,

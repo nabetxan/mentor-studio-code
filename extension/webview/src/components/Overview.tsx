@@ -29,7 +29,10 @@ export function Overview({ data }: OverviewProps) {
           <h3>Unresolved Gaps ({data.unresolvedGaps.length})</h3>
           <ul className="gap-list">
             {data.unresolvedGaps.map((gap) => (
-              <li className="action-card" key={`${gap.concept}-${gap.topic}`}>
+              <li
+                className="action-card"
+                key={`${gap.concept}-${gap.topic}-${gap.task}-${gap.first_missed}`}
+              >
                 <div className="gap-concept">{gap.concept}</div>
                 <div className="gap-detail">
                   <span className="gap-topic">{gap.topic}</span>

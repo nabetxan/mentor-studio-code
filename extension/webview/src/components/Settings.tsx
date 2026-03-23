@@ -1,5 +1,5 @@
-import type { MentorStudioConfig } from "@mentor-studio/shared";
-import { useState } from "react";
+import type { FileField, MentorStudioConfig } from "@mentor-studio/shared";
+import { useEffect, useRef, useState } from "react";
 import { postMessage } from "../vscodeApi";
 
 interface SettingsProps {
@@ -8,18 +8,30 @@ interface SettingsProps {
 
 interface FileSettingProps {
   label: string;
-  field: "appDesign" | "roadmap";
+  field: FileField;
   value: string | null;
   createPrompt: string;
 }
 
 function FileSetting({ label, field, value, createPrompt }: FileSettingProps) {
   const [copied, setCopied] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current !== null) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, []);
 
   const handleCopyPrompt = () => {
+    if (timerRef.current !== null) {
+      clearTimeout(timerRef.current);
+    }
     setCopied(true);
     postMessage({ type: "copy", text: createPrompt });
-    setTimeout(() => setCopied(false), 2000);
+    timerRef.current = setTimeout(() => setCopied(false), 2000);
   };
 
   if (value) {

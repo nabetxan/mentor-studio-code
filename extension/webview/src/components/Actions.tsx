@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { postMessage } from "../vscodeApi";
 
 interface Snippet {
@@ -36,11 +36,23 @@ const SNIPPETS: Snippet[] = [
 
 export function Actions() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current !== null) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, []);
 
   const handleCopy = (snippet: Snippet) => {
+    if (timerRef.current !== null) {
+      clearTimeout(timerRef.current);
+    }
     setCopiedId(snippet.id);
     postMessage({ type: "copy", text: snippet.prompt });
-    setTimeout(() => setCopiedId(null), 2000);
+    timerRef.current = setTimeout(() => setCopiedId(null), 2000);
   };
 
   return (
