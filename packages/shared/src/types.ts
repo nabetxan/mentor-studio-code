@@ -8,13 +8,20 @@ export interface UnresolvedGap {
   note: string;
 }
 
+export interface CompletedTask {
+  task: string;
+  name: string;
+  plan: string;
+}
+
 export interface ProgressData {
   version: string;
+  current_plan: string;
   current_task: string;
   current_step: number | null;
   next_suggest: string;
   resume_context: string;
-  completed_tasks: string[];
+  completed_tasks: CompletedTask[];
   skipped_tasks: string[];
   in_progress: string[];
   unresolved_gaps: UnresolvedGap[];
@@ -43,9 +50,15 @@ export interface TopicConfig {
   label: string;
 }
 
+export interface MentorFiles {
+  appDesign: string | null;
+  roadmap: string | null;
+}
+
 export interface MentorStudioConfig {
   repositoryName: string;
   topics: TopicConfig[];
+  mentorFiles?: MentorFiles;
 }
 
 // === Dashboard stats (computed by extension, sent to webview) ===
@@ -63,7 +76,7 @@ export interface DashboardData {
   correctRate: number;
   byTopic: TopicStats[];
   unresolvedGaps: UnresolvedGap[];
-  completedTasks: string[];
+  completedTasks: CompletedTask[];
   currentTask: string;
 }
 
@@ -74,4 +87,10 @@ export type ExtensionMessage =
   | { type: "config"; data: MentorStudioConfig }
   | { type: "noConfig" };
 
-export type WebviewMessage = { type: "copy"; text: string } | { type: "ready" };
+export type FileField = "appDesign" | "roadmap";
+
+export type WebviewMessage =
+  | { type: "copy"; text: string }
+  | { type: "ready" }
+  | { type: "selectFile"; field: FileField }
+  | { type: "clearFile"; field: FileField };

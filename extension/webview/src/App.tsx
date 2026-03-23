@@ -1,15 +1,20 @@
-import type { DashboardData, ExtensionMessage } from "@mentor-studio/shared";
+import type {
+  DashboardData,
+  ExtensionMessage,
+  MentorStudioConfig,
+} from "@mentor-studio/shared";
 import { useEffect, useState } from "react";
 import { Actions } from "./components/Actions";
 import { Overview } from "./components/Overview";
-import { Topics } from "./components/Topics";
+import { Settings } from "./components/Settings";
 import { onMessage, postMessage } from "./vscodeApi";
 
-type Tab = "overview" | "topics" | "actions";
+type Tab = "actions" | "overview" | "settings";
 
 export function App() {
-  const [tab, setTab] = useState<Tab>("overview");
+  const [tab, setTab] = useState<Tab>("actions");
   const [data, setData] = useState<DashboardData | null>(null);
+  const [config, setConfig] = useState<MentorStudioConfig | null>(null);
   const [hasConfig, setHasConfig] = useState(true);
 
   useEffect(() => {
@@ -19,6 +24,7 @@ export function App() {
           setData(message.data);
           break;
         case "config":
+          setConfig(message.data);
           setHasConfig(true);
           break;
         case "noConfig":
@@ -48,28 +54,28 @@ export function App() {
     <div className="app">
       <nav className="tabs">
         <button
+          className={tab === "actions" ? "active" : ""}
+          onClick={() => setTab("actions")}
+        >
+          Actions
+        </button>
+        <button
           className={tab === "overview" ? "active" : ""}
           onClick={() => setTab("overview")}
         >
           Overview
         </button>
         <button
-          className={tab === "topics" ? "active" : ""}
-          onClick={() => setTab("topics")}
+          className={tab === "settings" ? "active" : ""}
+          onClick={() => setTab("settings")}
         >
-          Topics
-        </button>
-        <button
-          className={tab === "actions" ? "active" : ""}
-          onClick={() => setTab("actions")}
-        >
-          Actions
+          Settings
         </button>
       </nav>
       <main className="content">
+        {tab === "actions" && <Actions />}
         {tab === "overview" && <Overview data={data} />}
-        {tab === "topics" && <Topics data={data} />}
-        {tab === "actions" && <Actions data={data} />}
+        {tab === "settings" && <Settings config={config} />}
       </main>
       <footer className="status">
         {data ? "✓ Local data loaded" : "Loading..."}

@@ -27,12 +27,42 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.html = this.getHtml(webviewView.webview);
 
-    webviewView.webview.onDidReceiveMessage((message: WebviewMessage) => {
+    webviewView.webview.onDidReceiveMessage(async (message: WebviewMessage) => {
       if (message.type === "ready") {
         this.flushState();
       } else if (message.type === "copy") {
-        vscode.env.clipboard.writeText(message.text);
-        vscode.window.showInformationMessage("Copied to clipboard");
+        try {
+          await vscode.env.clipboard.writeText(message.text);
+          vscode.window.showInformationMessage("Copied to clipboard");
+        } catch {
+          vscode.window.showErrorMessage("Failed to copy to clipboard");
+        }
+      } else if (message.type === "selectFile") {
+        const uris = await vscode.window.showOpenDialog({
+          canSelectMany: false,
+          filters: { Markdown: ["md"] },
+          openLabel: "Select File",
+        });
+        if (uris && uris.length > 0) {
+          const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
+          if (!wsRoot) {
+            return;
+          }
+          const selectedPath = uris[0].fsPath;
+          const wsPath = wsRoot.fsPath;
+          if (!selectedPath.startsWith(wsPath)) {
+            vscode.window.showErrorMessage(
+              "File must be inside the workspace.",
+            );
+            return;
+          }
+          const relativePath = selectedPath
+            .slice(wsPath.length)
+            .replace(/^[/\\]/, "");
+          await this.updateMentorFile(message.field, relativePath);
+        }
+      } else if (message.type === "clearFile") {
+        await this.updateMentorFile(message.field, null);
       }
     });
   }
@@ -63,6 +93,39 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     }
     if (this.latestData) {
       this.postMessage({ type: "update", data: this.latestData });
+    }
+  }
+
+  private async updateMentorFile(
+    field: "appDesign" | "roadmap",
+    value: string | null,
+  ): Promise<void> {
+    const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
+    if (!wsRoot) {
+      return;
+    }
+
+    const configUri = vscode.Uri.joinPath(wsRoot, ".mentor-studio.json");
+    try {
+      const raw = await vscode.workspace.fs.readFile(configUri);
+      const config = JSON.parse(
+        Buffer.from(raw).toString(),
+      ) as MentorStudioConfig;
+      const mentorFiles = config.mentorFiles ?? {
+        appDesign: null,
+        roadmap: null,
+      };
+      mentorFiles[field] = value;
+      config.mentorFiles = mentorFiles;
+      await vscode.workspace.fs.writeFile(
+        configUri,
+        Buffer.from(JSON.stringify(config, null, 2) + "\n"),
+      );
+
+      this.latestConfig = config;
+      this.postMessage({ type: "config", data: config });
+    } catch (err) {
+      console.error("Failed to update .mentor-studio.json", err);
     }
   }
 

@@ -1,32 +1,65 @@
-import type { DashboardData } from "@mentor-studio/shared";
+import { useState } from "react";
+import { postMessage } from "../vscodeApi";
 
-interface ActionsProps {
-  data: DashboardData | null;
+interface Snippet {
+  id: string;
+  title: string;
+  prompt: string;
 }
 
-export function Actions({ data }: ActionsProps) {
-  if (!data) {
-    return <div className="empty">No data yet</div>;
-  }
+const SNIPPETS: Snippet[] = [
+  {
+    id: "start-next-task",
+    title: "Start next task",
+    prompt:
+      "docs/mentor/rules/MENTOR_RULES.md を読んで、次のタスクを始めてください。",
+  },
+  {
+    id: "review-implementation",
+    title: "Review implementation",
+    prompt:
+      "docs/mentor/rules/MENTOR_RULES.md を読んで、現在のタスクの実装をレビューしてください。",
+  },
+  {
+    id: "start-review",
+    title: "Start 復習",
+    prompt:
+      "docs/mentor/rules/MENTOR_RULES.md を読んで、unresolved_gaps にある概念の復習を始めてください。",
+  },
+  {
+    id: "start-check",
+    title: "Start 理解度チェック",
+    prompt:
+      "docs/mentor/rules/MENTOR_RULES.md を読んで、app-design と roadmap を確認し、現在のタスクに関連する理解度チェックを実施してください。",
+  },
+];
+
+export function Actions() {
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const handleCopy = (snippet: Snippet) => {
+    setCopiedId(snippet.id);
+    postMessage({ type: "copy", text: snippet.prompt });
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
   return (
     <div className="actions">
-      <h3>Unresolved Gaps</h3>
-      {data.unresolvedGaps.length === 0 ? (
-        <div className="empty">No unresolved gaps — great job!</div>
-      ) : (
-        <ul className="gap-list">
-          {data.unresolvedGaps.map((gap, i) => (
-            <li className="action-card" key={i}>
-              <div className="gap-concept">{gap.concept}</div>
-              <div className="gap-detail">
-                <span className="gap-topic">{gap.topic}</span>
-                {gap.note && <span className="gap-note">{gap.note}</span>}
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+      <h3>Mentor Actions</h3>
+      <ul className="snippet-list">
+        {SNIPPETS.map((snippet) => (
+          <li className="snippet-card" key={snippet.id}>
+            <span className="snippet-title">{snippet.title}</span>
+            <button
+              className="snippet-copy"
+              onClick={() => handleCopy(snippet)}
+              title="Copy prompt to clipboard"
+            >
+              {copiedId === snippet.id ? "✓" : "📋"}
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

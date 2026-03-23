@@ -21,8 +21,18 @@ export function parseProgressData(raw: string): ProgressData | null {
     ) {
       return null;
     }
+    const completedTasks = (obj.completed_tasks as unknown[]).filter(
+      (item): item is { task: string; name: string; plan: string } =>
+        typeof item === "object" &&
+        item !== null &&
+        typeof (item as Record<string, unknown>).task === "string" &&
+        typeof (item as Record<string, unknown>).name === "string" &&
+        typeof (item as Record<string, unknown>).plan === "string",
+    );
     return {
       version: obj.version,
+      current_plan:
+        typeof obj.current_plan === "string" ? obj.current_plan : "",
       current_task: obj.current_task,
       current_step:
         typeof obj.current_step === "number" ? obj.current_step : null,
@@ -30,7 +40,7 @@ export function parseProgressData(raw: string): ProgressData | null {
         typeof obj.next_suggest === "string" ? obj.next_suggest : "",
       resume_context:
         typeof obj.resume_context === "string" ? obj.resume_context : "",
-      completed_tasks: obj.completed_tasks,
+      completed_tasks: completedTasks,
       skipped_tasks: Array.isArray(obj.skipped_tasks) ? obj.skipped_tasks : [],
       in_progress: Array.isArray(obj.in_progress) ? obj.in_progress : [],
       unresolved_gaps: Array.isArray(obj.unresolved_gaps)
