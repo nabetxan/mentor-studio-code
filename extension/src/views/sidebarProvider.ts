@@ -27,43 +27,49 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.html = this.getHtml(webviewView.webview);
 
-    webviewView.webview.onDidReceiveMessage(async (message: WebviewMessage) => {
-      if (message.type === "ready") {
-        this.flushState();
-      } else if (message.type === "copy") {
-        try {
-          await vscode.env.clipboard.writeText(message.text);
-          vscode.window.showInformationMessage("Copied to clipboard");
-        } catch {
-          vscode.window.showErrorMessage("Failed to copy to clipboard");
-        }
-      } else if (message.type === "selectFile") {
-        const uris = await vscode.window.showOpenDialog({
-          canSelectMany: false,
-          filters: { Markdown: ["md"] },
-          openLabel: "Select File",
-        });
-        if (uris && uris.length > 0) {
-          const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
-          if (!wsRoot) {
-            return;
+    const messageDisposable = webviewView.webview.onDidReceiveMessage(
+      async (message: WebviewMessage) => {
+        if (message.type === "ready") {
+          this.flushState();
+        } else if (message.type === "copy") {
+          try {
+            await vscode.env.clipboard.writeText(message.text);
+            vscode.window.showInformationMessage("Copied to clipboard");
+          } catch {
+            vscode.window.showErrorMessage("Failed to copy to clipboard");
           }
-          const selectedPath = uris[0].fsPath;
-          const wsPath = wsRoot.fsPath;
-          if (!selectedPath.startsWith(wsPath)) {
-            vscode.window.showErrorMessage(
-              "File must be inside the workspace.",
-            );
-            return;
+        } else if (message.type === "selectFile") {
+          const uris = await vscode.window.showOpenDialog({
+            canSelectMany: false,
+            filters: { Markdown: ["md"] },
+            openLabel: "Select File",
+          });
+          if (uris && uris.length > 0) {
+            const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
+            if (!wsRoot) {
+              return;
+            }
+            const selectedPath = uris[0].fsPath;
+            const wsPath = wsRoot.fsPath;
+            if (!selectedPath.startsWith(wsPath)) {
+              vscode.window.showErrorMessage(
+                "File must be inside the workspace.",
+              );
+              return;
+            }
+            const relativePath = selectedPath
+              .slice(wsPath.length)
+              .replace(/^[/\\]/, "");
+            await this.updateMentorFile(message.field, relativePath);
           }
-          const relativePath = selectedPath
-            .slice(wsPath.length)
-            .replace(/^[/\\]/, "");
-          await this.updateMentorFile(message.field, relativePath);
+        } else if (message.type === "clearFile") {
+          await this.updateMentorFile(message.field, null);
         }
-      } else if (message.type === "clearFile") {
-        await this.updateMentorFile(message.field, null);
-      }
+      },
+    );
+
+    webviewView.onDidDispose(() => {
+      messageDisposable.dispose();
     });
   }
 
@@ -126,6 +132,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
       this.postMessage({ type: "config", data: config });
     } catch (err) {
       console.error("Failed to update .mentor-studio.json", err);
+      vscode.window.showErrorMessage("Failed to update .mentor-studio.json");
     }
   }
 

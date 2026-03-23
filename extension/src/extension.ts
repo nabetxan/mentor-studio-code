@@ -49,6 +49,10 @@ export function activate(context: vscode.ExtensionContext): void {
         Buffer.from(JSON.stringify(config, null, 2) + "\n"),
       );
 
+      // Ensure mentor files directory exists
+      const mentorDirUri = vscode.Uri.joinPath(wsRoot, mentorFilesPath);
+      await vscode.workspace.fs.createDirectory(mentorDirUri);
+
       // Create progress.json
       const progressUri = vscode.Uri.joinPath(
         wsRoot,
@@ -57,6 +61,7 @@ export function activate(context: vscode.ExtensionContext): void {
       );
       const progress = {
         version: "1.0",
+        current_plan: null,
         current_task: "1",
         current_step: null,
         next_suggest: null,

@@ -16,11 +16,11 @@ export interface CompletedTask {
 
 export interface ProgressData {
   version: string;
-  current_plan: string;
+  current_plan: string | null;
   current_task: string;
   current_step: number | null;
-  next_suggest: string;
-  resume_context: string;
+  next_suggest: string | null;
+  resume_context: string | null;
   completed_tasks: CompletedTask[];
   skipped_tasks: string[];
   in_progress: string[];

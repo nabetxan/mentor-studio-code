@@ -6,7 +6,8 @@ const isWatch = process.argv.includes("--watch");
 const options = {
   entryPoints: ["src/index.tsx"],
   bundle: true,
-  outfile: "dist/webview.js",
+  outdir: "dist",
+  entryNames: "webview",
   format: "iife",
   platform: "browser",
   target: "es2020",
