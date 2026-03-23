@@ -10,11 +10,15 @@ describe("parseProgressData", () => {
   it("parses valid progress JSON", () => {
     const json = JSON.stringify({
       version: "2.0",
+      current_plan: "phase1.md",
       current_task: "3",
       current_step: null,
       next_suggest: "task-4",
       resume_context: "Finished task 2",
-      completed_tasks: ["1", "2"],
+      completed_tasks: [
+        { task: "1", name: "Setup", plan: "phase1.md" },
+        { task: "2", name: "Scaffold", plan: "phase1.md" },
+      ],
       skipped_tasks: [],
       in_progress: [],
       unresolved_gaps: [],
@@ -22,7 +26,11 @@ describe("parseProgressData", () => {
     const result = parseProgressData(json);
     expect(result).not.toBeNull();
     expect(result!.current_task).toBe("3");
-    expect(result!.completed_tasks).toEqual(["1", "2"]);
+    expect(result!.current_plan).toBe("phase1.md");
+    expect(result!.completed_tasks).toEqual([
+      { task: "1", name: "Setup", plan: "phase1.md" },
+      { task: "2", name: "Scaffold", plan: "phase1.md" },
+    ]);
   });
 
   it("returns null for invalid JSON", () => {
@@ -68,11 +76,12 @@ describe("computeDashboardData", () => {
   it("computes correct stats from history and progress", () => {
     const progress = {
       version: "2.0",
+      current_plan: "phase1.md",
       current_task: "2",
       current_step: null,
       next_suggest: "",
       resume_context: "",
-      completed_tasks: ["1"],
+      completed_tasks: [{ task: "1", name: "Setup", plan: "phase1.md" }],
       skipped_tasks: [],
       in_progress: [],
       unresolved_gaps: [
@@ -138,6 +147,7 @@ describe("computeDashboardData", () => {
   it("handles empty history", () => {
     const progress = {
       version: "2.0",
+      current_plan: "phase1.md",
       current_task: "1",
       current_step: null,
       next_suggest: "",

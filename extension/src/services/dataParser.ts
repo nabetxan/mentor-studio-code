@@ -5,6 +5,7 @@ import type {
   QuestionHistoryEntry,
   TopicConfig,
   TopicStats,
+  UnresolvedGap,
 } from "@mentor-studio/shared";
 
 export function parseProgressData(raw: string): ProgressData | null {
@@ -21,20 +22,48 @@ export function parseProgressData(raw: string): ProgressData | null {
     ) {
       return null;
     }
+    const completedTasks = (obj.completed_tasks as unknown[]).filter(
+      (item): item is { task: string; name: string; plan: string } =>
+        typeof item === "object" &&
+        item !== null &&
+        typeof (item as Record<string, unknown>).task === "string" &&
+        typeof (item as Record<string, unknown>).name === "string" &&
+        typeof (item as Record<string, unknown>).plan === "string",
+    );
     return {
       version: obj.version,
+      current_plan:
+        typeof obj.current_plan === "string" ? obj.current_plan : null,
       current_task: obj.current_task,
       current_step:
         typeof obj.current_step === "number" ? obj.current_step : null,
       next_suggest:
-        typeof obj.next_suggest === "string" ? obj.next_suggest : "",
+        typeof obj.next_suggest === "string" ? obj.next_suggest : null,
       resume_context:
-        typeof obj.resume_context === "string" ? obj.resume_context : "",
-      completed_tasks: obj.completed_tasks,
-      skipped_tasks: Array.isArray(obj.skipped_tasks) ? obj.skipped_tasks : [],
-      in_progress: Array.isArray(obj.in_progress) ? obj.in_progress : [],
+        typeof obj.resume_context === "string" ? obj.resume_context : null,
+      completed_tasks: completedTasks,
+      skipped_tasks: Array.isArray(obj.skipped_tasks)
+        ? (obj.skipped_tasks as unknown[]).filter(
+            (x): x is string => typeof x === "string",
+          )
+        : [],
+      in_progress: Array.isArray(obj.in_progress)
+        ? (obj.in_progress as unknown[]).filter(
+            (x): x is string => typeof x === "string",
+          )
+        : [],
       unresolved_gaps: Array.isArray(obj.unresolved_gaps)
-        ? obj.unresolved_gaps
+        ? (obj.unresolved_gaps as unknown[]).filter(
+            (item): item is UnresolvedGap =>
+              typeof item === "object" &&
+              item !== null &&
+              typeof (item as Record<string, unknown>).concept === "string" &&
+              typeof (item as Record<string, unknown>).topic === "string" &&
+              typeof (item as Record<string, unknown>).first_missed ===
+                "string" &&
+              typeof (item as Record<string, unknown>).task === "string" &&
+              typeof (item as Record<string, unknown>).note === "string",
+          )
         : [],
     };
   } catch {
