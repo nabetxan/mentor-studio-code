@@ -59,6 +59,7 @@ export interface MentorStudioConfig {
   repositoryName: string;
   topics: TopicConfig[];
   mentorFiles?: MentorFiles;
+  locale?: Locale;
 }
 
 // === Dashboard stats (computed by extension, sent to webview) ===
@@ -89,8 +90,11 @@ export type ExtensionMessage =
 
 export type FileField = "appDesign" | "roadmap";
 
+export type Locale = "ja" | "en";
+
 export type WebviewMessage =
   | { type: "copy"; text: string }
   | { type: "ready" }
   | { type: "selectFile"; field: FileField }
-  | { type: "clearFile"; field: FileField };
+  | { type: "clearFile"; field: FileField }
+  | { type: "setLocale"; locale: Locale };

@@ -1,12 +1,14 @@
 import type {
   DashboardData,
   ExtensionMessage,
+  Locale,
   MentorStudioConfig,
 } from "@mentor-studio/shared";
 import { useEffect, useState } from "react";
 import { Actions } from "./components/Actions";
 import { Overview } from "./components/Overview";
 import { Settings } from "./components/Settings";
+import { t } from "./i18n";
 import { onMessage, postMessage } from "./vscodeApi";
 
 type Tab = "actions" | "overview" | "settings";
@@ -16,6 +18,7 @@ export function App() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [config, setConfig] = useState<MentorStudioConfig | null>(null);
   const [hasConfig, setHasConfig] = useState(true);
+  const [locale, setLocale] = useState<Locale>("ja");
 
   useEffect(() => {
     const cleanup = onMessage((message: ExtensionMessage) => {
@@ -26,6 +29,9 @@ export function App() {
         case "config":
           setConfig(message.data);
           setHasConfig(true);
+          if (message.data.locale) {
+            setLocale(message.data.locale);
+          }
           break;
         case "noConfig":
           setHasConfig(false);
@@ -37,15 +43,18 @@ export function App() {
     return cleanup;
   }, []);
 
+  const handleLocaleChange = (newLocale: Locale) => {
+    setLocale(newLocale);
+    postMessage({ type: "setLocale", locale: newLocale });
+  };
+
   if (!hasConfig) {
     return (
       <div className="no-config">
         <p>
-          No <code>.mentor-studio.json</code> found.
+          <code>.mentor-studio.json</code> {t("app.noConfig.line1", locale)}
         </p>
-        <p>
-          Run &quot;Mentor Studio: Setup Mentor&quot; from the command palette.
-        </p>
+        <p>{t("app.noConfig.line2", locale)}</p>
       </div>
     );
   }
@@ -57,28 +66,36 @@ export function App() {
           className={tab === "actions" ? "active" : ""}
           onClick={() => setTab("actions")}
         >
-          Actions
+          {t("app.tab.actions", locale)}
         </button>
         <button
           className={tab === "overview" ? "active" : ""}
           onClick={() => setTab("overview")}
         >
-          Overview
+          {t("app.tab.overview", locale)}
         </button>
         <button
           className={tab === "settings" ? "active" : ""}
           onClick={() => setTab("settings")}
         >
-          Settings
+          {t("app.tab.settings", locale)}
         </button>
       </nav>
       <main className="content">
-        {tab === "actions" && <Actions />}
-        {tab === "overview" && <Overview data={data} />}
-        {tab === "settings" && <Settings config={config} />}
+        {tab === "actions" && <Actions locale={locale} />}
+        {tab === "overview" && <Overview data={data} locale={locale} />}
+        {tab === "settings" && (
+          <Settings
+            config={config}
+            locale={locale}
+            onLocaleChange={handleLocaleChange}
+          />
+        )}
       </main>
       <footer className="status">
-        {data ? "✓ Local data loaded" : "Loading..."}
+        {data
+          ? t("app.status.loaded", locale)
+          : t("app.status.loading", locale)}
       </footer>
     </div>
   );

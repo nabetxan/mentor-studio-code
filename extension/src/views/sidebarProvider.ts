@@ -2,6 +2,7 @@ import type {
   DashboardData,
   ExtensionMessage,
   FileField,
+  Locale,
   MentorStudioConfig,
   WebviewMessage,
 } from "@mentor-studio/shared";
@@ -67,6 +68,8 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
           }
         } else if (message.type === "clearFile") {
           await this.updateMentorFile(message.field, null);
+        } else if (message.type === "setLocale") {
+          await this.updateLocale(message.locale);
         }
       },
     );
@@ -105,38 +108,50 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  private async updateMentorFile(
-    field: FileField,
-    value: string | null,
+  private async updateConfig(
+    mutate: (config: MentorStudioConfig) => void,
   ): Promise<void> {
     const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
     if (!wsRoot) {
       return;
     }
-
     const configUri = vscode.Uri.joinPath(wsRoot, ".mentor-studio.json");
     try {
       const raw = await vscode.workspace.fs.readFile(configUri);
       const config = JSON.parse(
         Buffer.from(raw).toString(),
       ) as MentorStudioConfig;
-      const mentorFiles = config.mentorFiles ?? {
-        appDesign: null,
-        roadmap: null,
-      };
-      mentorFiles[field] = value;
-      config.mentorFiles = mentorFiles;
+      mutate(config);
       await vscode.workspace.fs.writeFile(
         configUri,
         Buffer.from(JSON.stringify(config, null, 2) + "\n"),
       );
-
       this.latestConfig = config;
       this.postMessage({ type: "config", data: config });
     } catch (err) {
       console.error("Failed to update .mentor-studio.json", err);
       vscode.window.showErrorMessage("Failed to update .mentor-studio.json");
     }
+  }
+
+  private async updateLocale(locale: Locale): Promise<void> {
+    await this.updateConfig((config) => {
+      config.locale = locale;
+    });
+  }
+
+  private async updateMentorFile(
+    field: FileField,
+    value: string | null,
+  ): Promise<void> {
+    await this.updateConfig((config) => {
+      const mentorFiles = config.mentorFiles ?? {
+        appDesign: null,
+        roadmap: null,
+      };
+      mentorFiles[field] = value;
+      config.mentorFiles = mentorFiles;
+    });
   }
 
   private postMessage(message: ExtensionMessage): void {
@@ -150,6 +165,9 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     const styleUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this.extensionUri, "webview", "dist", "webview.css"),
     );
+    const codiconsUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.extensionUri, "webview", "dist", "codicon.css"),
+    );
     const nonce = getNonce();
 
     return /*html*/ `<!DOCTYPE html>
@@ -157,8 +175,9 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">
+    content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; font-src ${webview.cspSource};">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="${codiconsUri}">
   <link rel="stylesheet" href="${styleUri}">
 </head>
 <body>

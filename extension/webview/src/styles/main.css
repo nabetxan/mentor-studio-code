@@ -157,38 +157,67 @@ body {
   padding: 24px 0;
 }
 
+.actions-description {
+  font-size: 12px;
+  opacity: 0.7;
+  margin: 0 0 12px 0;
+  line-height: 1.5;
+}
+
 .snippet-list {
-  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   padding: 0;
   margin: 0;
 }
 
-.snippet-card {
+.snippet-btn {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  width: 100%;
   background: var(--vscode-editor-background);
+  border: 1px solid var(--vscode-widget-border, transparent);
   border-radius: 4px;
   padding: 10px 12px;
-  margin-bottom: 6px;
+  cursor: pointer;
+  color: var(--vscode-foreground);
+  font-size: 13px;
+  font-family: inherit;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.snippet-btn:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.snippet-btn:active {
+  background: var(--vscode-list-activeSelectionBackground);
+}
+
+.snippet-btn.copied {
+  background: var(--vscode-list-hoverBackground);
 }
 
 .snippet-title {
   font-weight: 500;
 }
 
-.snippet-copy {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  padding: 4px 8px;
-  border-radius: 4px;
-  color: var(--vscode-foreground);
+.snippet-icon {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0.7;
 }
 
-.snippet-copy:hover {
-  background: var(--vscode-list-hoverBackground);
+.snippet-btn:hover .snippet-icon {
+  opacity: 1;
+}
+
+.snippet-copied-text {
+  font-size: 11px;
 }
 
 .section {
@@ -252,4 +281,54 @@ body {
 .setting-warning {
   color: var(--vscode-editorWarning-foreground, #cca700);
   font-size: 12px;
+}
+
+.setting-guide {
+  font-size: 11px;
+  opacity: 0.6;
+  margin: 0;
+}
+
+.locale-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.locale-checkbox {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  appearance: none;
+  background: var(--vscode-input-background);
+  border-radius: 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.locale-checkbox::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--vscode-foreground);
+  transition: transform 0.2s;
+}
+
+.locale-checkbox:checked::before {
+  transform: translateX(16px);
+}
+
+.locale-active {
+  font-weight: bold;
+  opacity: 1;
+}
+
+.locale-toggle span:not(.locale-active) {
+  opacity: 0.5;
 }

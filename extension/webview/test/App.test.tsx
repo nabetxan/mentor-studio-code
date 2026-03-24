@@ -60,9 +60,9 @@ describe("App", () => {
     cleanup();
   });
 
-  it("shows loading state initially", () => {
+  it("shows loading state initially (default ja)", () => {
     render(<App />);
-    expect(screen.getByText("Loading...")).toBeTruthy();
+    expect(screen.getByText("読み込み中...")).toBeTruthy();
   });
 
   it("shows no-config message when noConfig is received", () => {
@@ -71,16 +71,16 @@ describe("App", () => {
     expect(screen.getByText(/\.mentor-studio\.json/)).toBeTruthy();
   });
 
-  it("shows Actions tab by default", () => {
+  it("shows Actions tab by default (ja)", () => {
     render(<App />);
-    expect(screen.getByText("Mentor Actions")).toBeTruthy();
+    expect(screen.getByText("メンターアクション")).toBeTruthy();
   });
 
   it("switches to Overview tab", () => {
     render(<App />);
     simulateMessage({ type: "update", data: mockData });
     fireEvent.click(screen.getByText("Overview"));
-    expect(screen.getByText("Total Questions")).toBeTruthy();
+    expect(screen.getByText("回答数")).toBeTruthy();
     expect(screen.getByText("5")).toBeTruthy();
   });
 
@@ -88,7 +88,7 @@ describe("App", () => {
     render(<App />);
     simulateMessage({ type: "config", data: mockConfig });
     fireEvent.click(screen.getByText("Settings"));
-    expect(screen.getByText("Mentor Files")).toBeTruthy();
+    expect(screen.getByText("メンターファイル")).toBeTruthy();
   });
 
   it("sends ready message on mount", () => {
@@ -99,6 +99,24 @@ describe("App", () => {
   it("updates data when update message is received", () => {
     render(<App />);
     simulateMessage({ type: "update", data: mockData });
-    expect(screen.getByText("✓ Local data loaded")).toBeTruthy();
+    expect(screen.getByText("✓ データ読み込み済み")).toBeTruthy();
+  });
+
+  it("switches to English when config has locale en", () => {
+    render(<App />);
+    simulateMessage({ type: "config", data: { ...mockConfig, locale: "en" } });
+    expect(screen.getByText("Mentor Actions")).toBeTruthy();
+  });
+
+  it("sends setLocale message when locale is changed", () => {
+    render(<App />);
+    simulateMessage({ type: "config", data: mockConfig });
+    fireEvent.click(screen.getByText("Settings"));
+    const toggle = screen.getByRole("checkbox");
+    fireEvent.click(toggle);
+    expect(mockApi.postMessage).toHaveBeenCalledWith({
+      type: "setLocale",
+      locale: "en",
+    });
   });
 });
