@@ -19,6 +19,7 @@ export function App() {
   const [config, setConfig] = useState<MentorStudioConfig | null>(null);
   const [hasConfig, setHasConfig] = useState(true);
   const [locale, setLocale] = useState<Locale>("ja");
+  const [enableMentor, setEnableMentor] = useState<boolean>(true);
 
   useEffect(() => {
     const cleanup = onMessage((message: ExtensionMessage) => {
@@ -32,6 +33,7 @@ export function App() {
           if (message.data.locale) {
             setLocale(message.data.locale);
           }
+          setEnableMentor(message.data.enableMentor ?? true);
           break;
         case "noConfig":
           setHasConfig(false);
@@ -43,9 +45,18 @@ export function App() {
     return cleanup;
   }, []);
 
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
+
   const handleLocaleChange = (newLocale: Locale) => {
     setLocale(newLocale);
     postMessage({ type: "setLocale", locale: newLocale });
+  };
+
+  const handleEnableMentorChange = (value: boolean) => {
+    setEnableMentor(value);
+    postMessage({ type: "setEnableMentor", value });
   };
 
   if (!hasConfig) {
@@ -55,6 +66,12 @@ export function App() {
           <code>.mentor-studio.json</code> {t("app.noConfig.line1", locale)}
         </p>
         <p>{t("app.noConfig.line2", locale)}</p>
+        <button
+          className="setup-btn"
+          onClick={() => postMessage({ type: "runSetup" })}
+        >
+          {t("app.noConfig.setupButton", locale)}
+        </button>
       </div>
     );
   }
@@ -89,6 +106,8 @@ export function App() {
             config={config}
             locale={locale}
             onLocaleChange={handleLocaleChange}
+            enableMentor={enableMentor}
+            onEnableMentorChange={handleEnableMentorChange}
           />
         )}
       </main>

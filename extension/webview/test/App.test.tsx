@@ -73,7 +73,7 @@ describe("App", () => {
 
   it("shows Actions tab by default (ja)", () => {
     render(<App />);
-    expect(screen.getByText("メンターアクション")).toBeTruthy();
+    expect(screen.getByText("次のタスクを始める")).toBeTruthy();
   });
 
   it("switches to Overview tab", () => {
@@ -105,18 +105,50 @@ describe("App", () => {
   it("switches to English when config has locale en", () => {
     render(<App />);
     simulateMessage({ type: "config", data: { ...mockConfig, locale: "en" } });
-    expect(screen.getByText("Mentor Actions")).toBeTruthy();
+    expect(screen.getByText("Start next task")).toBeTruthy();
   });
 
   it("sends setLocale message when locale is changed", () => {
     render(<App />);
     simulateMessage({ type: "config", data: mockConfig });
     fireEvent.click(screen.getByText("Settings"));
-    const toggle = screen.getByRole("checkbox");
-    fireEvent.click(toggle);
+    const checkboxes = screen.getAllByRole("checkbox");
+    // locale toggle is the second checkbox
+    fireEvent.click(checkboxes[1]);
     expect(mockApi.postMessage).toHaveBeenCalledWith({
       type: "setLocale",
       locale: "en",
+    });
+  });
+
+  it("enableMentor toggle defaults to true when config has no enableMentor key", () => {
+    render(<App />);
+    simulateMessage({ type: "config", data: mockConfig });
+    fireEvent.click(screen.getByText("Settings"));
+    const checkboxes = screen.getAllByRole("checkbox");
+    expect((checkboxes[0] as HTMLInputElement).checked).toBe(true);
+  });
+
+  it("enableMentor toggle reflects false from config", () => {
+    render(<App />);
+    simulateMessage({
+      type: "config",
+      data: { ...mockConfig, enableMentor: false },
+    });
+    fireEvent.click(screen.getByText("Settings"));
+    const checkboxes = screen.getAllByRole("checkbox");
+    expect((checkboxes[0] as HTMLInputElement).checked).toBe(false);
+  });
+
+  it("sends setEnableMentor message when enableMentor toggle clicked", () => {
+    render(<App />);
+    simulateMessage({ type: "config", data: mockConfig });
+    fireEvent.click(screen.getByText("Settings"));
+    const checkboxes = screen.getAllByRole("checkbox");
+    fireEvent.click(checkboxes[0]);
+    expect(mockApi.postMessage).toHaveBeenCalledWith({
+      type: "setEnableMentor",
+      value: false,
     });
   });
 });

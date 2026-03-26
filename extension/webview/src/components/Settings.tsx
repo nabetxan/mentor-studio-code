@@ -6,11 +6,14 @@ import type {
 import { useEffect, useRef, useState } from "react";
 import { t } from "../i18n";
 import { postMessage } from "../vscodeApi";
+import { CheckIcon, SparkleIcon } from "./icons";
 
 interface SettingsProps {
   config: MentorStudioConfig | null;
   locale: Locale;
   onLocaleChange: (locale: Locale) => void;
+  enableMentor: boolean;
+  onEnableMentorChange: (value: boolean) => void;
 }
 
 interface FileSettingProps {
@@ -82,7 +85,7 @@ function FileSetting({
       <div className="setting-label">{label}</div>
       <div className="setting-unset">
         <span className="setting-warning">{t("settings.unset", locale)}</span>
-        <p className="setting-guide">{t("settings.unsetGuide", locale)}</p>
+
         <div className="setting-actions">
           <button
             className="setting-btn"
@@ -95,7 +98,8 @@ function FileSetting({
             onClick={handleCopyPrompt}
             title="Copy prompt to create this file"
           >
-            {copied ? "✓" : "📋"} {t("settings.createPrompt", locale)}
+            {copied ? <CheckIcon /> : <SparkleIcon />}{" "}
+            {t("settings.createPrompt", locale)}
           </button>
         </div>
       </div>
@@ -103,45 +107,65 @@ function FileSetting({
   );
 }
 
-export function Settings({ config, locale, onLocaleChange }: SettingsProps) {
+export function Settings({
+  config,
+  locale,
+  onLocaleChange,
+  enableMentor,
+  onEnableMentorChange,
+}: SettingsProps) {
   const mentorFiles = config?.mentorFiles ?? {
-    appDesign: null,
-    roadmap: null,
+    spec: null,
+    plan: null,
   };
 
   return (
     <div className="settings">
+      <p className="setting-guide">{t("settings.unsetGuide", locale)}</p>
+      <FileSetting
+        label={t("settings.plan", locale)}
+        field="plan"
+        value={mentorFiles.plan}
+        createPrompt={t("settings.prompt.plan", locale)}
+        locale={locale}
+      />
+      <FileSetting
+        label={t("settings.spec", locale)}
+        field="spec"
+        value={mentorFiles.spec}
+        createPrompt={t("settings.prompt.spec", locale)}
+        locale={locale}
+      />
       <div className="setting-item">
-        <div className="setting-label">{t("settings.language", locale)}</div>
+        <div className="setting-label">
+          {t("settings.enableMentor", locale)}
+        </div>
         <label className="locale-toggle">
-          <span className={locale === "ja" ? "locale-active" : ""}>日本語</span>
+          <span className={!enableMentor ? "locale-active" : ""}>OFF</span>
           <input
             type="checkbox"
             className="locale-checkbox"
-            checked={locale === "en"}
-            onChange={() => onLocaleChange(locale === "ja" ? "en" : "ja")}
+            checked={enableMentor}
+            onChange={() => onEnableMentorChange(!enableMentor)}
           />
+          <span className={enableMentor ? "locale-active" : ""}>ON</span>
+        </label>
+      </div>
+      <div className="setting-item">
+        <div className="setting-label">{t("settings.language", locale)}</div>
+        <label className="locale-toggle">
           <span className={locale === "en" ? "locale-active" : ""}>
             English
           </span>
+          <input
+            type="checkbox"
+            className="locale-checkbox"
+            checked={locale === "ja"}
+            onChange={() => onLocaleChange(locale === "ja" ? "en" : "ja")}
+          />
+          <span className={locale === "ja" ? "locale-active" : ""}>日本語</span>
         </label>
       </div>
-
-      <h3>{t("settings.mentorFiles", locale)}</h3>
-      <FileSetting
-        label={t("settings.appDesign", locale)}
-        field="appDesign"
-        value={mentorFiles.appDesign}
-        createPrompt={t("settings.prompt.appDesign", locale)}
-        locale={locale}
-      />
-      <FileSetting
-        label={t("settings.roadmap", locale)}
-        field="roadmap"
-        value={mentorFiles.roadmap}
-        createPrompt={t("settings.prompt.roadmap", locale)}
-        locale={locale}
-      />
     </div>
   );
 }

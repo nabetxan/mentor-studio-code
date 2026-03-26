@@ -1,13 +1,12 @@
 import * as vscode from "vscode";
 import { FileWatcherService } from "./services/fileWatcher";
 import {
-  CORE_RULES_MD,
   CURRENT_TASK_MD,
-  LEARNING_TRACKER_RULES_MD,
   MENTOR_RULES_MD,
-  MENTOR_SKILL_MD,
+  MENTOR_SESSION_SKILL_MD,
   PROGRESS_JSON,
   QUESTION_HISTORY_JSON,
+  TRACKER_FORMAT_MD,
 } from "./templates/mentorFiles";
 import { SidebarProvider } from "./views/sidebarProvider";
 
@@ -77,13 +76,14 @@ export function activate(context: vscode.ExtensionContext): void {
         JSON.stringify(
           {
             repositoryName: folderName,
+            enableMentor: true,
             topics: [
               { key: "html", label: "HTML" },
               { key: "css", label: "CSS" },
               { key: "javascript", label: "JavaScript" },
               { key: "typescript", label: "TypeScript" },
             ],
-            mentorFiles: { appDesign: null, roadmap: null },
+            mentorFiles: { spec: null, plan: null },
           },
           null,
           2,
@@ -96,20 +96,21 @@ export function activate(context: vscode.ExtensionContext): void {
         MENTOR_RULES_MD,
         "rules/MENTOR_RULES.md",
       );
+      const mentorSessionDirUri = vscode.Uri.joinPath(
+        mentorDirUri,
+        "skills",
+        "mentor-session",
+      );
+      await vscode.workspace.fs.createDirectory(mentorSessionDirUri);
       await trackWrite(
-        vscode.Uri.joinPath(rulesDirUri, "MENTOR_SKILL.md"),
-        MENTOR_SKILL_MD,
-        "rules/MENTOR_SKILL.md",
+        vscode.Uri.joinPath(mentorSessionDirUri, "SKILL.md"),
+        MENTOR_SESSION_SKILL_MD,
+        "skills/mentor-session/SKILL.md",
       );
       await trackWrite(
-        vscode.Uri.joinPath(rulesDirUri, "core-rules.md"),
-        CORE_RULES_MD,
-        "rules/core-rules.md",
-      );
-      await trackWrite(
-        vscode.Uri.joinPath(rulesDirUri, "learning-tracker-rules.md"),
-        LEARNING_TRACKER_RULES_MD,
-        "rules/learning-tracker-rules.md",
+        vscode.Uri.joinPath(mentorSessionDirUri, "tracker-format.md"),
+        TRACKER_FORMAT_MD,
+        "skills/mentor-session/tracker-format.md",
       );
 
       // Data files
@@ -129,10 +130,6 @@ export function activate(context: vscode.ExtensionContext): void {
         "current-task.md",
       );
 
-      console.log(
-        "Mentor Studio Setup: all files written, starting CLAUDE.md handling",
-      );
-
       // Handle CLAUDE.md
       const claudeMdUri = vscode.Uri.joinPath(wsRoot, "CLAUDE.md");
       const mentorRef = "@docs/mentor/rules/MENTOR_RULES.md";
@@ -147,13 +144,6 @@ export function activate(context: vscode.ExtensionContext): void {
         // doesn't exist
       }
 
-      console.log(
-        "Mentor Studio Setup: claudeExists =",
-        claudeExists,
-        "includes mentorRef =",
-        claudeContent.includes(mentorRef),
-      );
-
       let claudeAction = "skipped (already contains mentorRef)";
 
       if (!claudeExists) {
@@ -163,7 +153,6 @@ export function activate(context: vscode.ExtensionContext): void {
           Buffer.from(mentorRef + "\n"),
         );
         claudeAction = "created (new file)";
-        console.log("Mentor Studio Setup: created CLAUDE.md");
       } else if (!claudeContent.includes(mentorRef)) {
         // Existing file: ask before appending
         const userChoice = await vscode.window.showInformationMessage(
@@ -182,14 +171,8 @@ export function activate(context: vscode.ExtensionContext): void {
         } else {
           claudeAction = "skipped by user";
         }
-        console.log(
-          "Mentor Studio Setup: CLAUDE.md append choice =",
-          userChoice,
-        );
       } else {
-        console.log(
-          "Mentor Studio Setup: CLAUDE.md already contains mentorRef, skipped",
-        );
+        // Already contains the reference, do nothing
       }
 
       // Output results
@@ -203,7 +186,6 @@ export function activate(context: vscode.ExtensionContext): void {
       ch.show(true);
 
       // Prompt reload with a button
-      console.log("Mentor Studio Setup: showing reload dialog");
       const choice = await vscode.window.showInformationMessage(
         "Mentor Studio setup complete! Reload to activate the dashboard.",
         "Reload Window",
@@ -211,7 +193,6 @@ export function activate(context: vscode.ExtensionContext): void {
       if (choice === "Reload Window") {
         vscode.commands.executeCommand("workbench.action.reloadWindow");
       }
-      console.log("Mentor Studio Setup: setup complete");
     },
   );
   context.subscriptions.push(setupCommand);
@@ -257,8 +238,6 @@ export function activate(context: vscode.ExtensionContext): void {
     });
 
   context.subscriptions.push(watcher);
-
-  console.log("Mentor Studio activated");
 }
 
 export function deactivate(): void {

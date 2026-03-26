@@ -59,8 +59,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@mentor-studio/shared": "*",
-    "@vscode/codicons": "^0.0.45"
+    "@mentor-studio/shared": "*"
   },
   "devDependencies": {
     "@types/node": "^18.19.130",

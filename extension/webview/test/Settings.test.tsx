@@ -11,6 +11,8 @@ const defaultProps = {
   config: null as MentorStudioConfig | null,
   locale: "ja" as const,
   onLocaleChange: () => {},
+  enableMentor: true,
+  onEnableMentorChange: () => {},
 };
 
 describe("Settings", () => {
@@ -39,8 +41,8 @@ describe("Settings", () => {
       repositoryName: "test",
       topics: [],
       mentorFiles: {
-        appDesign: "docs/app-design.md",
-        roadmap: "docs/roadmap.md",
+        spec: "docs/app-design.md",
+        plan: "docs/roadmap.md",
       },
     };
     render(<Settings {...defaultProps} config={config} />);
@@ -57,7 +59,7 @@ describe("Settings", () => {
 
     expect(postMessage).toHaveBeenCalledWith({
       type: "selectFile",
-      field: "appDesign",
+      field: "spec",
     });
   });
 
@@ -67,8 +69,8 @@ describe("Settings", () => {
       repositoryName: "test",
       topics: [],
       mentorFiles: {
-        appDesign: "docs/app-design.md",
-        roadmap: null,
+        spec: "docs/app-design.md",
+        plan: null,
       },
     };
     render(<Settings {...defaultProps} config={config} />);
@@ -78,7 +80,7 @@ describe("Settings", () => {
 
     expect(postMessage).toHaveBeenCalledWith({
       type: "clearFile",
-      field: "appDesign",
+      field: "spec",
     });
   });
 
@@ -90,8 +92,9 @@ describe("Settings", () => {
   it("calls onLocaleChange when toggle clicked", () => {
     const onLocaleChange = vi.fn();
     render(<Settings {...defaultProps} onLocaleChange={onLocaleChange} />);
-    const toggle = screen.getByRole("checkbox");
-    fireEvent.click(toggle);
+    const checkboxes = screen.getAllByRole("checkbox");
+    // locale toggle is the second checkbox (enableMentor is first)
+    fireEvent.click(checkboxes[1]);
     expect(onLocaleChange).toHaveBeenCalledWith("en");
   });
 
@@ -99,5 +102,32 @@ describe("Settings", () => {
     render(<Settings {...defaultProps} locale="en" />);
     const warnings = screen.getAllByText("⚠ Not set");
     expect(warnings).toHaveLength(2);
+  });
+
+  it("renders enableMentor toggle", () => {
+    render(<Settings {...defaultProps} />);
+    expect(screen.getByText("メンター機能")).toBeTruthy();
+    const checkboxes = screen.getAllByRole("checkbox");
+    expect(checkboxes).toHaveLength(2);
+    expect((checkboxes[0] as HTMLInputElement).checked).toBe(true);
+  });
+
+  it("renders enableMentor toggle unchecked when false", () => {
+    render(<Settings {...defaultProps} enableMentor={false} />);
+    const checkboxes = screen.getAllByRole("checkbox");
+    expect((checkboxes[0] as HTMLInputElement).checked).toBe(false);
+  });
+
+  it("calls onEnableMentorChange when enableMentor toggle clicked", () => {
+    const onEnableMentorChange = vi.fn();
+    render(
+      <Settings
+        {...defaultProps}
+        onEnableMentorChange={onEnableMentorChange}
+      />,
+    );
+    const checkboxes = screen.getAllByRole("checkbox");
+    fireEvent.click(checkboxes[0]);
+    expect(onEnableMentorChange).toHaveBeenCalledWith(false);
   });
 });

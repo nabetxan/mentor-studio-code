@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import type { TranslationKey } from "../i18n";
 import { t } from "../i18n";
 import { postMessage } from "../vscodeApi";
+import { CheckIcon, CopyIcon } from "./icons";
 
 interface Snippet {
   id: string;
@@ -60,7 +61,6 @@ export function Actions({ locale }: ActionsProps) {
 
   return (
     <div className="actions">
-      <h3>{t("actions.title", locale)}</h3>
       <p className="actions-description">{t("actions.description", locale)}</p>
       <div className="snippet-list">
         {SNIPPETS.map((snippet) => (
@@ -73,13 +73,13 @@ export function Actions({ locale }: ActionsProps) {
             <span className="snippet-icon">
               {copiedId === snippet.id ? (
                 <>
-                  <i className="codicon codicon-check" />
+                  <CheckIcon />
                   <span className="snippet-copied-text">
                     {t("actions.copied", locale)}
                   </span>
                 </>
               ) : (
-                <i className="codicon codicon-clippy" />
+                <CopyIcon />
               )}
             </span>
           </button>

@@ -51,8 +51,8 @@ export interface TopicConfig {
 }
 
 export interface MentorFiles {
-  appDesign: string | null;
-  roadmap: string | null;
+  spec: string | null;
+  plan: string | null;
 }
 
 export interface MentorStudioConfig {
@@ -60,6 +60,7 @@ export interface MentorStudioConfig {
   topics: TopicConfig[];
   mentorFiles?: MentorFiles;
   locale?: Locale;
+  enableMentor?: boolean;
 }
 
 // === Dashboard stats (computed by extension, sent to webview) ===
@@ -88,13 +89,15 @@ export type ExtensionMessage =
   | { type: "config"; data: MentorStudioConfig }
   | { type: "noConfig" };
 
-export type FileField = "appDesign" | "roadmap";
+export type FileField = "spec" | "plan";
 
 export type Locale = "ja" | "en";
 
 export type WebviewMessage =
   | { type: "copy"; text: string }
   | { type: "ready" }
+  | { type: "runSetup" }
   | { type: "selectFile"; field: FileField }
   | { type: "clearFile"; field: FileField }
-  | { type: "setLocale"; locale: Locale };
+  | { type: "setLocale"; locale: Locale }
+  | { type: "setEnableMentor"; value: boolean };

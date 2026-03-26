@@ -37,7 +37,6 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         } else if (message.type === "copy") {
           try {
             await vscode.env.clipboard.writeText(message.text);
-            vscode.window.showInformationMessage("Copied to clipboard");
           } catch {
             vscode.window.showErrorMessage("Failed to copy to clipboard");
           }
@@ -68,8 +67,12 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
           }
         } else if (message.type === "clearFile") {
           await this.updateMentorFile(message.field, null);
+        } else if (message.type === "runSetup") {
+          await vscode.commands.executeCommand("mentor-studio.setup");
         } else if (message.type === "setLocale") {
           await this.updateLocale(message.locale);
+        } else if (message.type === "setEnableMentor") {
+          await this.updateEnableMentor(message.value);
         }
       },
     );
@@ -140,14 +143,20 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     });
   }
 
+  private async updateEnableMentor(value: boolean): Promise<void> {
+    await this.updateConfig((config) => {
+      config.enableMentor = value;
+    });
+  }
+
   private async updateMentorFile(
     field: FileField,
     value: string | null,
   ): Promise<void> {
     await this.updateConfig((config) => {
       const mentorFiles = config.mentorFiles ?? {
-        appDesign: null,
-        roadmap: null,
+        spec: null,
+        plan: null,
       };
       mentorFiles[field] = value;
       config.mentorFiles = mentorFiles;
@@ -165,19 +174,15 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     const styleUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this.extensionUri, "webview", "dist", "webview.css"),
     );
-    const codiconsUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, "webview", "dist", "codicon.css"),
-    );
     const nonce = getNonce();
 
     return /*html*/ `<!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; font-src ${webview.cspSource};">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="${codiconsUri}">
   <link rel="stylesheet" href="${styleUri}">
 </head>
 <body>
