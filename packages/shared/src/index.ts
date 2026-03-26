@@ -2,6 +2,7 @@ export type {
   DashboardData,
   ExtensionMessage,
   FileField,
+  Locale,
   MentorStudioConfig,
   ProgressData,
   QuestionHistory,

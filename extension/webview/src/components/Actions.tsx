@@ -1,40 +1,44 @@
+import type { Locale } from "@mentor-studio/shared";
 import { useEffect, useRef, useState } from "react";
+import type { TranslationKey } from "../i18n";
+import { t } from "../i18n";
 import { postMessage } from "../vscodeApi";
+import { CheckIcon, CopyIcon } from "./icons";
 
 interface Snippet {
   id: string;
-  title: string;
-  prompt: string;
+  titleKey: TranslationKey;
+  promptKey: TranslationKey;
 }
 
 const SNIPPETS: Snippet[] = [
   {
     id: "start-next-task",
-    title: "Start next task",
-    prompt:
-      "docs/mentor/rules/MENTOR_RULES.md を読んで、次のタスクを始めてください。",
+    titleKey: "actions.startNextTask",
+    promptKey: "actions.prompt.startNextTask",
   },
   {
     id: "review-implementation",
-    title: "Review implementation",
-    prompt:
-      "docs/mentor/rules/MENTOR_RULES.md を読んで、現在のタスクの実装をレビューしてください。",
+    titleKey: "actions.reviewImplementation",
+    promptKey: "actions.prompt.reviewImplementation",
   },
   {
     id: "start-review",
-    title: "Start 復習",
-    prompt:
-      "docs/mentor/rules/MENTOR_RULES.md を読んで、unresolved_gaps にある概念の復習を始めてください。",
+    titleKey: "actions.startReview",
+    promptKey: "actions.prompt.startReview",
   },
   {
     id: "start-check",
-    title: "Start 理解度チェック",
-    prompt:
-      "docs/mentor/rules/MENTOR_RULES.md を読んで、app-design と roadmap を確認し、現在のタスクに関連する理解度チェックを実施してください。",
+    titleKey: "actions.startCheck",
+    promptKey: "actions.prompt.startCheck",
   },
 ];
 
-export function Actions() {
+interface ActionsProps {
+  locale: Locale;
+}
+
+export function Actions({ locale }: ActionsProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -51,27 +55,36 @@ export function Actions() {
       clearTimeout(timerRef.current);
     }
     setCopiedId(snippet.id);
-    postMessage({ type: "copy", text: snippet.prompt });
+    postMessage({ type: "copy", text: t(snippet.promptKey, locale) });
     timerRef.current = setTimeout(() => setCopiedId(null), 2000);
   };
 
   return (
     <div className="actions">
-      <h3>Mentor Actions</h3>
-      <ul className="snippet-list">
+      <p className="actions-description">{t("actions.description", locale)}</p>
+      <div className="snippet-list">
         {SNIPPETS.map((snippet) => (
-          <li className="snippet-card" key={snippet.id}>
-            <span className="snippet-title">{snippet.title}</span>
-            <button
-              className="snippet-copy"
-              onClick={() => handleCopy(snippet)}
-              title="Copy prompt to clipboard"
-            >
-              {copiedId === snippet.id ? "✓" : "📋"}
-            </button>
-          </li>
+          <button
+            className={`snippet-btn${copiedId === snippet.id ? " copied" : ""}`}
+            key={snippet.id}
+            onClick={() => handleCopy(snippet)}
+          >
+            <span className="snippet-title">{t(snippet.titleKey, locale)}</span>
+            <span className="snippet-icon">
+              {copiedId === snippet.id ? (
+                <>
+                  <CheckIcon />
+                  <span className="snippet-copied-text">
+                    {t("actions.copied", locale)}
+                  </span>
+                </>
+              ) : (
+                <CopyIcon />
+              )}
+            </span>
+          </button>
         ))}
-      </ul>
+      </div>
     </div>
   );
 }

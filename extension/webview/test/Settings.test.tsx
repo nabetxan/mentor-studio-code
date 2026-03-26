@@ -7,13 +7,21 @@ vi.mock("../src/vscodeApi", () => ({
   postMessage: vi.fn(),
 }));
 
+const defaultProps = {
+  config: null as MentorStudioConfig | null,
+  locale: "ja" as const,
+  onLocaleChange: () => {},
+  enableMentor: true,
+  onEnableMentorChange: () => {},
+};
+
 describe("Settings", () => {
   afterEach(() => {
     cleanup();
   });
 
   it("shows unset state when config is null", () => {
-    render(<Settings config={null} />);
+    render(<Settings {...defaultProps} />);
     const warnings = screen.getAllByText("⚠ 未設定");
     expect(warnings).toHaveLength(2);
   });
@@ -23,7 +31,7 @@ describe("Settings", () => {
       repositoryName: "test",
       topics: [],
     };
-    render(<Settings config={config} />);
+    render(<Settings {...defaultProps} config={config} />);
     const warnings = screen.getAllByText("⚠ 未設定");
     expect(warnings).toHaveLength(2);
   });
@@ -33,25 +41,25 @@ describe("Settings", () => {
       repositoryName: "test",
       topics: [],
       mentorFiles: {
-        appDesign: "docs/app-design.md",
-        roadmap: "docs/roadmap.md",
+        spec: "docs/app-design.md",
+        plan: "docs/roadmap.md",
       },
     };
-    render(<Settings config={config} />);
+    render(<Settings {...defaultProps} config={config} />);
     expect(screen.getByText("docs/app-design.md")).toBeTruthy();
     expect(screen.getByText("docs/roadmap.md")).toBeTruthy();
   });
 
   it("sends selectFile message on Select File click", async () => {
     const { postMessage } = await import("../src/vscodeApi");
-    render(<Settings config={null} />);
+    render(<Settings {...defaultProps} />);
 
     const selectButtons = screen.getAllByText("Select File");
     fireEvent.click(selectButtons[0]);
 
     expect(postMessage).toHaveBeenCalledWith({
       type: "selectFile",
-      field: "appDesign",
+      field: "spec",
     });
   });
 
@@ -61,18 +69,65 @@ describe("Settings", () => {
       repositoryName: "test",
       topics: [],
       mentorFiles: {
-        appDesign: "docs/app-design.md",
-        roadmap: null,
+        spec: "docs/app-design.md",
+        plan: null,
       },
     };
-    render(<Settings config={config} />);
+    render(<Settings {...defaultProps} config={config} />);
 
     const clearButton = screen.getByTitle("Clear setting");
     fireEvent.click(clearButton);
 
     expect(postMessage).toHaveBeenCalledWith({
       type: "clearFile",
-      field: "appDesign",
+      field: "spec",
     });
+  });
+
+  it("renders language toggle", () => {
+    render(<Settings {...defaultProps} />);
+    expect(screen.getByText("言語 / Language")).toBeTruthy();
+  });
+
+  it("calls onLocaleChange when toggle clicked", () => {
+    const onLocaleChange = vi.fn();
+    render(<Settings {...defaultProps} onLocaleChange={onLocaleChange} />);
+    const checkboxes = screen.getAllByRole("checkbox");
+    // locale toggle is the second checkbox (enableMentor is first)
+    fireEvent.click(checkboxes[1]);
+    expect(onLocaleChange).toHaveBeenCalledWith("en");
+  });
+
+  it("renders labels in English", () => {
+    render(<Settings {...defaultProps} locale="en" />);
+    const warnings = screen.getAllByText("⚠ Not set");
+    expect(warnings).toHaveLength(2);
+  });
+
+  it("renders enableMentor toggle", () => {
+    render(<Settings {...defaultProps} />);
+    expect(screen.getByText("メンター機能")).toBeTruthy();
+    const checkboxes = screen.getAllByRole("checkbox");
+    expect(checkboxes).toHaveLength(2);
+    expect((checkboxes[0] as HTMLInputElement).checked).toBe(true);
+  });
+
+  it("renders enableMentor toggle unchecked when false", () => {
+    render(<Settings {...defaultProps} enableMentor={false} />);
+    const checkboxes = screen.getAllByRole("checkbox");
+    expect((checkboxes[0] as HTMLInputElement).checked).toBe(false);
+  });
+
+  it("calls onEnableMentorChange when enableMentor toggle clicked", () => {
+    const onEnableMentorChange = vi.fn();
+    render(
+      <Settings
+        {...defaultProps}
+        onEnableMentorChange={onEnableMentorChange}
+      />,
+    );
+    const checkboxes = screen.getAllByRole("checkbox");
+    fireEvent.click(checkboxes[0]);
+    expect(onEnableMentorChange).toHaveBeenCalledWith(false);
   });
 });

@@ -1,32 +1,39 @@
-import type { DashboardData } from "@mentor-studio/shared";
+import type { DashboardData, Locale } from "@mentor-studio/shared";
+import { t } from "../i18n";
 
 interface OverviewProps {
   data: DashboardData | null;
+  locale: Locale;
 }
 
-export function Overview({ data }: OverviewProps) {
+export function Overview({ data, locale }: OverviewProps) {
   if (!data) {
-    return <div className="empty">No data yet</div>;
+    return <div className="empty">{t("overview.noData", locale)}</div>;
   }
 
   return (
     <div className="overview">
       <div className="stat-card">
-        <div className="stat-label">Total Questions</div>
+        <div className="stat-label">{t("overview.totalQuestions", locale)}</div>
         <div className="stat-value">{data.totalQuestions}</div>
       </div>
       <div className="stat-card">
-        <div className="stat-label">Correct Rate</div>
+        <div className="stat-label">{t("overview.correctRate", locale)}</div>
         <div className="stat-value">{Math.round(data.correctRate * 100)}%</div>
       </div>
       <div className="stat-card">
-        <div className="stat-label">Current Task</div>
-        <div className="stat-value">Task {data.currentTask}</div>
+        <div className="stat-label">{t("overview.currentTask", locale)}</div>
+        <div className="stat-value">
+          {t("overview.taskPrefix", locale)} {data.currentTask}
+        </div>
       </div>
 
       {data.unresolvedGaps.length > 0 && (
         <div className="section">
-          <h3>Unresolved Gaps ({data.unresolvedGaps.length})</h3>
+          <h3>
+            {t("overview.unresolvedGaps", locale)} ({data.unresolvedGaps.length}
+            )
+          </h3>
           <ul className="gap-list">
             {data.unresolvedGaps.map((gap) => (
               <li
@@ -46,7 +53,7 @@ export function Overview({ data }: OverviewProps) {
 
       {data.byTopic.length > 0 && (
         <div className="section">
-          <h3>Topics</h3>
+          <h3>{t("overview.topics", locale)}</h3>
           {data.byTopic.map((topic) => (
             <div className="topic-group" key={topic.topic}>
               <div className="topic-header">
