@@ -1,0 +1,26 @@
+{
+  "repositoryName": "mentor-studio-code",
+  "enableMentor": true,
+  "topics": [
+    {
+      "key": "html",
+      "label": "HTML"
+    },
+    {
+      "key": "css",
+      "label": "CSS"
+    },
+    {
+      "key": "javascript",
+      "label": "JavaScript"
+    },
+    {
+      "key": "typescript",
+      "label": "TypeScript"
+    }
+  ],
+  "mentorFiles": {
+    "spec": null,
+    "plan": null
+  }
+}
