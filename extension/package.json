@@ -4,6 +4,10 @@
   "description": "Learning dashboard for AI mentor sessions",
   "version": "0.0.1",
   "publisher": "nabetxan",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nabetxan/mentor-studio-code"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
