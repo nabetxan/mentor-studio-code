@@ -14,6 +14,10 @@ export interface CompletedTask {
   plan: string;
 }
 
+export interface LearnerProfile {
+  last_updated?: string | null;
+}
+
 export interface ProgressData {
   version: string;
   current_plan: string | null;
@@ -24,6 +28,7 @@ export interface ProgressData {
   completed_tasks: CompletedTask[];
   skipped_tasks: string[];
   unresolved_gaps: UnresolvedGap[];
+  learner_profile?: LearnerProfile;
 }
 
 // === Question history (matches docs/mentor/question-history.json) ===
@@ -79,6 +84,7 @@ export interface DashboardData {
   unresolvedGaps: UnresolvedGap[];
   completedTasks: CompletedTask[];
   currentTask: string | null;
+  profileLastUpdated: string | null;
 }
 
 // === Extension <-> Webview message protocol ===
