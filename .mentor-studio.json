@@ -1,6 +1,6 @@
 {
   "repositoryName": "mentor-studio-code",
-  "enableMentor": true,
+  "enableMentor": false,
   "topics": [
     {
       "key": "html",

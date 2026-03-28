@@ -217,11 +217,84 @@ When the answer is incorrect, "I don't know", or partial understanding — add t
 When the user correctly answers a question on this topic **in a different context** (not immediately after being corrected). Record the resolution in question-history.json with \`isCorrect: true\`. Then remove the entry from unresolved_gaps.
 `;
 
+export const CREATE_PLAN_MD = `## Plan Creation Rules
+
+### Minimum Valid Plan
+
+- A goal (what to achieve — new app, feature, bug fix, refactor, etc.) — at least 1 sentence
+- At least 1 implementation step
+
+### Plan Setup Flow
+
+Triggered when \`mentorFiles.plan\` is null, file does not exist, file has no recognizable structure, or all tasks are complete.
+
+1. Ask the user:
+   > "今回何をしたいですか？既存のプラン・仕様書・メモなどがあればパスや内容を教えていただけると参考にできます。"
+2. If the user provides a file path → read it; if file is unreadable or has no text content → treat as "no structure" and proceed from conversation. If no file provided → infer from conversation.
+3. Propose goal + implementation steps → ask user to confirm the approach.
+   - If user rejects → ask what to change, revise proposal, repeat until confirmed.
+4. On confirmation → create a new structured plan file at \`docs/mentor/plan.md\` (or a timestamped variant if that path is already taken). Original file left untouched if one existed.
+5. Ask:
+   > "\`<path>\` を作成しました。これをプランとしてセットしてもいいですか？Settings からいつでも変更できます。"
+   - If user says no → proceed to Session Start without setting the plan.
+6. On OK → directly edit \`.mentor-studio.json\` \`mentorFiles.plan\`. If write fails → tell the user to set it manually in Settings.
+
+### All-Tasks-Complete Detection (Heuristic)
+
+Count \`## Task N\` headings in the plan file. If the number of entries in \`progress.json\` \`completed_tasks\` is greater than or equal to that count, treat the plan as complete and trigger the "next plan" flow. The \`current_plan\` field in \`progress.json\` can be used to confirm the plan file path matches — if \`current_plan\` is \`null\`, skip path confirmation and rely on heading count alone.
+
+### Recommended Plan File Format
+
+\`\`\`markdown
+# 目標
+何をするか（新規アプリ / 機能追加 / バグ修正 / リファクタなど）
+
+## Task 1: タスク名
+- Step 1: ...
+- Step 2: ...
+
+## Task 2: タスク名
+- Step 1: ...
+\`\`\`
+
+Format is flexible — a single task with 2–3 steps is valid.
+
+### AI Updating \`.mentor-studio.json\`
+
+- Always ask permission before writing.
+- Always mention: "Settings からいつでも変更できます。"
+- Write directly to \`.mentor-studio.json\`; the extension's fileWatcher auto-reloads.
+`;
+
+export const CREATE_SPEC_MD = `## Spec Creation Rules
+
+### Minimum Valid Spec
+
+- Project overview
+- Tech stack
+- Key features list
+
+### Spec Setup Flow
+
+1. Ask the user what the project is about; ask follow-up questions for missing info.
+2. Create spec file.
+3. Ask:
+   > "\`<path>\` を作成しました。これをスペックとしてセットしてもいいですか？Settings からいつでも変更できます。"
+   - If user says no → leave \`mentorFiles.spec\` unchanged.
+4. On OK → directly edit \`.mentor-studio.json\` \`mentorFiles.spec\`. If write fails → tell the user to set it manually in Settings.
+
+### AI Updating \`.mentor-studio.json\`
+
+- Always ask permission before writing.
+- Always mention: "Settings からいつでも変更できます。"
+- Write directly to \`.mentor-studio.json\`; the extension's fileWatcher auto-reloads.
+`;
+
 export const PROGRESS_JSON = JSON.stringify(
   {
     version: "1.0",
     current_plan: null,
-    current_task: "1",
+    current_task: null,
     current_step: null,
     next_suggest: null,
     resume_context: null,

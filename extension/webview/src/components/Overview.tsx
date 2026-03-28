@@ -24,7 +24,9 @@ export function Overview({ data, locale }: OverviewProps) {
       <div className="stat-card">
         <div className="stat-label">{t("overview.currentTask", locale)}</div>
         <div className="stat-value">
-          {t("overview.taskPrefix", locale)} {data.currentTask}
+          {data.currentTask === null
+            ? t("overview.notStarted", locale)
+            : `${t("overview.taskPrefix", locale)} ${data.currentTask}`}
         </div>
       </div>
 

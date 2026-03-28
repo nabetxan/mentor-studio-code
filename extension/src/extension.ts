@@ -1,6 +1,8 @@
 import * as vscode from "vscode";
 import { FileWatcherService } from "./services/fileWatcher";
 import {
+  CREATE_PLAN_MD,
+  CREATE_SPEC_MD,
   CURRENT_TASK_MD,
   MENTOR_RULES_MD,
   MENTOR_SESSION_SKILL_MD,
@@ -95,6 +97,16 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.Uri.joinPath(rulesDirUri, "MENTOR_RULES.md"),
         MENTOR_RULES_MD,
         "rules/MENTOR_RULES.md",
+      );
+      await trackWrite(
+        vscode.Uri.joinPath(rulesDirUri, "CREATE_PLAN.md"),
+        CREATE_PLAN_MD,
+        "rules/CREATE_PLAN.md",
+      );
+      await trackWrite(
+        vscode.Uri.joinPath(rulesDirUri, "CREATE_SPEC.md"),
+        CREATE_SPEC_MD,
+        "rules/CREATE_SPEC.md",
       );
       const mentorSessionDirUri = vscode.Uri.joinPath(
         mentorDirUri,
