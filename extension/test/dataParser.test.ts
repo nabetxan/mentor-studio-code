@@ -40,6 +40,24 @@ describe("parseProgressData", () => {
   it("returns null for missing required fields", () => {
     expect(parseProgressData(JSON.stringify({ version: "2.0" }))).toBeNull();
   });
+
+  it("parses null current_task as null", () => {
+    const json = JSON.stringify({
+      version: "1.0",
+      current_plan: null,
+      current_task: null,
+      current_step: null,
+      next_suggest: null,
+      resume_context: null,
+      completed_tasks: [],
+      skipped_tasks: [],
+      in_progress: [],
+      unresolved_gaps: [],
+    });
+    const result = parseProgressData(json);
+    expect(result).not.toBeNull();
+    expect(result!.current_task).toBeNull();
+  });
 });
 
 describe("parseQuestionHistory", () => {

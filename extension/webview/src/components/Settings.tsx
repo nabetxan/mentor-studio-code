@@ -12,8 +12,6 @@ interface SettingsProps {
   config: MentorStudioConfig | null;
   locale: Locale;
   onLocaleChange: (locale: Locale) => void;
-  enableMentor: boolean;
-  onEnableMentorChange: (value: boolean) => void;
 }
 
 interface FileSettingProps {
@@ -107,13 +105,7 @@ function FileSetting({
   );
 }
 
-export function Settings({
-  config,
-  locale,
-  onLocaleChange,
-  enableMentor,
-  onEnableMentorChange,
-}: SettingsProps) {
+export function Settings({ config, locale, onLocaleChange }: SettingsProps) {
   const mentorFiles = config?.mentorFiles ?? {
     spec: null,
     plan: null,
@@ -136,21 +128,6 @@ export function Settings({
         createPrompt={t("settings.prompt.spec", locale)}
         locale={locale}
       />
-      <div className="setting-item">
-        <div className="setting-label">
-          {t("settings.enableMentor", locale)}
-        </div>
-        <label className="locale-toggle">
-          <span className={!enableMentor ? "locale-active" : ""}>OFF</span>
-          <input
-            type="checkbox"
-            className="locale-checkbox"
-            checked={enableMentor}
-            onChange={() => onEnableMentorChange(!enableMentor)}
-          />
-          <span className={enableMentor ? "locale-active" : ""}>ON</span>
-        </label>
-      </div>
       <div className="setting-item">
         <div className="setting-label">{t("settings.language", locale)}</div>
         <label className="locale-toggle">

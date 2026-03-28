@@ -17,7 +17,7 @@ export function parseProgressData(raw: string): ProgressData | null {
     const obj = data as Record<string, unknown>;
     if (
       typeof obj.version !== "string" ||
-      typeof obj.current_task !== "string" ||
+      (obj.current_task !== null && typeof obj.current_task !== "string") ||
       !Array.isArray(obj.completed_tasks)
     ) {
       return null;
@@ -34,7 +34,8 @@ export function parseProgressData(raw: string): ProgressData | null {
       version: obj.version,
       current_plan:
         typeof obj.current_plan === "string" ? obj.current_plan : null,
-      current_task: obj.current_task,
+      current_task:
+        typeof obj.current_task === "string" ? obj.current_task : null,
       current_step:
         typeof obj.current_step === "number" ? obj.current_step : null,
       next_suggest:
@@ -44,11 +45,6 @@ export function parseProgressData(raw: string): ProgressData | null {
       completed_tasks: completedTasks,
       skipped_tasks: Array.isArray(obj.skipped_tasks)
         ? (obj.skipped_tasks as unknown[]).filter(
-            (x): x is string => typeof x === "string",
-          )
-        : [],
-      in_progress: Array.isArray(obj.in_progress)
-        ? (obj.in_progress as unknown[]).filter(
             (x): x is string => typeof x === "string",
           )
         : [],

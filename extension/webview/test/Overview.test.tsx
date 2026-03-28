@@ -48,6 +48,16 @@ describe("Overview", () => {
     expect(screen.getByText("Task 3")).toBeTruthy();
   });
 
+  it("shows not-started in Japanese when currentTask is null", () => {
+    render(<Overview data={{ ...mockData, currentTask: null }} locale="ja" />);
+    expect(screen.getByText("未開始")).toBeTruthy();
+  });
+
+  it("shows not-started in English when currentTask is null", () => {
+    render(<Overview data={{ ...mockData, currentTask: null }} locale="en" />);
+    expect(screen.getByText("Not started")).toBeTruthy();
+  });
+
   it("renders unresolved gaps", () => {
     const data: DashboardData = {
       totalQuestions: 1,

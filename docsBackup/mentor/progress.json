@@ -1,0 +1,204 @@
+{
+  "version": "1.0",
+  "current_plan": "2026-03-24-phase2.4-zoom.md",
+  "current_task": "1",
+  "current_step": null,
+  "next_suggest": "Task 1: Add zoom to shared types",
+  "resume_context": "Phase 2.3 完了。Locale型追加、i18n基盤(translations.ts + t())、Actions/Overview/Settings/Appに翻訳適用、言語トグルをSettingsに追加、sidebarProviderでsetLocale永続化。updateConfig共通関数でDRY化済み。次はPhase 2.4 Zoom。",
+  "completed_tasks": [
+    {
+      "task": "1",
+      "name": "Plan Review & Approval",
+      "plan": "2026-03-22-phase1-extension-poc.md"
+    },
+    {
+      "task": "2",
+      "name": "Root Project Scaffold",
+      "plan": "2026-03-22-phase1-extension-poc.md"
+    },
+    {
+      "task": "3",
+      "name": "Shared Types Package",
+      "plan": "2026-03-22-phase1-extension-poc.md"
+    },
+    {
+      "task": "4",
+      "name": "Extension Scaffold",
+      "plan": "2026-03-22-phase1-extension-poc.md"
+    },
+    {
+      "task": "5",
+      "name": "Data Parser (TDD)",
+      "plan": "2026-03-22-phase1-extension-poc.md"
+    },
+    {
+      "task": "6",
+      "name": "File Watcher Service",
+      "plan": "2026-03-22-phase1-extension-poc.md"
+    },
+    {
+      "task": "7",
+      "name": "Sidebar Webview Provider",
+      "plan": "2026-03-22-phase1-extension-poc.md"
+    },
+    {
+      "task": "8",
+      "name": "Webview React App Setup",
+      "plan": "2026-03-22-phase1-extension-poc.md"
+    },
+    {
+      "task": "9",
+      "name": "Webview Components",
+      "plan": "2026-03-22-phase1-extension-poc.md"
+    },
+    {
+      "task": "10",
+      "name": "Extension Integration",
+      "plan": "2026-03-22-phase1-extension-poc.md"
+    },
+    {
+      "task": "11",
+      "name": "Setup Command",
+      "plan": "2026-03-22-phase1-extension-poc.md"
+    },
+    {
+      "task": "1",
+      "name": "Fix Nonce Generation",
+      "plan": "2026-03-22-phase2-prompt-fix-and-ui.md"
+    },
+    {
+      "task": "2",
+      "name": "Fix CSP for Inline Styles",
+      "plan": "2026-03-22-phase2-prompt-fix-and-ui.md"
+    },
+    {
+      "task": "3",
+      "name": "Fix Watcher Unhandled Promise Rejection",
+      "plan": "2026-03-22-phase2-prompt-fix-and-ui.md"
+    },
+    {
+      "task": "4",
+      "name": "Optimize Activation Events",
+      "plan": "2026-03-22-phase2-prompt-fix-and-ui.md"
+    },
+    {
+      "task": "5",
+      "name": "Move Prompt Files to rules/ Subdirectory",
+      "plan": "2026-03-22-phase2-prompt-fix-and-ui.md"
+    },
+    {
+      "task": "6",
+      "name": "Fix Prompt Recording Reliability",
+      "plan": "2026-03-22-phase2-prompt-fix-and-ui.md"
+    },
+    {
+      "task": "7",
+      "name": "Update Shared Types",
+      "plan": "2026-03-22-phase2-prompt-fix-and-ui.md"
+    },
+    {
+      "task": "8",
+      "name": "Restructure Tabs",
+      "plan": "2026-03-22-phase2-prompt-fix-and-ui.md"
+    },
+    {
+      "task": "9",
+      "name": "Rewrite Actions Component",
+      "plan": "2026-03-22-phase2-prompt-fix-and-ui.md"
+    },
+    {
+      "task": "10",
+      "name": "Merge Topics into Overview",
+      "plan": "2026-03-22-phase2-prompt-fix-and-ui.md"
+    },
+    {
+      "task": "11",
+      "name": "Create Settings Component",
+      "plan": "2026-03-22-phase2-prompt-fix-and-ui.md"
+    },
+    {
+      "task": "12",
+      "name": "Handle New Messages in Extension",
+      "plan": "2026-03-22-phase2-prompt-fix-and-ui.md"
+    },
+    {
+      "task": "1",
+      "name": "i18n + Actions UI改善",
+      "plan": "2026-03-24-phase2.3-i18n-and-actions-ui.md"
+    }
+  ],
+  "skipped_tasks": [],
+  "in_progress": [],
+  "unresolved_gaps": [
+    {
+      "concept": "CSP script-src vs style-src",
+      "topic": "security",
+      "first_missed": "2026-03-22",
+      "task": "phase2-task2",
+      "note": "script-src は nonce で制限（XSS防止）、style-src は unsafe-inline でも許容（コード実行不可）"
+    },
+    {
+      "concept": "void keyword with floating promises",
+      "topic": "typescript",
+      "first_missed": "2026-03-22",
+      "task": "phase2-task3",
+      "note": "void は ESLint の no-floating-promises 対策。意図的に await しないことを明示する"
+    },
+    {
+      "concept": "implicit activation events",
+      "topic": "vscode-extension",
+      "first_missed": "2026-03-22",
+      "task": "phase2-task4",
+      "note": "contributes に登録したものは VSCode が自動で activation event を生成する"
+    },
+    {
+      "concept": "React key prop best practice",
+      "topic": "react",
+      "first_missed": "2026-03-22",
+      "task": "phase2-task10",
+      "note": "index を key に使うとリストの増減時に React が要素を正しく識別できない。データに固有IDがあればそれを使う"
+    },
+    {
+      "concept": "race condition in read-modify-write",
+      "topic": "concurrency",
+      "first_missed": "2026-03-22",
+      "task": "phase2-task12",
+      "note": "読む→変更→書くの間に別プロセスが割り込むと変更が消える。transaction は DB の解決策の一つ"
+    },
+    {
+      "concept": "idempotent append with includes check",
+      "topic": "architecture",
+      "first_missed": "2026-03-23",
+      "task": "phase2-task13",
+      "note": "includes で既存コンテンツに参照が含まれるか確認しないと、re-run で同じ行が重複追記される"
+    },
+    {
+      "concept": "as const for literal type inference",
+      "topic": "typescript",
+      "first_missed": "2026-03-24",
+      "task": "phase2.3-task2",
+      "note": "as const は値をリテラル型として固定する。付けないと string に広がり、キーの型安全性が失われる"
+    },
+    {
+      "concept": "document.documentElement vs document.body",
+      "topic": "DOM API",
+      "first_missed": "2026-03-26",
+      "task": "phase2.4-task1",
+      "note": "document.documentElement が <html> 要素を指すことを知らなかった。document.body との区別も要復習。"
+    },
+    {
+      "concept": "useEffect vs useState for side effects",
+      "topic": "React hooks",
+      "first_missed": "2026-03-26",
+      "task": "phase2.4-task1",
+      "note": "副作用（DOM更新など）にuseEffectではなくuseStateを答えた。useStateは状態保持のみ、副作用はuseEffectという区別が必要。"
+    },
+    {
+      "concept": "useEffect dependency array semantics",
+      "topic": "React hooks",
+      "first_missed": "2026-03-26",
+      "task": "phase2.4-task1",
+      "note": "useEffectの依存配列[locale]をファイル保存と誤解した。依存配列はReactがeffectを再実行するタイミングを決めるもの。"
+    }
+  ]
+}

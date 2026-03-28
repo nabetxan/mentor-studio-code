@@ -39,6 +39,7 @@ const translations = {
   "overview.correctRate": { ja: "正答率", en: "Correct Rate" },
   "overview.currentTask": { ja: "現在のタスク", en: "Current Task" },
   "overview.taskPrefix": { ja: "Task", en: "Task" },
+  "overview.notStarted": { ja: "未開始", en: "Not started" },
   "overview.unresolvedGaps": {
     ja: "未解決の理解ギャップ",
     en: "Unresolved Gaps",
@@ -63,12 +64,12 @@ const translations = {
   "settings.language": { ja: "言語 / Language", en: "Language" },
   "settings.enableMentor": { ja: "メンター機能", en: "Mentor" },
   "settings.prompt.spec": {
-    ja: "docs/mentor/rules/MENTOR_RULES.md を読んで、このプロジェクトの app-design.md を作成してください。不足している情報があればユーザーに質問してください。",
-    en: "Read docs/mentor/rules/MENTOR_RULES.md and create an app-design.md for this project. Ask the user if any information is missing.",
+    ja: "docs/mentor/rules/CREATE_SPEC.md を読んで、仕様ファイルを作成してください。不足している情報があればユーザーに質問してください。/brainstorm",
+    en: "Read docs/mentor/rules/CREATE_SPEC.md and create a spec file. Ask the user if any information is missing. /brainstorm",
   },
   "settings.prompt.plan": {
-    ja: "docs/mentor/rules/MENTOR_RULES.md を読んで、このプロジェクトの learning-roadmap.md を作成してください。不足している情報があればユーザーに質問してください。",
-    en: "Read docs/mentor/rules/MENTOR_RULES.md and create a learning-roadmap.md for this project. Ask the user if any information is missing.",
+    ja: "docs/mentor/rules/CREATE_PLAN.md を読んで、プランファイルを作成してください。何のプランを作るかはユーザーに質問してください。/write-plan",
+    en: "Read docs/mentor/rules/CREATE_PLAN.md and create a plan file. Ask the user what kind of plan to create. /write-plan",
   },
 
   // App-level

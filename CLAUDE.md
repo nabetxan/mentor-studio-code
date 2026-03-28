@@ -1,8 +1,9 @@
 @docs/mentor/rules/MENTOR_RULES.md
 
+## Git
+
+NEVER COMMIT (including subagents). User will check and commit later.
+
 ## Conventions
 
 - TypeScript: never use `any`
-- CSS: plain CSS only in Webview (no libraries)
-- Extension: VSCode Extension API only
-- Build: esbuild

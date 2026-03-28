@@ -17,13 +17,12 @@ export interface CompletedTask {
 export interface ProgressData {
   version: string;
   current_plan: string | null;
-  current_task: string;
+  current_task: string | null;
   current_step: number | null;
   next_suggest: string | null;
   resume_context: string | null;
   completed_tasks: CompletedTask[];
   skipped_tasks: string[];
-  in_progress: string[];
   unresolved_gaps: UnresolvedGap[];
 }
 
@@ -79,7 +78,7 @@ export interface DashboardData {
   byTopic: TopicStats[];
   unresolvedGaps: UnresolvedGap[];
   completedTasks: CompletedTask[];
-  currentTask: string;
+  currentTask: string | null;
 }
 
 // === Extension <-> Webview message protocol ===
