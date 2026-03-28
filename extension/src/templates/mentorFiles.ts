@@ -300,7 +300,6 @@ export const PROGRESS_JSON = JSON.stringify(
     resume_context: null,
     completed_tasks: [],
     skipped_tasks: [],
-    in_progress: [],
     unresolved_gaps: [],
   },
   null,

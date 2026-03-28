@@ -48,11 +48,6 @@ export function parseProgressData(raw: string): ProgressData | null {
             (x): x is string => typeof x === "string",
           )
         : [],
-      in_progress: Array.isArray(obj.in_progress)
-        ? (obj.in_progress as unknown[]).filter(
-            (x): x is string => typeof x === "string",
-          )
-        : [],
       unresolved_gaps: Array.isArray(obj.unresolved_gaps)
         ? (obj.unresolved_gaps as unknown[]).filter(
             (item): item is UnresolvedGap =>

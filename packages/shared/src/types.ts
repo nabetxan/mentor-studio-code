@@ -23,7 +23,6 @@ export interface ProgressData {
   resume_context: string | null;
   completed_tasks: CompletedTask[];
   skipped_tasks: string[];
-  in_progress: string[];
   unresolved_gaps: UnresolvedGap[];
 }
 
