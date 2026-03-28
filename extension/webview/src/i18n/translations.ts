@@ -77,8 +77,8 @@ const translations = {
   },
   "settings.profile.update": { ja: "プロフィール更新", en: "Update Profile" },
   "settings.prompt.intake": {
-    ja: "docs/mentor/skills/intake/SKILL.md を読んで、インテークフローを実行してください。",
-    en: "Read docs/mentor/skills/intake/SKILL.md and run the intake flow.",
+    ja: "docs/mentor/skills/intake/SKILL.md を読んで、プロフィールを更新してください。",
+    en: "Read docs/mentor/skills/intake/SKILL.md and update my profile.",
   },
 
   // App-level
@@ -90,15 +90,6 @@ const translations = {
     en: "✓ Local data loaded",
   },
   "app.status.loading": { ja: "読み込み中...", en: "Loading..." },
-  "app.noConfig.line1": { ja: "が見つかりません。", en: "not found." },
-  "app.noConfig.line2": {
-    ja: 'コマンドパレットから "Mentor Studio: Setup Mentor" を実行してください。',
-    en: 'Run "Mentor Studio: Setup Mentor" from the command palette.',
-  },
-  "app.noConfig.setupButton": {
-    ja: "セットアップを実行する",
-    en: "Run Setup",
-  },
 } as const satisfies Record<string, Record<Locale, string>>;
 
 export type TranslationKey = keyof typeof translations;

@@ -67,14 +67,19 @@ export function App() {
     return (
       <div className="no-config">
         <p>
-          <code>.mentor-studio.json</code> {t("app.noConfig.line1", locale)}
+          <code>.mentor-studio.json</code> が見つかりません。 / not found.
         </p>
-        <p>{t("app.noConfig.line2", locale)}</p>
+        <p>
+          コマンドパレットから &quot;Mentor Studio: Setup Mentor&quot;
+          を実行してください。
+          <br />
+          Run &quot;Mentor Studio: Setup Mentor&quot; from the command palette.
+        </p>
         <button
           className="setup-btn"
           onClick={() => postMessage({ type: "runSetup" })}
         >
-          {t("app.noConfig.setupButton", locale)}
+          セットアップを実行する / Run Setup
         </button>
       </div>
     );
