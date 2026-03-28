@@ -1,3 +1,47 @@
+export function ActionsIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      xmlns="http://www.w3.org/2000/svg"
+      fill="currentColor"
+    >
+      <path d="M9 1L2 9h5l-1 6 7-8H8L9 1z" />
+    </svg>
+  );
+}
+
+export function OverviewIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      xmlns="http://www.w3.org/2000/svg"
+      fill="currentColor"
+    >
+      <rect x="1" y="9" width="3" height="6" />
+      <rect x="6" y="5" width="3" height="10" />
+      <rect x="11" y="2" width="3" height="13" />
+    </svg>
+  );
+}
+
+export function SettingsIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      xmlns="http://www.w3.org/2000/svg"
+      fill="currentColor"
+    >
+      <path d="M9.1 1H6.9l-.3 1.7c-.4.1-.8.3-1.2.5L3.9 2.5 2.5 3.9l.7 1.5c-.2.4-.4.8-.5 1.2L1 6.9v2.2l1.7.3c.1.4.3.8.5 1.2l-.7 1.5 1.4 1.4 1.5-.7c.4.2.8.4 1.2.5l.3 1.7h2.2l.3-1.7c.4-.1.8-.3 1.2-.5l1.5.7 1.4-1.4-.7-1.5c.2-.4.4-.8.5-1.2l1.7-.3V6.9l-1.7-.3c-.1-.4-.3-.8-.5-1.2l.7-1.5L12.1 2.5l-1.5.7c-.4-.2-.8-.4-1.2-.5L9.1 1zM8 10a2 2 0 1 1 0-4 2 2 0 0 1 0 4z" />
+    </svg>
+  );
+}
+
 export function CheckIcon() {
   return (
     <svg

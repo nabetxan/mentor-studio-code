@@ -6,6 +6,7 @@ import type {
 } from "@mentor-studio/shared";
 import { useEffect, useState } from "react";
 import { Actions } from "./components/Actions";
+import { ActionsIcon, OverviewIcon, SettingsIcon } from "./components/icons";
 import { Overview } from "./components/Overview";
 import { Settings } from "./components/Settings";
 import { t } from "./i18n";
@@ -79,24 +80,48 @@ export function App() {
   return (
     <div className="app">
       <nav className="tabs">
-        <button
-          className={tab === "actions" ? "active" : ""}
-          onClick={() => setTab("actions")}
-        >
-          {t("app.tab.actions", locale)}
-        </button>
-        <button
-          className={tab === "overview" ? "active" : ""}
-          onClick={() => setTab("overview")}
-        >
-          {t("app.tab.overview", locale)}
-        </button>
-        <button
-          className={tab === "settings" ? "active" : ""}
-          onClick={() => setTab("settings")}
-        >
-          {t("app.tab.settings", locale)}
-        </button>
+        <div className="tabs-buttons">
+          <button
+            className={tab === "actions" ? "active" : ""}
+            onClick={() => setTab("actions")}
+          >
+            <ActionsIcon />
+            <span>{t("app.tab.actions", locale)}</span>
+          </button>
+          <button
+            className={tab === "overview" ? "active" : ""}
+            onClick={() => setTab("overview")}
+          >
+            <OverviewIcon />
+            <span>{t("app.tab.overview", locale)}</span>
+          </button>
+          <button
+            className={tab === "settings" ? "active" : ""}
+            onClick={() => setTab("settings")}
+          >
+            <SettingsIcon />
+            <span>{t("app.tab.settings", locale)}</span>
+          </button>
+        </div>
+        <div className="tabs-mentor">
+          <span className="tabs-mentor-label">
+            {t("settings.enableMentor", locale)}
+          </span>
+          <label className="mentor-toggle">
+            <span className={!enableMentor ? "mentor-toggle-active" : ""}>
+              OFF
+            </span>
+            <input
+              type="checkbox"
+              className="toggle-checkbox"
+              checked={enableMentor}
+              onChange={() => handleEnableMentorChange(!enableMentor)}
+            />
+            <span className={enableMentor ? "mentor-toggle-active" : ""}>
+              ON
+            </span>
+          </label>
+        </div>
       </nav>
       <main className="content">
         {tab === "actions" && <Actions locale={locale} />}
@@ -106,8 +131,6 @@ export function App() {
             config={config}
             locale={locale}
             onLocaleChange={handleLocaleChange}
-            enableMentor={enableMentor}
-            onEnableMentorChange={handleEnableMentorChange}
           />
         )}
       </main>
