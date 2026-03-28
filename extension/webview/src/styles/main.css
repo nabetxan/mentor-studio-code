@@ -438,3 +438,35 @@ body {
   min-width: 36px;
   text-align: right;
 }
+
+/* Wrapper for tab button content to allow badge positioning */
+.tab-btn-inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+/* Red badge on Settings tab */
+.tab-badge {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  background: var(--vscode-editorError-foreground, #f48771);
+  color: #fff;
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  font-size: 0.7rem;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* Warning border for setting items (plan unset, profile unset) */
+.setting-item--warning {
+  border: 1px solid rgba(255, 100, 100, 0.45);
+}

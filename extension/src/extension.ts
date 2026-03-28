@@ -4,6 +4,7 @@ import {
   CREATE_PLAN_MD,
   CREATE_SPEC_MD,
   CURRENT_TASK_MD,
+  INTAKE_SKILL_MD,
   MENTOR_RULES_MD,
   MENTOR_SESSION_SKILL_MD,
   PROGRESS_JSON,
@@ -63,7 +64,18 @@ export function activate(context: vscode.ExtensionContext): void {
       const createdFiles: string[] = [];
       const skippedFiles: string[] = [];
 
-      const trackWrite = async (
+      // Template files: always overwrite so updates to extension templates take effect
+      const writeTemplate = async (
+        uri: vscode.Uri,
+        content: string,
+        label: string,
+      ): Promise<void> => {
+        await vscode.workspace.fs.writeFile(uri, Buffer.from(content));
+        createdFiles.push(label);
+      };
+
+      // Data files: only write if missing so user progress is never overwritten
+      const writeDataIfMissing = async (
         uri: vscode.Uri,
         content: string,
         label: string,
@@ -72,7 +84,7 @@ export function activate(context: vscode.ExtensionContext): void {
         (created ? createdFiles : skippedFiles).push(label);
       };
 
-      // Create .mentor-studio.json (with mentorFiles field)
+      // Create .mentor-studio.json (with mentorFiles field) — treat as data
       const configUri = vscode.Uri.joinPath(wsRoot, ".mentor-studio.json");
       const configContent =
         JSON.stringify(
@@ -90,20 +102,20 @@ export function activate(context: vscode.ExtensionContext): void {
           null,
           2,
         ) + "\n";
-      await trackWrite(configUri, configContent, ".mentor-studio.json");
+      await writeDataIfMissing(configUri, configContent, ".mentor-studio.json");
 
-      // Prompt files
-      await trackWrite(
+      // Prompt files — always overwrite
+      await writeTemplate(
         vscode.Uri.joinPath(rulesDirUri, "MENTOR_RULES.md"),
         MENTOR_RULES_MD,
         "rules/MENTOR_RULES.md",
       );
-      await trackWrite(
+      await writeTemplate(
         vscode.Uri.joinPath(rulesDirUri, "CREATE_PLAN.md"),
         CREATE_PLAN_MD,
         "rules/CREATE_PLAN.md",
       );
-      await trackWrite(
+      await writeTemplate(
         vscode.Uri.joinPath(rulesDirUri, "CREATE_SPEC.md"),
         CREATE_SPEC_MD,
         "rules/CREATE_SPEC.md",
@@ -114,29 +126,40 @@ export function activate(context: vscode.ExtensionContext): void {
         "mentor-session",
       );
       await vscode.workspace.fs.createDirectory(mentorSessionDirUri);
-      await trackWrite(
+      await writeTemplate(
         vscode.Uri.joinPath(mentorSessionDirUri, "SKILL.md"),
         MENTOR_SESSION_SKILL_MD,
         "skills/mentor-session/SKILL.md",
       );
-      await trackWrite(
+      await writeTemplate(
         vscode.Uri.joinPath(mentorSessionDirUri, "tracker-format.md"),
         TRACKER_FORMAT_MD,
         "skills/mentor-session/tracker-format.md",
       );
+      const intakeDirUri = vscode.Uri.joinPath(
+        mentorDirUri,
+        "skills",
+        "intake",
+      );
+      await vscode.workspace.fs.createDirectory(intakeDirUri);
+      await writeTemplate(
+        vscode.Uri.joinPath(intakeDirUri, "SKILL.md"),
+        INTAKE_SKILL_MD,
+        "skills/intake/SKILL.md",
+      );
 
-      // Data files
-      await trackWrite(
+      // Data files — only write if missing
+      await writeDataIfMissing(
         vscode.Uri.joinPath(mentorDirUri, "progress.json"),
         PROGRESS_JSON + "\n",
         "progress.json",
       );
-      await trackWrite(
+      await writeDataIfMissing(
         vscode.Uri.joinPath(mentorDirUri, "question-history.json"),
         QUESTION_HISTORY_JSON + "\n",
         "question-history.json",
       );
-      await trackWrite(
+      await writeDataIfMissing(
         vscode.Uri.joinPath(mentorDirUri, "current-task.md"),
         CURRENT_TASK_MD,
         "current-task.md",

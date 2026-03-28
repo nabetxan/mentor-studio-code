@@ -30,6 +30,17 @@ export function parseProgressData(raw: string): ProgressData | null {
         typeof (item as Record<string, unknown>).name === "string" &&
         typeof (item as Record<string, unknown>).plan === "string",
     );
+    const learnerProfile =
+      typeof obj.learner_profile === "object" && obj.learner_profile !== null
+        ? {
+            last_updated:
+              typeof (obj.learner_profile as Record<string, unknown>)
+                .last_updated === "string"
+                ? ((obj.learner_profile as Record<string, unknown>)
+                    .last_updated as string)
+                : null,
+          }
+        : undefined;
     return {
       version: obj.version,
       current_plan:
@@ -43,6 +54,7 @@ export function parseProgressData(raw: string): ProgressData | null {
       resume_context:
         typeof obj.resume_context === "string" ? obj.resume_context : null,
       completed_tasks: completedTasks,
+      learner_profile: learnerProfile,
       skipped_tasks: Array.isArray(obj.skipped_tasks)
         ? (obj.skipped_tasks as unknown[]).filter(
             (x): x is string => typeof x === "string",
@@ -131,5 +143,6 @@ export function computeDashboardData(
     unresolvedGaps: progress.unresolved_gaps,
     completedTasks: progress.completed_tasks,
     currentTask: progress.current_task,
+    profileLastUpdated: progress.learner_profile?.last_updated ?? null,
   };
 }

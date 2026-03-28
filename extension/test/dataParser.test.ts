@@ -58,6 +58,59 @@ describe("parseProgressData", () => {
     expect(result).not.toBeNull();
     expect(result!.current_task).toBeNull();
   });
+
+  it("parses learner_profile.last_updated when present", () => {
+    const json = JSON.stringify({
+      version: "2.0",
+      current_plan: null,
+      current_task: null,
+      current_step: null,
+      next_suggest: null,
+      resume_context: null,
+      completed_tasks: [],
+      skipped_tasks: [],
+      unresolved_gaps: [],
+      learner_profile: { last_updated: "2026-03-01" },
+    });
+    const result = parseProgressData(json);
+    expect(result).not.toBeNull();
+    expect(result!.learner_profile?.last_updated).toBe("2026-03-01");
+  });
+
+  it("sets learner_profile to undefined when absent", () => {
+    const json = JSON.stringify({
+      version: "2.0",
+      current_plan: null,
+      current_task: null,
+      current_step: null,
+      next_suggest: null,
+      resume_context: null,
+      completed_tasks: [],
+      skipped_tasks: [],
+      unresolved_gaps: [],
+    });
+    const result = parseProgressData(json);
+    expect(result).not.toBeNull();
+    expect(result!.learner_profile).toBeUndefined();
+  });
+
+  it("sets learner_profile.last_updated to null when not a string", () => {
+    const json = JSON.stringify({
+      version: "2.0",
+      current_plan: null,
+      current_task: null,
+      current_step: null,
+      next_suggest: null,
+      resume_context: null,
+      completed_tasks: [],
+      skipped_tasks: [],
+      unresolved_gaps: [],
+      learner_profile: { last_updated: 42 },
+    });
+    const result = parseProgressData(json);
+    expect(result).not.toBeNull();
+    expect(result!.learner_profile?.last_updated).toBeNull();
+  });
 });
 
 describe("parseQuestionHistory", () => {
@@ -179,5 +232,38 @@ describe("computeDashboardData", () => {
     expect(result.totalQuestions).toBe(0);
     expect(result.correctRate).toBe(0);
     expect(result.byTopic).toEqual([]);
+  });
+
+  it("includes profileLastUpdated from learner_profile.last_updated", () => {
+    const progress = {
+      version: "2.0",
+      current_plan: null,
+      current_task: null,
+      current_step: null,
+      next_suggest: null,
+      resume_context: null,
+      completed_tasks: [],
+      skipped_tasks: [],
+      unresolved_gaps: [],
+      learner_profile: { last_updated: "2026-03-01" },
+    };
+    const result = computeDashboardData(progress, { history: [] }, []);
+    expect(result.profileLastUpdated).toBe("2026-03-01");
+  });
+
+  it("returns null for profileLastUpdated when learner_profile is absent", () => {
+    const progress = {
+      version: "2.0",
+      current_plan: null,
+      current_task: null,
+      current_step: null,
+      next_suggest: null,
+      resume_context: null,
+      completed_tasks: [],
+      skipped_tasks: [],
+      unresolved_gaps: [],
+    };
+    const result = computeDashboardData(progress, { history: [] }, []);
+    expect(result.profileLastUpdated).toBeNull();
   });
 });

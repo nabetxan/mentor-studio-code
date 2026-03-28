@@ -3,7 +3,7 @@ import type { Locale } from "@mentor-studio/shared";
 const translations = {
   // Actions tab
   "actions.description": {
-    ja: "ボタンを押すとAIへのプロンプトがコピーされます。そのままAIのチャットに貼り付けて投げよう。",
+    ja: "ボタンを押すとClaude Codeへのプロンプトがコピーされます。そのままチャットに貼り付けて投げよう。",
     en: "Press a button to copy the AI prompt. Paste it into your AI chat.",
   },
   "actions.copied": { ja: "Copied!", en: "Copied!" },
@@ -70,6 +70,15 @@ const translations = {
   "settings.prompt.plan": {
     ja: "docs/mentor/rules/CREATE_PLAN.md を読んで、プランファイルを作成してください。何のプランを作るかはユーザーに質問してください。/write-plan",
     en: "Read docs/mentor/rules/CREATE_PLAN.md and create a plan file. Ask the user what kind of plan to create. /write-plan",
+  },
+  "settings.profile.register": {
+    ja: "プロフィール登録",
+    en: "Register Profile",
+  },
+  "settings.profile.update": { ja: "プロフィール更新", en: "Update Profile" },
+  "settings.prompt.intake": {
+    ja: "docs/mentor/skills/intake/SKILL.md を読んで、インテークフローを実行してください。",
+    en: "Read docs/mentor/skills/intake/SKILL.md and run the intake flow.",
   },
 
   // App-level

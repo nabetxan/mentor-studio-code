@@ -22,6 +22,9 @@ export function App() {
   const [locale, setLocale] = useState<Locale>("ja");
   const [enableMentor, setEnableMentor] = useState<boolean>(true);
 
+  const settingsHasWarning =
+    !config?.mentorFiles?.plan || !data?.profileLastUpdated;
+
   useEffect(() => {
     const cleanup = onMessage((message: ExtensionMessage) => {
       switch (message.type) {
@@ -99,8 +102,11 @@ export function App() {
             className={tab === "settings" ? "active" : ""}
             onClick={() => setTab("settings")}
           >
-            <SettingsIcon />
-            <span>{t("app.tab.settings", locale)}</span>
+            <span className="tab-btn-inner">
+              <SettingsIcon />
+              <span>{t("app.tab.settings", locale)}</span>
+              {settingsHasWarning && <span className="tab-badge">!</span>}
+            </span>
           </button>
         </div>
         <div className="tabs-mentor">
@@ -131,6 +137,7 @@ export function App() {
             config={config}
             locale={locale}
             onLocaleChange={handleLocaleChange}
+            profileLastUpdated={data?.profileLastUpdated ?? null}
           />
         )}
       </main>

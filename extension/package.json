@@ -3,6 +3,7 @@
   "displayName": "Mentor Studio Code",
   "description": "Learning dashboard for AI mentor sessions",
   "version": "0.0.1",
+  "icon": "images/icon.png",
   "publisher": "nabetxan",
   "repository": {
     "type": "git",
