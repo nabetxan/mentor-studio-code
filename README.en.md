@@ -55,6 +55,8 @@ The dashboard displays your mentor session progress.
 
 Click the Mentor Studio icon in the Activity Bar to open the dashboard. The dashboard is a single sidebar with three tabs.
 
+The **Mentor** ON/OFF toggle in the navigation bar lets you enable or disable the mentor feature. The setting is read at the start of each session, so changes take effect from the next session.
+
 ### Overview
 
 Shows your current task, correct answer rate, per-topic progress, and unresolved knowledge gaps.
@@ -72,11 +74,10 @@ Copy prompts to send to your AI mentor with one click.
 
 ### Settings
 
-| Setting                 | Description                                   |
-| ----------------------- | --------------------------------------------- |
-| Plan / Spec files       | Link the files your mentor session references |
-| Enable / Disable mentor | Toggle the mentor feature on or off           |
-| Language                | Switch between Japanese and English           |
+| Setting           | Description                                   |
+| ----------------- | --------------------------------------------- |
+| Plan / Spec files | Link the files your mentor session references |
+| Language          | Switch between Japanese and English           |
 
 ## License
 
