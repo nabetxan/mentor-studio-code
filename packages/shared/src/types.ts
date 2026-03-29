@@ -105,4 +105,6 @@ export type WebviewMessage =
   | { type: "selectFile"; field: FileField }
   | { type: "clearFile"; field: FileField }
   | { type: "setLocale"; locale: Locale }
-  | { type: "setEnableMentor"; value: boolean };
+  | { type: "setEnableMentor"; value: boolean }
+  | { type: "mergeTopic"; fromKey: string; toKey: string }
+  | { type: "updateTopicLabel"; key: string; newLabel: string };

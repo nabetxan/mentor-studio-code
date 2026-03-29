@@ -57,23 +57,28 @@ function FileSetting({
       <div className={`setting-item${warning ? " setting-item--warning" : ""}`}>
         <div className="setting-label">{label}</div>
         <div className="setting-value">
-          <span className="setting-path" title={value}>
+          <div
+            style={{
+              fontSize: "0.75rem",
+              wordBreak: "break-all",
+              opacity: 0.8,
+              marginBottom: "5px",
+            }}
+          >
             {value}
-          </span>
+          </div>
           <div className="setting-actions">
             <button
-              className="setting-btn"
+              className="btn-primary"
               onClick={() => postMessage({ type: "selectFile", field })}
-              title="Change file"
             >
               {t("settings.change", locale)}
             </button>
             <button
-              className="setting-btn setting-btn-clear"
+              className="btn-outlined"
               onClick={() => postMessage({ type: "clearFile", field })}
-              title="Clear setting"
             >
-              ✕
+              外す
             </button>
           </div>
         </div>
@@ -86,16 +91,15 @@ function FileSetting({
       <div className="setting-label">{label}</div>
       <div className="setting-unset">
         <span className="setting-warning">{t("settings.unset", locale)}</span>
-
         <div className="setting-actions">
           <button
-            className="setting-btn"
+            className="btn-primary"
             onClick={() => postMessage({ type: "selectFile", field })}
           >
             {t("settings.selectFile", locale)}
           </button>
           <button
-            className="setting-btn"
+            className="btn-secondary"
             onClick={handleCopyPrompt}
             title="Copy prompt to create this file"
           >
@@ -175,8 +179,8 @@ export function Settings({
 
   return (
     <div className="settings">
-      <p className="setting-guide">{t("settings.unsetGuide", locale)}</p>
       <ProfileSection profileLastUpdated={profileLastUpdated} locale={locale} />
+      <p className="setting-guide">{t("settings.unsetGuide", locale)}</p>
       <FileSetting
         label={t("settings.plan", locale)}
         field="plan"

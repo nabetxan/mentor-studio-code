@@ -1,5 +1,9 @@
-import type { DashboardData, MentorStudioConfig } from "@mentor-studio/shared";
-import { readFile } from "fs/promises";
+import type {
+  DashboardData,
+  MentorStudioConfig,
+  QuestionHistory,
+} from "@mentor-studio/shared";
+import { readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import * as vscode from "vscode";
 import {
@@ -16,6 +20,7 @@ export class FileWatcherService implements vscode.Disposable {
     private workspaceRoot: string,
     private mentorPath: string,
     private onDataChanged: (data: DashboardData) => void,
+    private onConfigChanged?: (config: MentorStudioConfig | null) => void,
   ) {}
 
   async start(): Promise<void> {
@@ -27,9 +32,30 @@ export class FileWatcherService implements vscode.Disposable {
     );
     const watcher = vscode.workspace.createFileSystemWatcher(pattern);
 
-    watcher.onDidChange(() => this.refresh());
-    watcher.onDidCreate(() => this.refresh());
+    watcher.onDidChange(() => void this.refresh());
+    watcher.onDidCreate(() => void this.refresh());
     this.disposables.push(watcher);
+
+    const configPattern = new vscode.RelativePattern(
+      this.workspaceRoot,
+      ".mentor-studio.json",
+    );
+    const configWatcher =
+      vscode.workspace.createFileSystemWatcher(configPattern);
+
+    const reloadConfig = (): void => {
+      void this.loadConfig().then(() => {
+        this.onConfigChanged?.(this.config);
+      });
+    };
+    configWatcher.onDidChange(reloadConfig);
+    configWatcher.onDidCreate(reloadConfig);
+    configWatcher.onDidDelete(() => {
+      void this.loadConfig().then(() => {
+        this.onConfigChanged?.(null);
+      });
+    });
+    this.disposables.push(configWatcher);
 
     await this.refresh();
   }
@@ -79,6 +105,45 @@ export class FileWatcherService implements vscode.Disposable {
     const topics = this.config?.topics ?? [];
     const data = computeDashboardData(progress, history, topics);
     this.onDataChanged(data);
+  }
+
+  async mergeTopic(fromKey: string, toKey: string): Promise<void> {
+    const historyPath = join(
+      this.workspaceRoot,
+      this.mentorPath,
+      "question-history.json",
+    );
+    const raw = await readFile(historyPath, "utf-8");
+    const history = JSON.parse(raw) as QuestionHistory;
+    for (const entry of history.history) {
+      if (entry.topic === fromKey) {
+        entry.topic = toKey;
+      }
+    }
+    await writeFile(historyPath, JSON.stringify(history, null, 2) + "\n");
+
+    if (!this.config) return;
+    this.config = {
+      ...this.config,
+      topics: this.config.topics.filter((t) => t.key !== fromKey),
+    };
+    await this.saveConfig();
+  }
+
+  async updateTopicLabel(key: string, newLabel: string): Promise<void> {
+    if (!this.config) return;
+    this.config = {
+      ...this.config,
+      topics: this.config.topics.map((t) =>
+        t.key === key ? { ...t, label: newLabel } : t,
+      ),
+    };
+    await this.saveConfig();
+  }
+
+  private async saveConfig(): Promise<void> {
+    const configPath = join(this.workspaceRoot, ".mentor-studio.json");
+    await writeFile(configPath, JSON.stringify(this.config, null, 2) + "\n");
   }
 
   getConfig(): MentorStudioConfig | null {

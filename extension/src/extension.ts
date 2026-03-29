@@ -255,7 +255,20 @@ export function activate(context: vscode.ExtensionContext): void {
     workspaceRoot.fsPath,
     mentorPath,
     (data) => sidebarProvider.sendUpdate(data),
+    (config) => {
+      if (config !== null) {
+        sidebarProvider.sendConfig(config);
+      } else {
+        sidebarProvider.sendNoConfig();
+      }
+    },
   );
+
+  sidebarProvider.setTopicHandlers({
+    mergeTopic: (fromKey, toKey) => watcher.mergeTopic(fromKey, toKey),
+    updateTopicLabel: (key, newLabel) =>
+      watcher.updateTopicLabel(key, newLabel),
+  });
 
   void watcher
     .start()
