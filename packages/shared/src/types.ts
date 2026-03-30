@@ -68,6 +68,7 @@ export interface MentorStudioConfig {
   mentorFiles?: MentorFiles;
   locale?: Locale;
   enableMentor?: boolean;
+  extensionVersion?: string;
 }
 
 // === Dashboard stats (computed by extension, sent to webview) ===
@@ -112,4 +113,5 @@ export type WebviewMessage =
   | { type: "setEnableMentor"; value: boolean }
   | { type: "mergeTopic"; fromKey: string; toKey: string }
   | { type: "updateTopicLabel"; key: string; newLabel: string }
-  | { type: "addTopic"; label: string };
+  | { type: "addTopic"; label: string }
+  | { type: "openFile"; relativePath: string };

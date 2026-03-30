@@ -57,16 +57,26 @@ function FileSetting({
       <div className={`setting-item${warning ? " setting-item--warning" : ""}`}>
         <div className="setting-label">{label}</div>
         <div className="setting-value">
-          <div
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              postMessage({ type: "openFile", relativePath: value });
+            }}
             style={{
               fontSize: "0.75rem",
               wordBreak: "break-all",
               opacity: 0.8,
               marginBottom: "5px",
+              display: "block",
+              color: "var(--vscode-textLink-foreground)",
+              textDecoration: "none",
+              cursor: "pointer",
             }}
+            title={value}
           >
             {value}
-          </div>
+          </a>
           <div className="setting-actions">
             <button
               className="btn-primary"

@@ -17,14 +17,18 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
   private hasConfig = true;
   private onMergeTopic?: (fromKey: string, toKey: string) => Promise<void>;
   private onUpdateTopicLabel?: (key: string, newLabel: string) => Promise<void>;
-  private onAddTopic?: (label: string) => Promise<{ ok: boolean; key?: string; error?: string }>;
+  private onAddTopic?: (
+    label: string,
+  ) => Promise<{ ok: boolean; key?: string; error?: string }>;
 
   constructor(private extensionUri: vscode.Uri) {}
 
   setTopicHandlers(handlers: {
     mergeTopic: (fromKey: string, toKey: string) => Promise<void>;
     updateTopicLabel: (key: string, newLabel: string) => Promise<void>;
-    addTopic: (label: string) => Promise<{ ok: boolean; key?: string; error?: string }>;
+    addTopic: (
+      label: string,
+    ) => Promise<{ ok: boolean; key?: string; error?: string }>;
   }): void {
     this.onMergeTopic = handlers.mergeTopic;
     this.onUpdateTopicLabel = handlers.updateTopicLabel;
@@ -98,12 +102,31 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
           } catch {
             vscode.window.showErrorMessage("Failed to update topic label");
           }
+        } else if (message.type === "openFile") {
+          const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
+          if (wsRoot) {
+            const fileUri = vscode.Uri.joinPath(wsRoot, message.relativePath);
+            try {
+              await vscode.window.showTextDocument(fileUri, { preview: true });
+            } catch {
+              vscode.window.showErrorMessage(
+                `Failed to open file: ${message.relativePath}`,
+              );
+            }
+          }
         } else if (message.type === "addTopic") {
           try {
-            const result = await this.onAddTopic?.(message.label) ?? { ok: false, error: "No handler" };
+            const result = (await this.onAddTopic?.(message.label)) ?? {
+              ok: false,
+              error: "No handler",
+            };
             this.postMessage({ type: "addTopicResult", ...result });
           } catch {
-            this.postMessage({ type: "addTopicResult", ok: false, error: "Failed to add topic" });
+            this.postMessage({
+              type: "addTopicResult",
+              ok: false,
+              error: "Failed to add topic",
+            });
           }
         }
       },

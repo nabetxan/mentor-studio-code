@@ -3,8 +3,8 @@ import type { Locale } from "@mentor-studio/shared";
 const translations = {
   // Actions tab
   "actions.description": {
-    ja: "ボタンを押すとClaude Codeへのプロンプトがコピーされます。そのままチャットに貼り付けて投げよう。",
-    en: "Press a button to copy the AI prompt. Paste it into your AI chat.",
+    ja: "AIへのプロンプトがコピーされます。そのままチャットに貼り付けて使えます。",
+    en: "Copy the AI prompt. Paste it into your AI chat.",
   },
   "actions.copied": { ja: "Copied!", en: "Copied!" },
   "actions.startNextTask": { ja: "次のタスクを始める", en: "Start next task" },
@@ -47,8 +47,8 @@ const translations = {
   "overview.topics": { ja: "復習トピック", en: "Review Topics" },
   "overview.noData": { ja: "データなし", en: "No data yet" },
   "overview.topic.copyHint": {
-    ja: "ボタンを押すとClaude Codeへのプロンプトがコピーされます。そのままチャットに貼り付けて投げよう。",
-    en: "Press the button to copy a prompt for Claude Code. Paste it into your chat.",
+    ja: "AIへのプロンプトがコピーされます。そのままチャットに貼り付けて使えます。",
+    en: "Copy the AI prompt. Paste it into your AI chat.",
   },
   "overview.topic.copyReview": {
     ja: "トピック復習",

@@ -1,4 +1,4 @@
-![version](https://img.shields.io/badge/version-0.0.1-blue)
+![version](https://img.shields.io/badge/version-0.0.2-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
 # Mentor Studio Code
@@ -69,8 +69,9 @@ The **Mentor** ON/OFF toggle in the navigation bar lets you enable or disable th
 
 ### Overview
 
-Shows your current task, correct answer rate, per-topic progress, and unresolved knowledge gaps.
-現在のタスク・正答率・トピック別進捗・未解決の理解ギャップを確認できます。
+Shows your current task, correct answer rate, per-topic progress, and unresolved knowledge gaps. You can also manage topics here — add new topics, edit labels, and merge duplicates.
+
+現在のタスク・正答率・トピック別進捗・未解決の理解ギャップを確認できます。トピックの追加・ラベル編集・マージもここから行えます。
 
 ### Actions
 
