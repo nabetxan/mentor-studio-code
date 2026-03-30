@@ -12,12 +12,7 @@ Claude Code を活用したAIメンターセッションで、学習の進捗と
 The dashboard displays your mentor session progress.
 ダッシュボードにはメンターセッションの進捗が表示されます。
 
-<!-- To add a screenshot:
-     1. Create the docs/images/ folder if it doesn't exist
-     2. Save your image file to docs/images/
-     3. Edit the line below to use the actual filename -->
-
-![Dashboard](docs/images/screenshot.png)
+![Dashboard](images/overview_mentor-studio-code.png)
 
 ## Prerequisites / 前提条件
 
