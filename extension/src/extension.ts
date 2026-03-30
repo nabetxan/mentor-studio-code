@@ -268,6 +268,7 @@ export function activate(context: vscode.ExtensionContext): void {
     mergeTopic: (fromKey, toKey) => watcher.mergeTopic(fromKey, toKey),
     updateTopicLabel: (key, newLabel) =>
       watcher.updateTopicLabel(key, newLabel),
+    addTopic: (label) => watcher.addTopic(label),
   });
 
   void watcher

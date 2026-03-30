@@ -95,7 +95,8 @@ export interface DashboardData {
 export type ExtensionMessage =
   | { type: "update"; data: DashboardData }
   | { type: "config"; data: MentorStudioConfig }
-  | { type: "noConfig" };
+  | { type: "noConfig" }
+  | { type: "addTopicResult"; ok: boolean; key?: string; error?: string };
 
 export type FileField = "spec" | "plan";
 
@@ -110,4 +111,5 @@ export type WebviewMessage =
   | { type: "setLocale"; locale: Locale }
   | { type: "setEnableMentor"; value: boolean }
   | { type: "mergeTopic"; fromKey: string; toKey: string }
-  | { type: "updateTopicLabel"; key: string; newLabel: string };
+  | { type: "updateTopicLabel"; key: string; newLabel: string }
+  | { type: "addTopic"; label: string };

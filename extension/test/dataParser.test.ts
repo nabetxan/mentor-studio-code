@@ -5,6 +5,29 @@ import {
   parseProgressData,
   parseQuestionHistory,
 } from "../src/services/dataParser";
+import { generateTopicKey } from "../src/services/fileWatcher";
+
+describe("generateTopicKey", () => {
+  it("converts label to lowercase hyphenated key with c- prefix", () => {
+    expect(generateTopicKey("React Hooks")).toBe("c-react-hooks");
+  });
+
+  it("replaces non-alphanumeric characters with hyphens", () => {
+    expect(generateTopicKey("Node.js & Express")).toBe("c-node-js-express");
+  });
+
+  it("collapses consecutive hyphens", () => {
+    expect(generateTopicKey("  A  B  ")).toBe("c-a-b");
+  });
+
+  it("returns empty string for non-ASCII-only input", () => {
+    expect(generateTopicKey("フック")).toBe("");
+  });
+
+  it("handles mixed ASCII and non-ASCII", () => {
+    expect(generateTopicKey("React フック")).toBe("c-react");
+  });
+});
 
 describe("parseProgressData", () => {
   it("parses valid progress JSON", () => {

@@ -66,6 +66,7 @@ const translations = {
   "overview.topic.save": { ja: "保存", en: "Save" },
   "overview.topic.mergeTo": { ja: "統合先", en: "Merge into" },
   "overview.topic.merge": { ja: "統合", en: "Merge" },
+  "overview.topic.newTopic": { ja: "新しいトピック", en: "New topic" },
   "overview.topic.reviewPrompt": {
     ja: "docs/mentor/rules/MENTOR_RULES.md を読んで、{label} の復習を始めましょう。",
     en: "Read docs/mentor/rules/MENTOR_RULES.md and start reviewing {label}.",

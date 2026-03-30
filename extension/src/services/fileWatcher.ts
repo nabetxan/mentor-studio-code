@@ -12,6 +12,15 @@ import {
   parseQuestionHistory,
 } from "./dataParser";
 
+export function generateTopicKey(label: string): string {
+  const sanitized = label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  if (!sanitized) return "";
+  return `c-${sanitized}`;
+}
+
 export class FileWatcherService implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
   private config: MentorStudioConfig | null = null;
@@ -130,13 +139,37 @@ export class FileWatcherService implements vscode.Disposable {
     await this.saveConfig();
   }
 
-  async updateTopicLabel(key: string, newLabel: string): Promise<void> {
-    if (!this.config) return;
+  async addTopic(
+    label: string,
+  ): Promise<{ ok: boolean; key?: string; error?: string }> {
+    const key = generateTopicKey(label);
+    if (!key) {
+      return { ok: false, error: "Invalid label" };
+    }
+    if (!this.config) {
+      return { ok: false, error: "Config not loaded" };
+    }
+    if (this.config.topics.some((t) => t.key === key)) {
+      return { ok: false, error: "Duplicate key" };
+    }
     this.config = {
       ...this.config,
-      topics: this.config.topics.map((t) =>
-        t.key === key ? { ...t, label: newLabel } : t,
-      ),
+      topics: [...this.config.topics, { key, label: label.trim() }],
+    };
+    await this.saveConfig();
+    return { ok: true, key };
+  }
+
+  async updateTopicLabel(key: string, newLabel: string): Promise<void> {
+    if (!this.config) return;
+    const exists = this.config.topics.some((t) => t.key === key);
+    this.config = {
+      ...this.config,
+      topics: exists
+        ? this.config.topics.map((t) =>
+            t.key === key ? { ...t, label: newLabel } : t,
+          )
+        : [...this.config.topics, { key, label: newLabel.trim() }],
     };
     await this.saveConfig();
   }
@@ -144,6 +177,8 @@ export class FileWatcherService implements vscode.Disposable {
   private async saveConfig(): Promise<void> {
     const configPath = join(this.workspaceRoot, ".mentor-studio.json");
     await writeFile(configPath, JSON.stringify(this.config, null, 2) + "\n");
+    this.onConfigChanged?.(this.config);
+    await this.refresh();
   }
 
   getConfig(): MentorStudioConfig | null {

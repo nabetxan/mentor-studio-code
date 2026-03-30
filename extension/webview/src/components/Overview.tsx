@@ -6,21 +6,34 @@ import type {
 import { useEffect, useRef, useState } from "react";
 import { t } from "../i18n";
 import { postMessage } from "../vscodeApi";
-import { CheckIcon, CopyIcon } from "./icons";
+import { CheckIcon, CloseIcon, CopyIcon, EditIcon } from "./icons";
+import { TopicSelect } from "./TopicSelect";
 
 interface OverviewProps {
   data: DashboardData | null;
   locale: Locale;
   config: MentorStudioConfig | null;
+  addTopicError: string | null;
+  lastAddedTopicKey: string | null;
+  onClearLastAddedKey: () => void;
 }
 
-export function Overview({ data, locale, config }: OverviewProps) {
+export function Overview({
+  data,
+  locale,
+  config,
+  addTopicError,
+  lastAddedTopicKey,
+  onClearLastAddedKey,
+}: OverviewProps) {
   const [expandedTopics, setExpandedTopics] = useState<Record<string, boolean>>(
     {},
   );
-  const [editingLabels, setEditingLabels] = useState<Record<string, string>>(
-    {},
-  );
+  const [editingTopic, setEditingTopic] = useState<{
+    key: string;
+    value: string;
+  } | null>(null);
+  const editInputRef = useRef<HTMLInputElement>(null);
   const [mergeTargets, setMergeTargets] = useState<Record<string, string>>({});
   const [copiedTopic, setCopiedTopic] = useState<string | null>(null);
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -37,21 +50,35 @@ export function Overview({ data, locale, config }: OverviewProps) {
     return <div className="empty">{t("overview.noData", locale)}</div>;
   }
 
-  function toggleTopic(key: string, currentLabel: string) {
-    setExpandedTopics((prev) => {
-      const isExpanding = !prev[key];
-      if (isExpanding) {
-        setEditingLabels((el) => ({ ...el, [key]: currentLabel }));
-      }
-      return { ...prev, [key]: isExpanding };
-    });
+  function toggleTopic(key: string) {
+    setExpandedTopics((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
-  function saveLabel(key: string) {
-    const newLabel = editingLabels[key]?.trim();
+  function startEditingLabel(
+    key: string,
+    currentLabel: string,
+    e: React.MouseEvent,
+  ) {
+    e.stopPropagation();
+    setEditingTopic({ key, value: currentLabel });
+    requestAnimationFrame(() => editInputRef.current?.focus());
+  }
+
+  function saveLabel() {
+    if (!editingTopic) return;
+    const newLabel = editingTopic.value.trim();
     if (newLabel) {
-      postMessage({ type: "updateTopicLabel", key, newLabel });
+      postMessage({
+        type: "updateTopicLabel",
+        key: editingTopic.key,
+        newLabel,
+      });
     }
+    setEditingTopic(null);
+  }
+
+  function cancelEditingLabel() {
+    setEditingTopic(null);
   }
 
   function mergeTopic(fromKey: string) {
@@ -112,22 +139,65 @@ export function Overview({ data, locale, config }: OverviewProps) {
 
             return (
               <div className="topic-card" key={topic.topic}>
-                <button
-                  className="topic-header"
-                  onClick={() => toggleTopic(topic.topic, topic.label)}
-                >
-                  <span className="topic-label">{topic.label}</span>
-                  <span className="score-pill">
-                    {topic.correct}/{topic.total}問
-                  </span>
-                  <i
-                    className={
-                      isExpanded ? "chevron-icon open" : "chevron-icon"
-                    }
+                {editingTopic?.key === topic.topic ? (
+                  <div className="topic-header topic-header--editing">
+                    <input
+                      ref={editInputRef}
+                      className="inline-edit-input"
+                      value={editingTopic.value}
+                      onChange={(e) =>
+                        setEditingTopic({
+                          ...editingTopic,
+                          value: e.target.value,
+                        })
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") saveLabel();
+                        if (e.key === "Escape") cancelEditingLabel();
+                      }}
+                    />
+                    <button
+                      className="inline-edit-btn save"
+                      onClick={saveLabel}
+                      title="保存"
+                    >
+                      <CheckIcon />
+                    </button>
+                    <button
+                      className="inline-edit-btn cancel"
+                      onClick={cancelEditingLabel}
+                      title="キャンセル"
+                    >
+                      <CloseIcon />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    className="topic-header"
+                    onClick={() => toggleTopic(topic.topic)}
                   >
-                    ›
-                  </i>
-                </button>
+                    <span className="topic-label">{topic.label}</span>
+                    <button
+                      className="edit-label-btn"
+                      onClick={(e) =>
+                        startEditingLabel(topic.topic, topic.label, e)
+                      }
+                      title={t("overview.topic.editLabel", locale)}
+                    >
+                      <EditIcon />
+                    </button>
+                    <span className="score-pill">
+                      {topic.correct}/{topic.total}問
+                    </span>
+                    <i
+                      className={
+                        isExpanded ? "chevron-icon open" : "chevron-icon"
+                      }
+                    >
+                      ›
+                    </i>
+                  </button>
+                )}
                 <div className="progress-wrap">
                   <div className="progress-bar">
                     <div
@@ -148,25 +218,23 @@ export function Overview({ data, locale, config }: OverviewProps) {
                           {t("overview.topic.mergeTo", locale)}
                         </div>
                         <div className="form-row">
-                          <select
-                            className="form-select"
+                          <TopicSelect
+                            options={mergeOptions}
                             value={mergeTargets[topic.topic] ?? ""}
-                            onChange={(e) =>
+                            onChange={(key) =>
                               setMergeTargets((prev) => ({
                                 ...prev,
-                                [topic.topic]: e.target.value,
+                                [topic.topic]: key,
                               }))
                             }
-                          >
-                            <option value="" disabled>
-                              —
-                            </option>
-                            {mergeOptions.map((c) => (
-                              <option key={c.key} value={c.key}>
-                                {c.label}
-                              </option>
-                            ))}
-                          </select>
+                            onAddTopic={(label) =>
+                              postMessage({ type: "addTopic", label })
+                            }
+                            addTopicError={addTopicError}
+                            lastAddedKey={lastAddedTopicKey}
+                            onClearLastAddedKey={onClearLastAddedKey}
+                            locale={locale}
+                          />
                           <button
                             className="btn-primary"
                             disabled={!mergeTargets[topic.topic]}
@@ -177,30 +245,6 @@ export function Overview({ data, locale, config }: OverviewProps) {
                         </div>
                       </div>
                     )}
-
-                    <div>
-                      <div className="detail-lbl">
-                        {t("overview.topic.editLabel", locale)}
-                      </div>
-                      <div className="form-row">
-                        <input
-                          className="form-input"
-                          value={editingLabels[topic.topic] ?? topic.label}
-                          onChange={(e) =>
-                            setEditingLabels((prev) => ({
-                              ...prev,
-                              [topic.topic]: e.target.value,
-                            }))
-                          }
-                        />
-                        <button
-                          className="btn-secondary"
-                          onClick={() => saveLabel(topic.topic)}
-                        >
-                          {t("overview.topic.save", locale)}
-                        </button>
-                      </div>
-                    </div>
 
                     <div className="copy-hint">
                       {t("overview.topic.copyHint", locale)}

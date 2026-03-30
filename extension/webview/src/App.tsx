@@ -23,6 +23,8 @@ export function App() {
   const [enableMentor, setEnableMentor] = useState<boolean>(true);
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
   const [narrow, setNarrow] = useState(false);
+  const [addTopicError, setAddTopicError] = useState<string | null>(null);
+  const [lastAddedTopicKey, setLastAddedTopicKey] = useState<string | null>(null);
   const appRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -54,6 +56,15 @@ export function App() {
           break;
         case "noConfig":
           setHasConfig(false);
+          break;
+        case "addTopicResult":
+          if (message.ok && message.key) {
+            setAddTopicError(null);
+            setLastAddedTopicKey(message.key);
+          } else {
+            setAddTopicError(message.error ?? "Failed to add topic");
+            setLastAddedTopicKey(null);
+          }
           break;
       }
     });
@@ -193,7 +204,14 @@ export function App() {
       <main className="content">
         {tab === "actions" && <Actions locale={locale} />}
         {tab === "overview" && (
-          <Overview data={data} locale={locale} config={config} />
+          <Overview
+            data={data}
+            locale={locale}
+            config={config}
+            addTopicError={addTopicError}
+            lastAddedTopicKey={lastAddedTopicKey}
+            onClearLastAddedKey={() => setLastAddedTopicKey(null)}
+          />
         )}
         {tab === "settings" && (
           <Settings

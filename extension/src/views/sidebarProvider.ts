@@ -17,15 +17,18 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
   private hasConfig = true;
   private onMergeTopic?: (fromKey: string, toKey: string) => Promise<void>;
   private onUpdateTopicLabel?: (key: string, newLabel: string) => Promise<void>;
+  private onAddTopic?: (label: string) => Promise<{ ok: boolean; key?: string; error?: string }>;
 
   constructor(private extensionUri: vscode.Uri) {}
 
   setTopicHandlers(handlers: {
     mergeTopic: (fromKey: string, toKey: string) => Promise<void>;
     updateTopicLabel: (key: string, newLabel: string) => Promise<void>;
+    addTopic: (label: string) => Promise<{ ok: boolean; key?: string; error?: string }>;
   }): void {
     this.onMergeTopic = handlers.mergeTopic;
     this.onUpdateTopicLabel = handlers.updateTopicLabel;
+    this.onAddTopic = handlers.addTopic;
   }
 
   resolveWebviewView(webviewView: vscode.WebviewView): void {
@@ -94,6 +97,13 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             await this.onUpdateTopicLabel?.(message.key, message.newLabel);
           } catch {
             vscode.window.showErrorMessage("Failed to update topic label");
+          }
+        } else if (message.type === "addTopic") {
+          try {
+            const result = await this.onAddTopic?.(message.label) ?? { ok: false, error: "No handler" };
+            this.postMessage({ type: "addTopicResult", ...result });
+          } catch {
+            this.postMessage({ type: "addTopicResult", ok: false, error: "Failed to add topic" });
           }
         }
       },

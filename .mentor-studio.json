@@ -17,6 +17,18 @@
     {
       "key": "typescript",
       "label": "TypeScript"
+    },
+    {
+      "key": "architecture",
+      "label": "Architecture"
+    },
+    {
+      "key": "react",
+      "label": "React"
+    },
+    {
+      "key": "security",
+      "label": "Security"
     }
   ],
   "mentorFiles": {
