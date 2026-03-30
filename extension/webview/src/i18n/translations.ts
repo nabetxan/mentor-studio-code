@@ -92,7 +92,7 @@ const translations = {
   "settings.createPrompt": { ja: "プロンプトを作成", en: "Create prompt" },
   "settings.change": { ja: "変更", en: "Change" },
   "settings.detach": { ja: "外す", en: "Detach" },
-  "settings.language": { ja: "言語 / Language", en: "Language" },
+  "settings.language": { ja: "Language / 言語", en: "Language" },
   "settings.enableMentor": { ja: "メンター機能", en: "Mentor" },
   "settings.prompt.spec": {
     ja: "docs/mentor/rules/CREATE_SPEC.md を読んで、仕様ファイルを作成してください。不足している情報があればユーザーに質問してください。/brainstorm",

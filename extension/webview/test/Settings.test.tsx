@@ -85,7 +85,7 @@ describe("Settings", () => {
 
   it("renders language toggle", () => {
     render(<Settings {...defaultProps} />);
-    expect(screen.getByText("言語 / Language")).toBeTruthy();
+    expect(screen.getByText("Language / 言語")).toBeTruthy();
   });
 
   it("calls onLocaleChange when toggle clicked", () => {
