@@ -1,7 +1,7 @@
 {
   "name": "mentor-studio-code",
   "displayName": "Mentor Studio Code",
-  "description": "Learning dashboard for AI mentor sessions",
+  "description": "Track your learning progress and review history with AI mentor sessions in VS Code",
   "version": "0.0.2",
   "icon": "images/icon.png",
   "publisher": "nabetxan",

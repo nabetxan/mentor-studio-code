@@ -3,9 +3,9 @@
 
 # Mentor Studio Code
 
-A learning dashboard for AI mentor sessions using Claude Code. It provides an Overview, Actions, and Settings panel in the VS Code sidebar to help you track and continue your learning.
+Track your learning progress and review history with AI mentor sessions powered by Claude Code. It provides an Overview, Actions, and Settings panel in the VS Code sidebar to help you track and continue your learning.
 
-Claude Code を使ったAIメンターセッションの学習ダッシュボードです。VS Code のサイドバーに進捗・操作・設定パネルを提供し、学習の記録と継続をサポートします。
+Claude Code を活用したAIメンターセッションで、学習の進捗と復習履歴をトラッキングできます。VS Code のサイドバーに進捗・操作・設定パネルを提供し、学習の記録と継続をサポートします。
 
 ## Screenshot / スクリーンショット
 
