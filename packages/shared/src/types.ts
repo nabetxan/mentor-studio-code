@@ -1,6 +1,7 @@
 // === Progress data (matches docs/mentor/progress.json) ===
 
 export interface UnresolvedGap {
+  questionId: string;
   concept: string;
   topic: string;
   first_missed: string;
@@ -34,6 +35,8 @@ export interface ProgressData {
 // === Question history (matches docs/mentor/question-history.json) ===
 
 export interface QuestionHistoryEntry {
+  id: string;
+  reviewOf: string | null;
   timestamp: string;
   taskId: string;
   topic: string;

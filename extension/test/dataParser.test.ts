@@ -114,7 +114,34 @@ describe("parseProgressData", () => {
 });
 
 describe("parseQuestionHistory", () => {
-  it("parses valid question history", () => {
+  it("parses valid question history with id and reviewOf", () => {
+    const json = JSON.stringify({
+      history: [
+        {
+          id: "q_abc00001",
+          reviewOf: null,
+          timestamp: "2026-03-01T10:00:00Z",
+          taskId: "task-1",
+          topic: "typescript",
+          concept: "interface vs type",
+          question: "What is the difference?",
+          userAnswer: "interface can extend",
+          isCorrect: false,
+        },
+      ],
+    });
+    const result = parseQuestionHistory(json);
+    expect(result.history).toHaveLength(1);
+    expect(result.history[0].id).toBe("q_abc00001");
+    expect(result.history[0].reviewOf).toBeNull();
+    expect(result.history[0].isCorrect).toBe(false);
+  });
+
+  it("returns empty history for invalid JSON", () => {
+    expect(parseQuestionHistory("broken").history).toEqual([]);
+  });
+
+  it("auto-generates id for entries missing id field", () => {
     const json = JSON.stringify({
       history: [
         {
@@ -130,11 +157,29 @@ describe("parseQuestionHistory", () => {
     });
     const result = parseQuestionHistory(json);
     expect(result.history).toHaveLength(1);
-    expect(result.history[0].isCorrect).toBe(false);
+    expect(typeof result.history[0].id).toBe("string");
+    expect(result.history[0].id.length).toBeGreaterThan(0);
+    expect(result.history[0].reviewOf).toBeNull();
   });
 
-  it("returns empty history for invalid JSON", () => {
-    expect(parseQuestionHistory("broken").history).toEqual([]);
+  it("preserves reviewOf when present as string", () => {
+    const json = JSON.stringify({
+      history: [
+        {
+          id: "q_abc00001",
+          reviewOf: "q_abc00000",
+          timestamp: "2026-03-01T10:00:00Z",
+          taskId: "task-1",
+          topic: "typescript",
+          concept: "test",
+          question: "test?",
+          userAnswer: "yes",
+          isCorrect: true,
+        },
+      ],
+    });
+    const result = parseQuestionHistory(json);
+    expect(result.history[0].reviewOf).toBe("q_abc00000");
   });
 });
 
@@ -142,21 +187,173 @@ describe("computeDashboardData", () => {
   const topics: TopicConfig[] = [
     { key: "typescript", label: "TypeScript" },
     { key: "react", label: "React" },
+    { key: "concurrency", label: "Concurrency" },
   ];
 
-  it("computes correct stats from history and progress", () => {
+  const baseProgress = {
+    version: "2.0",
+    current_plan: "phase1.md",
+    current_task: "2",
+    current_step: null,
+    next_suggest: "",
+    resume_context: "",
+    completed_tasks: [{ task: "1", name: "Setup", plan: "phase1.md" }],
+    skipped_tasks: [],
+    unresolved_gaps: [],
+  };
+
+  it("uses latest answer per group for correctRate", () => {
+    const history = {
+      history: [
+        {
+          id: "q_abc00001",
+          reviewOf: null,
+          timestamp: "2026-03-01T10:00:00Z",
+          taskId: "task-1",
+          topic: "typescript",
+          concept: "interface vs type",
+          question: "Difference?",
+          userAnswer: "extends",
+          isCorrect: false,
+        },
+        {
+          id: "q_abc00002",
+          reviewOf: null,
+          timestamp: "2026-03-01T11:00:00Z",
+          taskId: "task-1",
+          topic: "typescript",
+          concept: "generics",
+          question: "What are generics?",
+          userAnswer: "Type parameters",
+          isCorrect: true,
+        },
+        {
+          id: "q_abc00003",
+          reviewOf: "q_abc00001",
+          timestamp: "2026-03-02T10:00:00Z",
+          taskId: "task-2",
+          topic: "typescript",
+          concept: "interface vs type",
+          question: "Difference revisited?",
+          userAnswer: "interface extends, type uses &",
+          isCorrect: true,
+        },
+      ],
+    };
+
+    const result = computeDashboardData(baseProgress, history, topics);
+    expect(result.totalQuestions).toBe(3);
+    expect(result.correctRate).toBe(1.0);
+  });
+
+  it("counts groups per topic, not entries", () => {
+    const history = {
+      history: [
+        {
+          id: "q_abc00001",
+          reviewOf: null,
+          timestamp: "2026-03-01T10:00:00Z",
+          taskId: "task-1",
+          topic: "typescript",
+          concept: "interface vs type",
+          question: "Difference?",
+          userAnswer: "wrong",
+          isCorrect: false,
+        },
+        {
+          id: "q_abc00002",
+          reviewOf: "q_abc00001",
+          timestamp: "2026-03-02T10:00:00Z",
+          taskId: "task-2",
+          topic: "typescript",
+          concept: "interface vs type",
+          question: "Difference revisited?",
+          userAnswer: "correct",
+          isCorrect: true,
+        },
+        {
+          id: "q_abc00003",
+          reviewOf: null,
+          timestamp: "2026-03-01T12:00:00Z",
+          taskId: "task-1",
+          topic: "react",
+          concept: "useState",
+          question: "What does useState return?",
+          userAnswer: "[value, setter]",
+          isCorrect: true,
+        },
+      ],
+    };
+
+    const result = computeDashboardData(baseProgress, history, topics);
+    const ts = result.byTopic.find((t) => t.topic === "typescript");
+    expect(ts?.total).toBe(1);
+    expect(ts?.correct).toBe(1);
+    expect(ts?.rate).toBe(1.0);
+
+    const react = result.byTopic.find((t) => t.topic === "react");
+    expect(react?.total).toBe(1);
+    expect(react?.correct).toBe(1);
+  });
+
+  it("treats orphaned reviewOf as its own root", () => {
+    const history = {
+      history: [
+        {
+          id: "q_abc00001",
+          reviewOf: "q_nonexistent",
+          timestamp: "2026-03-01T10:00:00Z",
+          taskId: "task-1",
+          topic: "typescript",
+          concept: "closures",
+          question: "What are closures?",
+          userAnswer: "functions with scope",
+          isCorrect: true,
+        },
+      ],
+    };
+
+    const result = computeDashboardData(baseProgress, history, topics);
+    expect(result.totalQuestions).toBe(1);
+    expect(result.correctRate).toBe(1.0);
+  });
+
+  it("handles empty history", () => {
+    const result = computeDashboardData(baseProgress, { history: [] }, topics);
+    expect(result.totalQuestions).toBe(0);
+    expect(result.correctRate).toBe(0);
+    expect(result.byTopic).toEqual([]);
+  });
+
+  it("includes profileLastUpdated from learner_profile.last_updated", () => {
     const progress = {
-      version: "2.0",
-      current_plan: "phase1.md",
-      current_task: "2",
-      current_step: null,
-      next_suggest: "",
-      resume_context: "",
-      completed_tasks: [{ task: "1", name: "Setup", plan: "phase1.md" }],
-      skipped_tasks: [],
-      in_progress: [],
+      ...baseProgress,
+      current_plan: null,
+      current_task: null,
+      completed_tasks: [],
+      learner_profile: { last_updated: "2026-03-01" },
+    };
+    const result = computeDashboardData(progress, { history: [] }, []);
+    expect(result.profileLastUpdated).toBe("2026-03-01");
+  });
+
+  it("returns null for profileLastUpdated when learner_profile is absent", () => {
+    const progress = {
+      ...baseProgress,
+      current_plan: null,
+      current_task: null,
+      completed_tasks: [],
+    };
+    const result = computeDashboardData(progress, { history: [] }, []);
+    expect(result.profileLastUpdated).toBeNull();
+  });
+
+  it("propagates unresolvedGaps and currentTask from progress", () => {
+    const progress = {
+      ...baseProgress,
       unresolved_gaps: [
         {
+          questionId: "q_abc00001",
           concept: "interface vs type",
           topic: "typescript",
           first_missed: "2026-03-01",
@@ -168,6 +365,8 @@ describe("computeDashboardData", () => {
     const history = {
       history: [
         {
+          id: "q_abc00001",
+          reviewOf: null,
           timestamp: "2026-03-01T10:00:00Z",
           taskId: "task-1",
           topic: "typescript",
@@ -176,8 +375,78 @@ describe("computeDashboardData", () => {
           userAnswer: "extends",
           isCorrect: false,
         },
+      ],
+    };
+    const result = computeDashboardData(progress, history, topics);
+    expect(result.unresolvedGaps).toHaveLength(1);
+    expect(result.currentTask).toBe("2");
+  });
+
+  it("handles 3-entry chain where all reviewOf point to root", () => {
+    const history = {
+      history: [
         {
-          timestamp: "2026-03-01T11:00:00Z",
+          id: "q_abc00001",
+          reviewOf: null,
+          timestamp: "2026-03-01T10:00:00Z",
+          taskId: "task-1",
+          topic: "typescript",
+          concept: "generics",
+          question: "What are generics?",
+          userAnswer: "wrong",
+          isCorrect: false,
+        },
+        {
+          id: "q_abc00002",
+          reviewOf: "q_abc00001",
+          timestamp: "2026-03-05T10:00:00Z",
+          taskId: "task-2",
+          topic: "typescript",
+          concept: "generics",
+          question: "Generics revisited",
+          userAnswer: "still wrong",
+          isCorrect: false,
+        },
+        {
+          id: "q_abc00003",
+          reviewOf: "q_abc00001",
+          timestamp: "2026-03-10T10:00:00Z",
+          taskId: "task-3",
+          topic: "typescript",
+          concept: "generics",
+          question: "Generics again",
+          userAnswer: "Type parameters",
+          isCorrect: true,
+        },
+      ],
+    };
+
+    const result = computeDashboardData(baseProgress, history, topics);
+    expect(result.totalQuestions).toBe(3);
+    expect(result.correctRate).toBe(1.0);
+    const ts = result.byTopic.find((t) => t.topic === "typescript");
+    expect(ts?.total).toBe(1);
+    expect(ts?.correct).toBe(1);
+  });
+
+  it("picks last in array order when timestamps are identical", () => {
+    const history = {
+      history: [
+        {
+          id: "q_abc00001",
+          reviewOf: null,
+          timestamp: "2026-03-01T10:00:00Z",
+          taskId: "task-1",
+          topic: "typescript",
+          concept: "generics",
+          question: "What are generics?",
+          userAnswer: "wrong",
+          isCorrect: false,
+        },
+        {
+          id: "q_abc00002",
+          reviewOf: "q_abc00001",
+          timestamp: "2026-03-01T10:00:00Z",
           taskId: "task-1",
           topic: "typescript",
           concept: "generics",
@@ -185,85 +454,10 @@ describe("computeDashboardData", () => {
           userAnswer: "Type parameters",
           isCorrect: true,
         },
-        {
-          timestamp: "2026-03-02T10:00:00Z",
-          taskId: "task-1",
-          topic: "react",
-          concept: "useState",
-          question: "What does useState return?",
-          userAnswer: "[value, setter]",
-          isCorrect: true,
-        },
       ],
     };
 
-    const result = computeDashboardData(progress, history, topics);
-    expect(result.totalQuestions).toBe(3);
-    expect(result.correctRate).toBeCloseTo(0.667, 2);
-    expect(result.byTopic).toHaveLength(2);
-
-    const ts = result.byTopic.find((t) => t.topic === "typescript");
-    expect(ts?.total).toBe(2);
-    expect(ts?.correct).toBe(1);
-    expect(ts?.rate).toBe(0.5);
-
-    const react = result.byTopic.find((t) => t.topic === "react");
-    expect(react?.total).toBe(1);
-    expect(react?.correct).toBe(1);
-
-    expect(result.unresolvedGaps).toHaveLength(1);
-    expect(result.currentTask).toBe("2");
-  });
-
-  it("handles empty history", () => {
-    const progress = {
-      version: "2.0",
-      current_plan: "phase1.md",
-      current_task: "1",
-      current_step: null,
-      next_suggest: "",
-      resume_context: "",
-      completed_tasks: [],
-      skipped_tasks: [],
-      in_progress: [],
-      unresolved_gaps: [],
-    };
-    const result = computeDashboardData(progress, { history: [] }, topics);
-    expect(result.totalQuestions).toBe(0);
-    expect(result.correctRate).toBe(0);
-    expect(result.byTopic).toEqual([]);
-  });
-
-  it("includes profileLastUpdated from learner_profile.last_updated", () => {
-    const progress = {
-      version: "2.0",
-      current_plan: null,
-      current_task: null,
-      current_step: null,
-      next_suggest: null,
-      resume_context: null,
-      completed_tasks: [],
-      skipped_tasks: [],
-      unresolved_gaps: [],
-      learner_profile: { last_updated: "2026-03-01" },
-    };
-    const result = computeDashboardData(progress, { history: [] }, []);
-    expect(result.profileLastUpdated).toBe("2026-03-01");
-  });
-
-  it("returns null for profileLastUpdated when learner_profile is absent", () => {
-    const progress = {
-      version: "2.0",
-      current_plan: null,
-      current_task: null,
-      current_step: null,
-      next_suggest: null,
-      resume_context: null,
-      completed_tasks: [],
-      skipped_tasks: [],
-      unresolved_gaps: [],
-    };
-    const result = computeDashboardData(progress, { history: [] }, []);
-    expect(result.profileLastUpdated).toBeNull();
+    const result = computeDashboardData(baseProgress, history, topics);
+    expect(result.correctRate).toBe(1.0);
   });
 });
