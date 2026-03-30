@@ -46,6 +46,11 @@ const translations = {
   },
   "overview.topics": { ja: "復習トピック", en: "Review Topics" },
   "overview.noData": { ja: "データなし", en: "No data yet" },
+  "overview.topic.scoreUnit": { ja: "問", en: "" },
+  "overview.topic.reviewSample": {
+    ja: "復習内容の一部",
+    en: "Review sample",
+  },
   "overview.topic.copyHint": {
     ja: "AIへのプロンプトがコピーされます。そのままチャットに貼り付けて使えます。",
     en: "Copy the AI prompt. Paste it into your AI chat.",
@@ -86,6 +91,7 @@ const translations = {
   "settings.selectFile": { ja: "ファイルを選択", en: "Select File" },
   "settings.createPrompt": { ja: "プロンプトを作成", en: "Create prompt" },
   "settings.change": { ja: "変更", en: "Change" },
+  "settings.detach": { ja: "外す", en: "Detach" },
   "settings.language": { ja: "言語 / Language", en: "Language" },
   "settings.enableMentor": { ja: "メンター機能", en: "Mentor" },
   "settings.prompt.spec": {

@@ -177,17 +177,29 @@ export function Overview({
                     onClick={() => toggleTopic(topic.topic)}
                   >
                     <span className="topic-label">{topic.label}</span>
-                    <button
+                    <span
+                      role="button"
+                      tabIndex={0}
                       className="edit-label-btn"
                       onClick={(e) =>
                         startEditingLabel(topic.topic, topic.label, e)
                       }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          startEditingLabel(
+                            topic.topic,
+                            topic.label,
+                            e as unknown as React.MouseEvent,
+                          );
+                        }
+                      }}
                       title={t("overview.topic.editLabel", locale)}
                     >
                       <EditIcon />
-                    </button>
+                    </span>
                     <span className="score-pill">
-                      {topic.correct}/{topic.total}問
+                      {topic.correct}/{topic.total}
+                      {t("overview.topic.scoreUnit", locale)}
                     </span>
                     <i
                       className={
@@ -268,7 +280,7 @@ export function Overview({
                     {topicGaps.length > 0 && (
                       <div className="wrong-section">
                         <div className="wrong-section-label">
-                          復習内容の一部
+                          {t("overview.topic.reviewSample", locale)}
                         </div>
                         {[...topicGaps]
                           .sort((a, b) =>

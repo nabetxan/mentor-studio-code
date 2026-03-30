@@ -60,9 +60,8 @@ export class FileWatcherService implements vscode.Disposable {
     configWatcher.onDidChange(reloadConfig);
     configWatcher.onDidCreate(reloadConfig);
     configWatcher.onDidDelete(() => {
-      void this.loadConfig().then(() => {
-        this.onConfigChanged?.(null);
-      });
+      this.config = null;
+      this.onConfigChanged?.(null);
     });
     this.disposables.push(configWatcher);
 

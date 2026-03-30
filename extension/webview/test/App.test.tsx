@@ -53,6 +53,7 @@ const mockData: DashboardData = {
   unresolvedGaps: [],
   completedTasks: [{ task: "1", name: "Setup", plan: "phase1.md" }],
   currentTask: "2",
+  profileLastUpdated: null,
 };
 
 describe("App", () => {
@@ -88,7 +89,7 @@ describe("App", () => {
     render(<App />);
     simulateMessage({ type: "config", data: mockConfig });
     fireEvent.click(screen.getByText("Settings"));
-    expect(screen.getByText("メンターファイル")).toBeTruthy();
+    expect(screen.getByText("実装プラン (必須)")).toBeTruthy();
   });
 
   it("sends ready message on mount", () => {
