@@ -1,11 +1,11 @@
-![version](https://img.shields.io/badge/version-0.0.1-blue)
+![version](https://img.shields.io/badge/version-0.0.2-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
 # Mentor Studio Code
 
-A learning dashboard for AI mentor sessions using Claude Code. It provides an Overview, Actions, and Settings panel in the VS Code sidebar to help you track and continue your learning.
+Track your learning progress and review history with AI mentor sessions powered by Claude Code. It provides an Overview, Actions, and Settings panel in the VS Code sidebar to help you track and continue your learning.
 
-Claude Code を使ったAIメンターセッションの学習ダッシュボードです。VS Code のサイドバーに進捗・操作・設定パネルを提供し、学習の記録と継続をサポートします。
+Claude Code を活用したAIメンターセッションで、学習の進捗と復習履歴をトラッキングできます。VS Code のサイドバーに進捗・操作・設定パネルを提供し、学習の記録と継続をサポートします。
 
 ## Screenshot / スクリーンショット
 
@@ -69,8 +69,9 @@ The **Mentor** ON/OFF toggle in the navigation bar lets you enable or disable th
 
 ### Overview
 
-Shows your current task, correct answer rate, per-topic progress, and unresolved knowledge gaps.
-現在のタスク・正答率・トピック別進捗・未解決の理解ギャップを確認できます。
+Shows your current task, correct answer rate, per-topic progress, and unresolved knowledge gaps. You can also manage topics here — add new topics, edit labels, and merge duplicates.
+
+現在のタスク・正答率・トピック別進捗・未解決の理解ギャップを確認できます。トピックの追加・ラベル編集・マージもここから行えます。
 
 ### Actions
 

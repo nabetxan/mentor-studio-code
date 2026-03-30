@@ -1,6 +1,7 @@
 // === Progress data (matches docs/mentor/progress.json) ===
 
 export interface UnresolvedGap {
+  questionId: string;
   concept: string;
   topic: string;
   first_missed: string;
@@ -34,6 +35,8 @@ export interface ProgressData {
 // === Question history (matches docs/mentor/question-history.json) ===
 
 export interface QuestionHistoryEntry {
+  id: string;
+  reviewOf: string | null;
   timestamp: string;
   taskId: string;
   topic: string;
@@ -65,6 +68,7 @@ export interface MentorStudioConfig {
   mentorFiles?: MentorFiles;
   locale?: Locale;
   enableMentor?: boolean;
+  extensionVersion?: string;
 }
 
 // === Dashboard stats (computed by extension, sent to webview) ===
@@ -92,7 +96,8 @@ export interface DashboardData {
 export type ExtensionMessage =
   | { type: "update"; data: DashboardData }
   | { type: "config"; data: MentorStudioConfig }
-  | { type: "noConfig" };
+  | { type: "noConfig" }
+  | { type: "addTopicResult"; ok: boolean; key?: string; error?: string };
 
 export type FileField = "spec" | "plan";
 
@@ -105,4 +110,8 @@ export type WebviewMessage =
   | { type: "selectFile"; field: FileField }
   | { type: "clearFile"; field: FileField }
   | { type: "setLocale"; locale: Locale }
-  | { type: "setEnableMentor"; value: boolean };
+  | { type: "setEnableMentor"; value: boolean }
+  | { type: "mergeTopic"; fromKey: string; toKey: string }
+  | { type: "updateTopicLabel"; key: string; newLabel: string }
+  | { type: "addTopic"; label: string }
+  | { type: "openFile"; relativePath: string };

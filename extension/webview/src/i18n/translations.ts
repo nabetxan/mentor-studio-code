@@ -3,8 +3,8 @@ import type { Locale } from "@mentor-studio/shared";
 const translations = {
   // Actions tab
   "actions.description": {
-    ja: "ボタンを押すとClaude Codeへのプロンプトがコピーされます。そのままチャットに貼り付けて投げよう。",
-    en: "Press a button to copy the AI prompt. Paste it into your AI chat.",
+    ja: "AIへのプロンプトがコピーされます。そのままチャットに貼り付けて使えます。",
+    en: "Copy the AI prompt. Paste it into your AI chat.",
   },
   "actions.copied": { ja: "Copied!", en: "Copied!" },
   "actions.startNextTask": { ja: "次のタスクを始める", en: "Start next task" },
@@ -44,8 +44,33 @@ const translations = {
     ja: "未解決の理解ギャップ",
     en: "Unresolved Gaps",
   },
-  "overview.topics": { ja: "トピック", en: "Topics" },
+  "overview.topics": { ja: "復習トピック", en: "Review Topics" },
   "overview.noData": { ja: "データなし", en: "No data yet" },
+  "overview.topic.copyHint": {
+    ja: "AIへのプロンプトがコピーされます。そのままチャットに貼り付けて使えます。",
+    en: "Copy the AI prompt. Paste it into your AI chat.",
+  },
+  "overview.topic.copyReview": {
+    ja: "トピック復習",
+    en: "Review this Topic",
+  },
+  "overview.topic.unresolvedGaps": {
+    ja: "未解決ギャップ",
+    en: "Unresolved Gaps",
+  },
+  "overview.topic.noGaps": {
+    ja: "未解決ギャップなし",
+    en: "No unresolved gaps",
+  },
+  "overview.topic.editLabel": { ja: "ラベル編集", en: "Edit Label" },
+  "overview.topic.save": { ja: "保存", en: "Save" },
+  "overview.topic.mergeTo": { ja: "統合先", en: "Merge into" },
+  "overview.topic.merge": { ja: "統合", en: "Merge" },
+  "overview.topic.newTopic": { ja: "新しいトピック", en: "New topic" },
+  "overview.topic.reviewPrompt": {
+    ja: "docs/mentor/rules/MENTOR_RULES.md を読んで、{label} の復習を始めましょう。",
+    en: "Read docs/mentor/rules/MENTOR_RULES.md and start reviewing {label}.",
+  },
 
   // Settings tab
   "settings.spec": { ja: "仕様 (任意)", en: "Spec (optional)" },
@@ -77,8 +102,8 @@ const translations = {
   },
   "settings.profile.update": { ja: "プロフィール更新", en: "Update Profile" },
   "settings.prompt.intake": {
-    ja: "docs/mentor/skills/intake/SKILL.md を読んで、インテークフローを実行してください。",
-    en: "Read docs/mentor/skills/intake/SKILL.md and run the intake flow.",
+    ja: "docs/mentor/skills/intake/SKILL.md を読んで、プロフィールを更新してください。",
+    en: "Read docs/mentor/skills/intake/SKILL.md and update my profile.",
   },
 
   // App-level
@@ -90,15 +115,6 @@ const translations = {
     en: "✓ Local data loaded",
   },
   "app.status.loading": { ja: "読み込み中...", en: "Loading..." },
-  "app.noConfig.line1": { ja: "が見つかりません。", en: "not found." },
-  "app.noConfig.line2": {
-    ja: 'コマンドパレットから "Mentor Studio: Setup Mentor" を実行してください。',
-    en: 'Run "Mentor Studio: Setup Mentor" from the command palette.',
-  },
-  "app.noConfig.setupButton": {
-    ja: "セットアップを実行する",
-    en: "Run Setup",
-  },
 } as const satisfies Record<string, Record<Locale, string>>;
 
 export type TranslationKey = keyof typeof translations;

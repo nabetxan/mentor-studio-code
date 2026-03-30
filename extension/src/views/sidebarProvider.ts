@@ -15,8 +15,25 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
   private latestData: DashboardData | null = null;
   private latestConfig: MentorStudioConfig | null = null;
   private hasConfig = true;
+  private onMergeTopic?: (fromKey: string, toKey: string) => Promise<void>;
+  private onUpdateTopicLabel?: (key: string, newLabel: string) => Promise<void>;
+  private onAddTopic?: (
+    label: string,
+  ) => Promise<{ ok: boolean; key?: string; error?: string }>;
 
   constructor(private extensionUri: vscode.Uri) {}
+
+  setTopicHandlers(handlers: {
+    mergeTopic: (fromKey: string, toKey: string) => Promise<void>;
+    updateTopicLabel: (key: string, newLabel: string) => Promise<void>;
+    addTopic: (
+      label: string,
+    ) => Promise<{ ok: boolean; key?: string; error?: string }>;
+  }): void {
+    this.onMergeTopic = handlers.mergeTopic;
+    this.onUpdateTopicLabel = handlers.updateTopicLabel;
+    this.onAddTopic = handlers.addTopic;
+  }
 
   resolveWebviewView(webviewView: vscode.WebviewView): void {
     this.view = webviewView;
@@ -73,6 +90,44 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
           await this.updateLocale(message.locale);
         } else if (message.type === "setEnableMentor") {
           await this.updateEnableMentor(message.value);
+        } else if (message.type === "mergeTopic") {
+          try {
+            await this.onMergeTopic?.(message.fromKey, message.toKey);
+          } catch {
+            vscode.window.showErrorMessage("Failed to merge topic");
+          }
+        } else if (message.type === "updateTopicLabel") {
+          try {
+            await this.onUpdateTopicLabel?.(message.key, message.newLabel);
+          } catch {
+            vscode.window.showErrorMessage("Failed to update topic label");
+          }
+        } else if (message.type === "openFile") {
+          const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
+          if (wsRoot) {
+            const fileUri = vscode.Uri.joinPath(wsRoot, message.relativePath);
+            try {
+              await vscode.window.showTextDocument(fileUri, { preview: true });
+            } catch {
+              vscode.window.showErrorMessage(
+                `Failed to open file: ${message.relativePath}`,
+              );
+            }
+          }
+        } else if (message.type === "addTopic") {
+          try {
+            const result = (await this.onAddTopic?.(message.label)) ?? {
+              ok: false,
+              error: "No handler",
+            };
+            this.postMessage({ type: "addTopicResult", ...result });
+          } catch {
+            this.postMessage({
+              type: "addTopicResult",
+              ok: false,
+              error: "Failed to add topic",
+            });
+          }
         }
       },
     );

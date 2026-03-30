@@ -150,6 +150,8 @@ Records every answer to a mentor-asked question, inside a top-level \`"history"\
 
 \`\`\`json
 {
+  "id": "string (q_ + 8 random alphanumeric characters, e.g. q_V1StGXR8)",
+  "reviewOf": "string (root question id) | null",
   "timestamp": "ISO 8601 string",
   "taskId": "string (e.g. phase2.3-task8)",
   "topic": "string",
@@ -160,10 +162,25 @@ Records every answer to a mentor-asked question, inside a top-level \`"history"\
 }
 \`\`\`
 
+### id field rules
+
+- Format: \`q_\` prefix + 8 random alphanumeric characters (a-z, A-Z, 0-9)
+- Generate a new unique id for every entry
+- Example: \`q_V1StGXR8\`, \`q_m2pLw4nX\`
+
+### reviewOf field rules
+
+- For first-time questions: \`null\`
+- For review questions (re-asking a concept from \`unresolved_gaps\`): set to the \`id\` of the **original (root) question** that first introduced this concept
+- Always point to the root question, not to intermediate review entries
+- Example: if q_aaa (root, wrong) → q_bbb (review, wrong) → q_ccc (review, correct), then q_bbb.reviewOf = "q_aaa" and q_ccc.reviewOf = "q_aaa"
+
 ### Example — correct answer
 
 \`\`\`json
 {
+  "id": "q_Kx9mP2nL",
+  "reviewOf": null,
   "timestamp": "2026-03-25T00:05:00Z",
   "taskId": "phase2.3-task8",
   "topic": "React hooks",
@@ -178,6 +195,8 @@ Records every answer to a mentor-asked question, inside a top-level \`"history"\
 
 \`\`\`json
 {
+  "id": "q_7jRtW3vB",
+  "reviewOf": null,
   "timestamp": "2026-03-25T00:02:00Z",
   "taskId": "phase2.3-task8",
   "topic": "React hooks - useEffect dependency array",
@@ -185,6 +204,22 @@ Records every answer to a mentor-asked question, inside a top-level \`"history"\
   "question": "useEffect の [locale] は何をしている？",
   "userAnswer": ".mentor-studio.json に保存されたlocale",
   "isCorrect": false
+}
+\`\`\`
+
+### Example — review answer (answering a question from unresolved_gaps)
+
+\`\`\`json
+{
+  "id": "q_Np4xQ8mK",
+  "reviewOf": "q_7jRtW3vB",
+  "timestamp": "2026-03-28T10:00:00Z",
+  "taskId": "phase3-task1",
+  "topic": "React hooks",
+  "concept": "useEffect dependency array",
+  "question": "useEffectの第2引数に[count]を渡すとどういう動きになる？",
+  "userAnswer": "countが変わるたびにeffectが再実行される",
+  "isCorrect": true
 }
 \`\`\`
 
@@ -201,15 +236,23 @@ Each entry represents a concept gap not yet resolved through a correct review an
 
 \`\`\`json
 {
+  "questionId": "string (id of the root question-history entry that created this gap)",
   "topic": "string",
   "detail": "string (what specifically was misunderstood)"
 }
 \`\`\`
 
+### questionId field rules
+
+- Must match an existing \`id\` in question-history.json (the root entry, i.e. \`reviewOf: null\`)
+- When adding a gap from a review question (\`reviewOf\` is not null), use the \`reviewOf\` value (the root id), not the review entry's own \`id\`
+- When creating a review question for this gap, set \`reviewOf\` to this \`questionId\`
+
 ### Example
 
 \`\`\`json
 {
+  "questionId": "q_7jRtW3vB",
   "topic": "React hooks - useEffect dependency array",
   "detail": "useEffectの依存配列[locale]をファイル保存と誤解した。依存配列はReactがeffectを再実行するタイミングを決めるもの。"
 }

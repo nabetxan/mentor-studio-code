@@ -84,25 +84,56 @@ export function activate(context: vscode.ExtensionContext): void {
         (created ? createdFiles : skippedFiles).push(label);
       };
 
-      // Create .mentor-studio.json (with mentorFiles field) — treat as data
+      // Create or update .mentor-studio.json
       const configUri = vscode.Uri.joinPath(wsRoot, ".mentor-studio.json");
-      const configContent =
-        JSON.stringify(
-          {
-            repositoryName: folderName,
-            enableMentor: true,
-            topics: [
-              { key: "html", label: "HTML" },
-              { key: "css", label: "CSS" },
-              { key: "javascript", label: "JavaScript" },
-              { key: "typescript", label: "TypeScript" },
-            ],
-            mentorFiles: { spec: null, plan: null },
-          },
-          null,
-          2,
-        ) + "\n";
-      await writeDataIfMissing(configUri, configContent, ".mentor-studio.json");
+      const extensionVersion = (
+        context.extension.packageJSON as { version: string }
+      ).version;
+
+      let existingConfig: Record<string, unknown> | null = null;
+      try {
+        const raw = await vscode.workspace.fs.readFile(configUri);
+        existingConfig = JSON.parse(Buffer.from(raw).toString()) as Record<
+          string,
+          unknown
+        >;
+      } catch {
+        // doesn't exist yet
+      }
+
+      if (existingConfig) {
+        // Update extensionVersion in existing config
+        existingConfig.extensionVersion = extensionVersion;
+        await vscode.workspace.fs.writeFile(
+          configUri,
+          Buffer.from(JSON.stringify(existingConfig, null, 2) + "\n"),
+        );
+        skippedFiles.push(".mentor-studio.json (updated version)");
+      } else {
+        // Create new config
+        const configContent =
+          JSON.stringify(
+            {
+              repositoryName: folderName,
+              enableMentor: true,
+              topics: [
+                { key: "html", label: "HTML" },
+                { key: "css", label: "CSS" },
+                { key: "javascript", label: "JavaScript" },
+                { key: "typescript", label: "TypeScript" },
+              ],
+              mentorFiles: { spec: null, plan: null },
+              extensionVersion,
+            },
+            null,
+            2,
+          ) + "\n";
+        await vscode.workspace.fs.writeFile(
+          configUri,
+          Buffer.from(configContent),
+        );
+        createdFiles.push(".mentor-studio.json");
+      }
 
       // Prompt files — always overwrite
       await writeTemplate(
@@ -255,7 +286,24 @@ export function activate(context: vscode.ExtensionContext): void {
     workspaceRoot.fsPath,
     mentorPath,
     (data) => sidebarProvider.sendUpdate(data),
+    (config) => {
+      if (config !== null) {
+        sidebarProvider.sendConfig(config);
+      } else {
+        sidebarProvider.sendNoConfig();
+      }
+    },
   );
+
+  sidebarProvider.setTopicHandlers({
+    mergeTopic: (fromKey, toKey) => watcher.mergeTopic(fromKey, toKey),
+    updateTopicLabel: (key, newLabel) =>
+      watcher.updateTopicLabel(key, newLabel),
+    addTopic: (label) => watcher.addTopic(label),
+  });
+
+  const currentVersion = (context.extension.packageJSON as { version: string })
+    .version;
 
   void watcher
     .start()
@@ -263,6 +311,22 @@ export function activate(context: vscode.ExtensionContext): void {
       const config = watcher.getConfig();
       if (config) {
         sidebarProvider.sendConfig(config);
+
+        // Version check: prompt setup if extension was updated
+        if (config.extensionVersion !== currentVersion) {
+          const isJa = config.locale !== "en";
+          const message = isJa
+            ? `Mentor Studio が更新されました (v${currentVersion})。最新のプロンプトを適用するには Setup を実行してください。`
+            : `Mentor Studio has been updated (v${currentVersion}). Run Setup to apply the latest prompts.`;
+          const button = isJa ? "Setup を実行" : "Run Setup";
+          void vscode.window
+            .showInformationMessage(message, button)
+            .then((choice) => {
+              if (choice === button) {
+                void vscode.commands.executeCommand("mentor-studio.setup");
+              }
+            });
+        }
       } else {
         sidebarProvider.sendNoConfig();
       }

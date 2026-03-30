@@ -89,13 +89,42 @@ export function parseQuestionHistory(raw: string): QuestionHistory {
     if (!Array.isArray(obj.history)) {
       return { history: [] };
     }
-    const history = obj.history.filter(
-      (entry): entry is QuestionHistoryEntry =>
-        typeof entry === "object" &&
-        entry !== null &&
-        typeof (entry as Record<string, unknown>).topic === "string" &&
-        typeof (entry as Record<string, unknown>).isCorrect === "boolean",
-    );
+    let autoIdCounter = 0;
+    const history = obj.history
+      .filter(
+        (entry): entry is Record<string, unknown> =>
+          typeof entry === "object" &&
+          entry !== null &&
+          typeof (entry as Record<string, unknown>).topic === "string" &&
+          typeof (entry as Record<string, unknown>).isCorrect === "boolean",
+      )
+      .map(
+        (entry): QuestionHistoryEntry => ({
+          id:
+            typeof entry.id === "string"
+              ? entry.id
+              : `q_auto${String(autoIdCounter++).padStart(4, "0")}`,
+          reviewOf: typeof entry.reviewOf === "string" ? entry.reviewOf : null,
+          timestamp:
+            typeof entry.timestamp === "string"
+              ? (entry.timestamp as string)
+              : "",
+          taskId:
+            typeof entry.taskId === "string" ? (entry.taskId as string) : "",
+          topic: entry.topic as string,
+          concept:
+            typeof entry.concept === "string" ? (entry.concept as string) : "",
+          question:
+            typeof entry.question === "string"
+              ? (entry.question as string)
+              : "",
+          userAnswer:
+            typeof entry.userAnswer === "string"
+              ? (entry.userAnswer as string)
+              : "",
+          isCorrect: entry.isCorrect as boolean,
+        }),
+      );
     return { history };
   } catch {
     return { history: [] };
@@ -109,11 +138,44 @@ export function computeDashboardData(
 ): DashboardData {
   const entries = history.history;
   const totalQuestions = entries.length;
-  const correctCount = entries.filter((e) => e.isCorrect).length;
-  const correctRate = totalQuestions > 0 ? correctCount / totalQuestions : 0;
 
-  const topicMap = new Map<string, { correct: number; total: number }>();
+  // Build set of all known IDs for orphan detection
+  const allIds = new Set(entries.map((e) => e.id));
+
+  // Group entries by root ID
+  const groups = new Map<string, QuestionHistoryEntry[]>();
   for (const entry of entries) {
+    let rootId: string;
+    if (entry.reviewOf === null || !allIds.has(entry.reviewOf)) {
+      rootId = entry.id;
+    } else {
+      rootId = entry.reviewOf;
+    }
+    const group = groups.get(rootId) ?? [];
+    group.push(entry);
+    groups.set(rootId, group);
+  }
+
+  // Pick latest entry per group (last in array order for tie-breaking)
+  const latestPerGroup: QuestionHistoryEntry[] = [];
+  for (const group of groups.values()) {
+    let latest = group[0];
+    for (let i = 1; i < group.length; i++) {
+      if (group[i].timestamp >= latest.timestamp) {
+        latest = group[i];
+      }
+    }
+    latestPerGroup.push(latest);
+  }
+
+  const numberOfGroups = latestPerGroup.length;
+  const latestCorrectCount = latestPerGroup.filter((e) => e.isCorrect).length;
+  const correctRate =
+    numberOfGroups > 0 ? latestCorrectCount / numberOfGroups : 0;
+
+  // Per-topic stats (group-based)
+  const topicMap = new Map<string, { correct: number; total: number }>();
+  for (const entry of latestPerGroup) {
     const existing = topicMap.get(entry.topic) ?? { correct: 0, total: 0 };
     existing.total += 1;
     if (entry.isCorrect) {
