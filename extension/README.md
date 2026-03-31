@@ -9,7 +9,7 @@ Track your learning progress and review history with AI mentor sessions powered 
 
 The dashboard displays your mentor session progress.
 
-<img src="images/overview_mentor-studio-code.png" alt="Dashboard" width="350">
+<img src="https://raw.githubusercontent.com/nabetxan/mentor-studio-code/main/extension/images/overview_mentor-studio-code.png" alt="Dashboard" width="350">
 
 ## Prerequisites
 
