@@ -179,22 +179,26 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     }
     const configUri = vscode.Uri.joinPath(wsRoot, ".mentor-studio.json");
     try {
-      const raw = await vscode.workspace.fs.readFile(configUri);
-      const parsed = parseConfig(Buffer.from(raw).toString());
+      const rawStr = Buffer.from(
+        await vscode.workspace.fs.readFile(configUri),
+      ).toString();
+      const parsed = parseConfig(rawStr);
       if (!parsed) {
         vscode.window.showErrorMessage(
           ".mentor-studio.json has invalid format",
         );
         return;
       }
-      const config = parsed;
-      mutate(config);
+      mutate(parsed);
+      // Preserve unknown fields by merging into the raw JSON object
+      const rawObj = JSON.parse(rawStr) as Record<string, unknown>;
+      const merged = { ...rawObj, ...parsed };
       await vscode.workspace.fs.writeFile(
         configUri,
-        Buffer.from(JSON.stringify(config, null, 2) + "\n"),
+        Buffer.from(JSON.stringify(merged, null, 2) + "\n"),
       );
-      this.latestConfig = config;
-      this.postMessage({ type: "config", data: config });
+      this.latestConfig = parsed;
+      this.postMessage({ type: "config", data: parsed });
     } catch (err) {
       console.error("Failed to update .mentor-studio.json", err);
       vscode.window.showErrorMessage("Failed to update .mentor-studio.json");

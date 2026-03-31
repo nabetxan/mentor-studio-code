@@ -21,6 +21,7 @@ export function generateTopicKey(label: string): string {
 export class FileWatcherService implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
   private config: MentorStudioConfig | null = null;
+  private rawConfig: Record<string, unknown> | null = null;
 
   constructor(
     private workspaceRoot: string,
@@ -82,8 +83,10 @@ export class FileWatcherService implements vscode.Disposable {
       const configPath = join(this.workspaceRoot, ".mentor-studio.json");
       const raw = await readFile(configPath, "utf-8");
       this.config = parseConfig(raw);
+      this.rawConfig = JSON.parse(raw) as Record<string, unknown>;
     } catch {
       this.config = null;
+      this.rawConfig = null;
     }
   }
 
@@ -152,7 +155,11 @@ export class FileWatcherService implements vscode.Disposable {
   ): Promise<{ ok: boolean; key?: string; error?: string }> {
     const key = generateTopicKey(label);
     if (!key) {
-      return { ok: false, error: "Invalid label" };
+      return {
+        ok: false,
+        error:
+          "Label must contain at least one ASCII letter or number (A-Z, 0-9)",
+      };
     }
     if (!this.config) {
       return { ok: false, error: "Config not loaded" };
@@ -184,7 +191,10 @@ export class FileWatcherService implements vscode.Disposable {
 
   private async saveConfig(): Promise<void> {
     const configPath = join(this.workspaceRoot, ".mentor-studio.json");
-    await writeFile(configPath, JSON.stringify(this.config, null, 2) + "\n");
+    // Preserve unknown fields by merging into the raw JSON object
+    const merged = { ...this.rawConfig, ...this.config };
+    await writeFile(configPath, JSON.stringify(merged, null, 2) + "\n");
+    this.rawConfig = merged;
     this.onConfigChanged?.(this.config);
     await this.refresh();
   }
