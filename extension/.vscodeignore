@@ -1,0 +1,26 @@
+# Source files
+src/**
+webview/src/**
+webview/test/**
+webview/tsconfig.json
+webview/vitest.config.ts
+webview/esbuild.config.mjs
+webview/package.json
+test/**
+packages/**
+
+# Config files
+tsconfig.json
+tsconfig.test.json
+vitest.config.ts
+esbuild.config.mjs
+.eslintrc*
+.prettierrc*
+
+# Build artifacts and dev files
+node_modules/**
+*.vsix
+**/*.map
+
+# Misc
+.gitignore

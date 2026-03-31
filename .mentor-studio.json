@@ -35,5 +35,6 @@
     "spec": "docs/superpowers/specs/2026-03-28-ui-redesign-design.md",
     "plan": "docs/superpowers/plans/2026-03-28-ui-redesign.md"
   },
-  "extensionVersion": "0.0.2"
+  "extensionVersion": "0.0.2",
+  "locale": "ja"
 }

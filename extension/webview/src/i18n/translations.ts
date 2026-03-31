@@ -40,10 +40,6 @@ const translations = {
   "overview.currentTask": { ja: "現在のタスク", en: "Current Task" },
   "overview.taskPrefix": { ja: "Task", en: "Task" },
   "overview.notStarted": { ja: "未開始", en: "Not started" },
-  "overview.unresolvedGaps": {
-    ja: "未解決の理解ギャップ",
-    en: "Unresolved Gaps",
-  },
   "overview.topics": { ja: "復習トピック", en: "Review Topics" },
   "overview.noData": { ja: "データなし", en: "No data yet" },
   "overview.topic.scoreUnit": { ja: "問", en: "" },
@@ -59,16 +55,9 @@ const translations = {
     ja: "トピック復習",
     en: "Review this Topic",
   },
-  "overview.topic.unresolvedGaps": {
-    ja: "未解決ギャップ",
-    en: "Unresolved Gaps",
-  },
-  "overview.topic.noGaps": {
-    ja: "未解決ギャップなし",
-    en: "No unresolved gaps",
-  },
   "overview.topic.editLabel": { ja: "ラベル編集", en: "Edit Label" },
   "overview.topic.save": { ja: "保存", en: "Save" },
+  "overview.topic.cancel": { ja: "キャンセル", en: "Cancel" },
   "overview.topic.mergeTo": { ja: "統合先", en: "Merge into" },
   "overview.topic.merge": { ja: "統合", en: "Merge" },
   "overview.topic.newTopic": { ja: "新しいトピック", en: "New topic" },
@@ -107,12 +96,21 @@ const translations = {
     en: "Register Profile",
   },
   "settings.profile.update": { ja: "プロフィール更新", en: "Update Profile" },
+  "settings.copyCreatePrompt": {
+    ja: "このファイルを作成するプロンプトをコピー",
+    en: "Copy prompt to create this file",
+  },
   "settings.prompt.intake": {
     ja: "docs/mentor/skills/intake/SKILL.md を読んで、プロフィールを更新してください。",
     en: "Read docs/mentor/skills/intake/SKILL.md and update my profile.",
   },
 
   // App-level
+  "app.menu": { ja: "メニュー", en: "Menu" },
+  "app.addTopicFailed": {
+    ja: "トピックの追加に失敗しました",
+    en: "Failed to add topic",
+  },
   "app.tab.actions": { ja: "Actions", en: "Actions" },
   "app.tab.overview": { ja: "Overview", en: "Overview" },
   "app.tab.settings": { ja: "Settings", en: "Settings" },

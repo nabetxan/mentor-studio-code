@@ -1,8 +1,11 @@
 export type {
+  CompletedTask,
   DashboardData,
   ExtensionMessage,
   FileField,
+  LearnerProfile,
   Locale,
+  MentorFiles,
   MentorStudioConfig,
   ProgressData,
   QuestionHistory,

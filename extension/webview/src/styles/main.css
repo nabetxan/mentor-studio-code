@@ -251,13 +251,21 @@ body {
 .topic-header {
   display: flex;
   align-items: center;
-  gap: 7px;
   background: var(--vscode-editor-background);
-  padding: 8px 10px;
   width: 100%;
+  border-radius: 6px 6px 0 0;
+}
+
+.topic-header-toggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
+  min-width: 0;
+  background: none;
+  padding: 8px 4px 8px 10px;
   cursor: pointer;
   border: none;
-  border-radius: 6px 6px 0 0;
   color: var(--vscode-foreground);
   font-family: inherit;
   font-size: 1rem;
@@ -315,7 +323,7 @@ body {
   background: none;
   border: none;
   cursor: pointer;
-  padding: 2px;
+  padding: 2px 6px 2px 2px;
   border-radius: 4px;
   color: var(--vscode-foreground);
   opacity: 0;
@@ -392,6 +400,10 @@ body {
   cursor: pointer;
 }
 
+.copy-btn:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
 .copy-btn svg {
   fill: var(--vscode-focusBorder);
   width: 13px;
@@ -448,6 +460,7 @@ body {
 }
 
 .form-select {
+  position: relative;
   flex: 1;
   background: var(--vscode-input-background);
   border: 1px solid var(--vscode-widget-border);
@@ -457,10 +470,22 @@ body {
   font-size: 0.833rem;
   font-family: inherit;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%23999' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 7px center;
-  background-color: var(--vscode-input-background);
+  text-align: left;
+}
+
+.form-select::after {
+  content: "";
+  position: absolute;
+  right: 7px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid var(--vscode-foreground);
+  opacity: 0.6;
+  pointer-events: none;
 }
 
 .no-config {
@@ -758,7 +783,6 @@ body {
 
 .topic-select .form-select {
   width: 100%;
-  text-align: left;
   cursor: pointer;
 }
 

@@ -102,7 +102,7 @@ function FileSetting({
           <button
             className="btn-secondary"
             onClick={handleCopyPrompt}
-            title="Copy prompt to create this file"
+            title={t("settings.copyCreatePrompt", locale)}
           >
             {copied ? <CheckIcon /> : <SparkleIcon />}{" "}
             {t("settings.createPrompt", locale)}

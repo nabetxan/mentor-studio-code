@@ -13,6 +13,7 @@ const options = {
   target: "es2020",
   sourcemap: true,
   jsx: "automatic",
+  minify: !isWatch,
 };
 
 if (isWatch) {

@@ -8,6 +8,7 @@ import type {
 } from "@mentor-studio/shared";
 import * as path from "node:path";
 import * as vscode from "vscode";
+import { parseConfig } from "../services/dataParser";
 import { getNonce } from "../utils/nonce";
 
 export class SidebarProvider implements vscode.WebviewViewProvider {
@@ -45,7 +46,10 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
       ],
     };
 
-    webviewView.webview.html = this.getHtml(webviewView.webview);
+    webviewView.webview.html = this.getHtml(
+      webviewView.webview,
+      this.latestConfig?.locale ?? "ja",
+    );
 
     const messageDisposable = webviewView.webview.onDidReceiveMessage(
       async (message: WebviewMessage) => {
@@ -176,9 +180,14 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     const configUri = vscode.Uri.joinPath(wsRoot, ".mentor-studio.json");
     try {
       const raw = await vscode.workspace.fs.readFile(configUri);
-      const config = JSON.parse(
-        Buffer.from(raw).toString(),
-      ) as MentorStudioConfig;
+      const parsed = parseConfig(Buffer.from(raw).toString());
+      if (!parsed) {
+        vscode.window.showErrorMessage(
+          ".mentor-studio.json has invalid format",
+        );
+        return;
+      }
+      const config = parsed;
       mutate(config);
       await vscode.workspace.fs.writeFile(
         configUri,
@@ -222,7 +231,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     this.view?.webview.postMessage(message);
   }
 
-  private getHtml(webview: vscode.Webview): string {
+  private getHtml(webview: vscode.Webview, locale: Locale = "ja"): string {
     const scriptUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this.extensionUri, "webview", "dist", "webview.js"),
     );
@@ -232,7 +241,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     const nonce = getNonce();
 
     return /*html*/ `<!DOCTYPE html>
-<html lang="ja">
+<html lang="${locale}">
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy"
