@@ -23,7 +23,7 @@ export interface ProgressData {
   version: string;
   current_plan: string | null;
   current_task: string | null;
-  current_step: number | null;
+  current_step: string | number | null;
   next_suggest: string | null;
   resume_context: string | null;
   completed_tasks: CompletedTask[];

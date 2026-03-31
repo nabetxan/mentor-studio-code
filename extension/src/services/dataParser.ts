@@ -1,5 +1,6 @@
 import type {
   DashboardData,
+  MentorStudioConfig,
   ProgressData,
   QuestionHistory,
   QuestionHistoryEntry,
@@ -48,7 +49,10 @@ export function parseProgressData(raw: string): ProgressData | null {
       current_task:
         typeof obj.current_task === "string" ? obj.current_task : null,
       current_step:
-        typeof obj.current_step === "number" ? obj.current_step : null,
+        typeof obj.current_step === "string" ||
+        typeof obj.current_step === "number"
+          ? obj.current_step
+          : null,
       next_suggest:
         typeof obj.next_suggest === "string" ? obj.next_suggest : null,
       resume_context:
@@ -65,6 +69,8 @@ export function parseProgressData(raw: string): ProgressData | null {
             (item): item is UnresolvedGap =>
               typeof item === "object" &&
               item !== null &&
+              typeof (item as Record<string, unknown>).questionId ===
+                "string" &&
               typeof (item as Record<string, unknown>).concept === "string" &&
               typeof (item as Record<string, unknown>).topic === "string" &&
               typeof (item as Record<string, unknown>).first_missed ===
@@ -128,6 +134,56 @@ export function parseQuestionHistory(raw: string): QuestionHistory {
     return { history };
   } catch {
     return { history: [] };
+  }
+}
+
+export function parseConfig(raw: string): MentorStudioConfig | null {
+  try {
+    const data: unknown = JSON.parse(raw);
+    if (typeof data !== "object" || data === null) {
+      return null;
+    }
+    const obj = data as Record<string, unknown>;
+    if (typeof obj.repositoryName !== "string" || !Array.isArray(obj.topics)) {
+      return null;
+    }
+    const topics = (obj.topics as unknown[]).filter(
+      (item): item is { key: string; label: string } =>
+        typeof item === "object" &&
+        item !== null &&
+        typeof (item as Record<string, unknown>).key === "string" &&
+        typeof (item as Record<string, unknown>).label === "string",
+    );
+    const mentorFiles =
+      typeof obj.mentorFiles === "object" && obj.mentorFiles !== null
+        ? {
+            spec:
+              typeof (obj.mentorFiles as Record<string, unknown>).spec ===
+              "string"
+                ? ((obj.mentorFiles as Record<string, unknown>).spec as string)
+                : null,
+            plan:
+              typeof (obj.mentorFiles as Record<string, unknown>).plan ===
+              "string"
+                ? ((obj.mentorFiles as Record<string, unknown>).plan as string)
+                : null,
+          }
+        : undefined;
+    return {
+      repositoryName: obj.repositoryName,
+      topics,
+      mentorFiles,
+      locale:
+        obj.locale === "ja" || obj.locale === "en" ? obj.locale : undefined,
+      enableMentor:
+        typeof obj.enableMentor === "boolean" ? obj.enableMentor : undefined,
+      extensionVersion:
+        typeof obj.extensionVersion === "string"
+          ? obj.extensionVersion
+          : undefined,
+    };
+  } catch {
+    return null;
   }
 }
 

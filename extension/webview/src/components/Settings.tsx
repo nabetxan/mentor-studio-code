@@ -63,16 +63,7 @@ function FileSetting({
               e.preventDefault();
               postMessage({ type: "openFile", relativePath: value });
             }}
-            style={{
-              fontSize: "0.75rem",
-              wordBreak: "break-all",
-              opacity: 0.8,
-              marginBottom: "5px",
-              display: "block",
-              color: "var(--vscode-textLink-foreground)",
-              textDecoration: "none",
-              cursor: "pointer",
-            }}
+            className="file-path-link"
             title={value}
           >
             {value}
@@ -88,7 +79,7 @@ function FileSetting({
               className="btn-outlined"
               onClick={() => postMessage({ type: "clearFile", field })}
             >
-              外す
+              {t("settings.detach", locale)}
             </button>
           </div>
         </div>
@@ -111,7 +102,7 @@ function FileSetting({
           <button
             className="btn-secondary"
             onClick={handleCopyPrompt}
-            title="Copy prompt to create this file"
+            title={t("settings.copyCreatePrompt", locale)}
           >
             {copied ? <CheckIcon /> : <SparkleIcon />}{" "}
             {t("settings.createPrompt", locale)}

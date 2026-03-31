@@ -1,13 +1,10 @@
-import type {
-  DashboardData,
-  MentorStudioConfig,
-  QuestionHistory,
-} from "@mentor-studio/shared";
+import type { DashboardData, MentorStudioConfig } from "@mentor-studio/shared";
 import { readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import * as vscode from "vscode";
 import {
   computeDashboardData,
+  parseConfig,
   parseProgressData,
   parseQuestionHistory,
 } from "./dataParser";
@@ -41,8 +38,18 @@ export class FileWatcherService implements vscode.Disposable {
     );
     const watcher = vscode.workspace.createFileSystemWatcher(pattern);
 
-    watcher.onDidChange(() => void this.refresh());
-    watcher.onDidCreate(() => void this.refresh());
+    watcher.onDidChange(
+      () =>
+        void this.refresh().catch((err) =>
+          console.error("refresh failed", err),
+        ),
+    );
+    watcher.onDidCreate(
+      () =>
+        void this.refresh().catch((err) =>
+          console.error("refresh failed", err),
+        ),
+    );
     this.disposables.push(watcher);
 
     const configPattern = new vscode.RelativePattern(
@@ -53,16 +60,17 @@ export class FileWatcherService implements vscode.Disposable {
       vscode.workspace.createFileSystemWatcher(configPattern);
 
     const reloadConfig = (): void => {
-      void this.loadConfig().then(() => {
-        this.onConfigChanged?.(this.config);
-      });
+      void this.loadConfig()
+        .then(() => {
+          this.onConfigChanged?.(this.config);
+        })
+        .catch((err) => console.error("loadConfig failed", err));
     };
     configWatcher.onDidChange(reloadConfig);
     configWatcher.onDidCreate(reloadConfig);
     configWatcher.onDidDelete(() => {
-      void this.loadConfig().then(() => {
-        this.onConfigChanged?.(null);
-      });
+      this.config = null;
+      this.onConfigChanged?.(null);
     });
     this.disposables.push(configWatcher);
 
@@ -73,7 +81,7 @@ export class FileWatcherService implements vscode.Disposable {
     try {
       const configPath = join(this.workspaceRoot, ".mentor-studio.json");
       const raw = await readFile(configPath, "utf-8");
-      this.config = JSON.parse(raw) as MentorStudioConfig;
+      this.config = parseConfig(raw);
     } catch {
       this.config = null;
     }
@@ -123,7 +131,7 @@ export class FileWatcherService implements vscode.Disposable {
       "question-history.json",
     );
     const raw = await readFile(historyPath, "utf-8");
-    const history = JSON.parse(raw) as QuestionHistory;
+    const history = parseQuestionHistory(raw);
     for (const entry of history.history) {
       if (entry.topic === fromKey) {
         entry.topic = toKey;

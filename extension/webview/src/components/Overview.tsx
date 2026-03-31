@@ -57,7 +57,7 @@ export function Overview({
   function startEditingLabel(
     key: string,
     currentLabel: string,
-    e: React.MouseEvent,
+    e: React.SyntheticEvent,
   ) {
     e.stopPropagation();
     setEditingTopic({ key, value: currentLabel });
@@ -159,24 +159,37 @@ export function Overview({
                     <button
                       className="inline-edit-btn save"
                       onClick={saveLabel}
-                      title="保存"
+                      title={t("overview.topic.save", locale)}
                     >
                       <CheckIcon />
                     </button>
                     <button
                       className="inline-edit-btn cancel"
                       onClick={cancelEditingLabel}
-                      title="キャンセル"
+                      title={t("overview.topic.cancel", locale)}
                     >
                       <CloseIcon />
                     </button>
                   </div>
                 ) : (
-                  <button
-                    className="topic-header"
-                    onClick={() => toggleTopic(topic.topic)}
-                  >
-                    <span className="topic-label">{topic.label}</span>
+                  <div className="topic-header">
+                    <button
+                      className="topic-header-toggle"
+                      onClick={() => toggleTopic(topic.topic)}
+                    >
+                      <span className="topic-label">{topic.label}</span>
+                      <span className="score-pill">
+                        {topic.correct}/{topic.total}
+                        {t("overview.topic.scoreUnit", locale)}
+                      </span>
+                      <i
+                        className={
+                          isExpanded ? "chevron-icon open" : "chevron-icon"
+                        }
+                      >
+                        ›
+                      </i>
+                    </button>
                     <button
                       className="edit-label-btn"
                       onClick={(e) =>
@@ -186,17 +199,7 @@ export function Overview({
                     >
                       <EditIcon />
                     </button>
-                    <span className="score-pill">
-                      {topic.correct}/{topic.total}問
-                    </span>
-                    <i
-                      className={
-                        isExpanded ? "chevron-icon open" : "chevron-icon"
-                      }
-                    >
-                      ›
-                    </i>
-                  </button>
+                  </div>
                 )}
                 <div className="progress-wrap">
                   <div className="progress-bar">
@@ -268,7 +271,7 @@ export function Overview({
                     {topicGaps.length > 0 && (
                       <div className="wrong-section">
                         <div className="wrong-section-label">
-                          復習内容の一部
+                          {t("overview.topic.reviewSample", locale)}
                         </div>
                         {[...topicGaps]
                           .sort((a, b) =>
@@ -276,10 +279,7 @@ export function Overview({
                           )
                           .slice(0, 3)
                           .map((gap) => (
-                            <div
-                              className="wrong-item"
-                              key={`${gap.concept}-${gap.task}`}
-                            >
+                            <div className="wrong-item" key={gap.questionId}>
                               {gap.concept}
                             </div>
                           ))}

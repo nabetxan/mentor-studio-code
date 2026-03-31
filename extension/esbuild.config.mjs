@@ -12,6 +12,7 @@ const options = {
   platform: "node",
   target: "node18",
   sourcemap: true,
+  minify: !isWatch,
 };
 
 if (isWatch) {

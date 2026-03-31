@@ -44,7 +44,10 @@ export function activate(context: vscode.ExtensionContext): void {
     async () => {
       const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
       if (!wsRoot) {
-        vscode.window.showErrorMessage("Open a folder first.");
+        const isJa = vscode.env.language.startsWith("ja");
+        vscode.window.showErrorMessage(
+          isJa ? "先にフォルダを開いてください。" : "Open a folder first.",
+        );
         return;
       }
 
@@ -196,6 +199,10 @@ export function activate(context: vscode.ExtensionContext): void {
         "current-task.md",
       );
 
+      const isJa = existingConfig
+        ? existingConfig.locale !== "en"
+        : vscode.env.language.startsWith("ja");
+
       // Handle CLAUDE.md
       const claudeMdUri = vscode.Uri.joinPath(wsRoot, "CLAUDE.md");
       const mentorRef = "@docs/mentor/rules/MENTOR_RULES.md";
@@ -222,11 +229,13 @@ export function activate(context: vscode.ExtensionContext): void {
       } else if (!claudeContent.includes(mentorRef)) {
         // Existing file: ask before appending
         const userChoice = await vscode.window.showInformationMessage(
-          `Append "${mentorRef}" to CLAUDE.md?`,
-          "Yes",
-          "Skip",
+          isJa
+            ? `CLAUDE.md に "${mentorRef}" を追加しますか？`
+            : `Append "${mentorRef}" to CLAUDE.md?`,
+          isJa ? "はい" : "Yes",
+          isJa ? "スキップ" : "Skip",
         );
-        if (userChoice === "Yes") {
+        if (userChoice === (isJa ? "はい" : "Yes")) {
           const newContent =
             claudeContent.trimEnd() + "\n\n" + mentorRef + "\n";
           await vscode.workspace.fs.writeFile(
@@ -252,11 +261,14 @@ export function activate(context: vscode.ExtensionContext): void {
       ch.show(true);
 
       // Prompt reload with a button
+      const reloadButton = isJa ? "ウィンドウを再読み込み" : "Reload Window";
       const choice = await vscode.window.showInformationMessage(
-        "Mentor Studio setup complete! Reload to activate the dashboard.",
-        "Reload Window",
+        isJa
+          ? "Mentor Studio のセットアップが完了しました！ダッシュボードを有効にするにはリロードしてください。"
+          : "Mentor Studio setup complete! Reload to activate the dashboard.",
+        reloadButton,
       );
-      if (choice === "Reload Window") {
+      if (choice === reloadButton) {
         vscode.commands.executeCommand("workbench.action.reloadWindow");
       }
     },

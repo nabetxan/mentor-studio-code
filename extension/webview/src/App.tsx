@@ -24,7 +24,9 @@ export function App() {
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
   const [narrow, setNarrow] = useState(false);
   const [addTopicError, setAddTopicError] = useState<string | null>(null);
-  const [lastAddedTopicKey, setLastAddedTopicKey] = useState<string | null>(null);
+  const [lastAddedTopicKey, setLastAddedTopicKey] = useState<string | null>(
+    null,
+  );
   const appRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -62,7 +64,7 @@ export function App() {
             setAddTopicError(null);
             setLastAddedTopicKey(message.key);
           } else {
-            setAddTopicError(message.error ?? "Failed to add topic");
+            setAddTopicError(message.error ?? t("app.addTopicFailed", locale));
             setLastAddedTopicKey(null);
           }
           break;
@@ -127,7 +129,7 @@ export function App() {
                 e.stopPropagation();
                 setMenuOpen((prev) => !prev);
               }}
-              aria-label="Menu"
+              aria-label={t("app.menu", locale)}
             >
               <span />
               <span />
