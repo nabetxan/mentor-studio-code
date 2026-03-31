@@ -22,5 +22,9 @@ node_modules/**
 *.vsix
 **/*.map
 
+# Unused font files
+webview/dist/codicon.css
+webview/dist/codicon.ttf
+
 # Misc
 .gitignore
