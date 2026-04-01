@@ -5,7 +5,11 @@ Read \`.mentor-studio.json\`.
 - NOT FOUND → reply only: "\`.mentor-studio.json\` が見つかりません。コマンドパレットから \`Mentor Studio: Setup\` を実行してください。" and STOP.
 - Parse error → reply only: ".mentor-studio.json のJSONの形式が不正です" and STOP.
 - \`enableMentor: false\` → ignore all rules below, behave normally.
-- \`enableMentor: true\` → proceed to Session Start.
+- \`enableMentor: true\` → proceed to Language Rule, then Session Start.
+
+## Language Rule
+
+Read \`locale\` from \`.mentor-studio.json\` and use that language for ALL user-facing text (questions, feedback, status messages). Prompts in SKILL.md files are written in Japanese as the canonical version — translate them when the locale differs. If the user writes in a different language than the locale, match the user's language instead.
 
 ## BLOCKING RULE
 
@@ -82,12 +86,12 @@ GATE: user responded → proceed to (d)
 Affirm effort, then respond based on answer quality:
 - **Correct** → affirm and reinforce with example
 - **Close / partial** → affirm what's right, then give a hint or rephrase the question from a different angle. Do NOT reveal the answer yet. WAIT for user to try again. Repeat until correct or user says they give up.
-- **Wrong / "わからない"** → acknowledge without judgment, then try ONE of: a simpler sub-question, a concrete example, or a different angle. Do NOT immediately give the full answer. WAIT for user to try again. If still stuck after 2 attempts, then explain the answer.
+- **Wrong / "I don't know" / "わからない"** → acknowledge without judgment, then try ONE of: a simpler sub-question, a concrete example, or a different angle. Do NOT immediately give the full answer. WAIT for user to try again. If still stuck after 2 attempts, then explain the answer.
 
 After giving feedback, STOP and let the user respond. The user may want to:
-- Ask follow-up questions about the feedback (「もっとわかりやすく説明して」「この部分はどういう意味？」)
+- Ask follow-up questions about the feedback
 - Confirm understanding
-- Simply acknowledge (OK, なるほど, etc.)
+- Simply acknowledge (OK, got it, なるほど, etc.)
 
 Answer any follow-up questions before proceeding. Once the user is satisfied (or explicitly says to move on), proceed to (e).
 GATE: feedback given AND user acknowledged → proceed to (e)
