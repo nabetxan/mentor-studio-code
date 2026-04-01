@@ -4,6 +4,7 @@ import type {
   ProgressData,
   QuestionHistory,
   QuestionHistoryEntry,
+  SkippedTask,
   TopicConfig,
   TopicStats,
   UnresolvedGap,
@@ -61,7 +62,11 @@ export function parseProgressData(raw: string): ProgressData | null {
       learner_profile: learnerProfile,
       skipped_tasks: Array.isArray(obj.skipped_tasks)
         ? (obj.skipped_tasks as unknown[]).filter(
-            (x): x is string => typeof x === "string",
+            (item): item is SkippedTask =>
+              typeof item === "object" &&
+              item !== null &&
+              typeof (item as Record<string, unknown>).task === "string" &&
+              typeof (item as Record<string, unknown>).plan === "string",
           )
         : [],
       unresolved_gaps: Array.isArray(obj.unresolved_gaps)
@@ -73,7 +78,7 @@ export function parseProgressData(raw: string): ProgressData | null {
                 "string" &&
               typeof (item as Record<string, unknown>).concept === "string" &&
               typeof (item as Record<string, unknown>).topic === "string" &&
-              typeof (item as Record<string, unknown>).first_missed ===
+              typeof (item as Record<string, unknown>).last_missed ===
                 "string" &&
               typeof (item as Record<string, unknown>).task === "string" &&
               typeof (item as Record<string, unknown>).note === "string",
@@ -111,9 +116,9 @@ export function parseQuestionHistory(raw: string): QuestionHistory {
               ? entry.id
               : `q_auto${String(autoIdCounter++).padStart(4, "0")}`,
           reviewOf: typeof entry.reviewOf === "string" ? entry.reviewOf : null,
-          timestamp:
-            typeof entry.timestamp === "string"
-              ? (entry.timestamp as string)
+          answeredAt:
+            typeof entry.answeredAt === "string"
+              ? (entry.answeredAt as string)
               : "",
           taskId:
             typeof entry.taskId === "string" ? (entry.taskId as string) : "",
@@ -217,7 +222,7 @@ export function computeDashboardData(
   for (const group of groups.values()) {
     let latest = group[0];
     for (let i = 1; i < group.length; i++) {
-      if (group[i].timestamp >= latest.timestamp) {
+      if (group[i].answeredAt >= latest.answeredAt) {
         latest = group[i];
       }
     }

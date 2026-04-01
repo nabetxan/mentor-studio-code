@@ -98,7 +98,7 @@ describe("Overview", () => {
           questionId: "q1",
           concept: "closures",
           topic: "javascript",
-          first_missed: "2026-03-01",
+          last_missed: "2026-03-01",
           task: "task-1",
           note: "confused about scope",
         },

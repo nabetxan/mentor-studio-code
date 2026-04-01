@@ -99,6 +99,7 @@ body {
 }
 
 .hamburger-btn {
+  position: relative;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -109,12 +110,29 @@ body {
   padding: 4px 6px;
 }
 
-.hamburger-btn span {
+.hamburger-line {
   display: block;
   width: 14px;
   height: 2px;
   background: var(--vscode-foreground);
   border-radius: 1px;
+}
+
+.hamburger-badge {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  background: var(--vscode-editorError-foreground, #f48771);
+  color: #fff;
+  border-radius: 50%;
+  width: 12px;
+  height: 12px;
+  font-size: 0.6rem;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 
 .hamburger-menu {
@@ -156,6 +174,22 @@ body {
 .hamburger-item.active {
   color: var(--vscode-focusBorder);
   font-weight: 600;
+}
+
+.hamburger-item-badge {
+  background: var(--vscode-editorError-foreground, #f48771);
+  color: #fff;
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  font-size: 0.7rem;
+  font-weight: bold;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .content {
@@ -251,25 +285,23 @@ body {
 .topic-header {
   display: flex;
   align-items: center;
+  gap: 7px;
   background: var(--vscode-editor-background);
   width: 100%;
+  box-sizing: border-box;
   border-radius: 6px 6px 0 0;
+  padding: 8px 10px;
+  cursor: pointer;
+  color: var(--vscode-foreground);
+  font-size: 1rem;
 }
 
-.topic-header-toggle {
-  display: flex;
-  align-items: center;
-  gap: 7px;
+.topic-header > .topic-label {
   flex: 1;
   min-width: 0;
-  background: none;
-  padding: 8px 4px 8px 10px;
-  cursor: pointer;
-  border: none;
-  color: var(--vscode-foreground);
-  font-family: inherit;
-  font-size: 1rem;
-  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .topic-header--editing {
@@ -348,7 +380,7 @@ body {
   font-size: 0.75rem;
   font-weight: 600;
   white-space: nowrap;
-  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .chevron-icon {
@@ -357,6 +389,7 @@ body {
   display: inline-block;
   transition: transform 0.18s;
   font-style: normal;
+  flex-shrink: 0;
 }
 
 .chevron-icon.open {
@@ -492,6 +525,13 @@ body {
   padding: 24px 12px;
   text-align: center;
   opacity: 0.8;
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
+.no-config .btn-primary {
+  white-space: normal;
+  max-width: 100%;
 }
 
 .no-config code {
@@ -527,6 +567,10 @@ body {
 .btn-secondary {
   background: var(--vscode-button-secondaryBackground);
   color: var(--vscode-button-secondaryForeground);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--vscode-button-secondaryForeground, #ccc);
 }
 
 .btn-outlined {
@@ -790,7 +834,8 @@ body {
   position: absolute;
   top: 100%;
   left: 0;
-  right: 0;
+  min-width: 100%;
+  width: max-content;
   z-index: 50;
   background: var(--vscode-editor-background);
   border: 1px solid var(--vscode-widget-border);
@@ -831,6 +876,9 @@ body {
 
 .topic-select-add {
   padding: 5px;
+  position: sticky;
+  bottom: 0;
+  background: var(--vscode-editor-background);
 }
 
 .topic-select-add .form-row {

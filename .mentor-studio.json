@@ -1,40 +1,52 @@
 {
   "repositoryName": "mentor-studio-code",
-  "enableMentor": true,
   "topics": [
     {
-      "key": "html",
+      "key": "a-html",
       "label": "HTML"
     },
     {
-      "key": "css",
+      "key": "a-css",
       "label": "CSS"
     },
     {
-      "key": "javascript",
+      "key": "a-javascript",
       "label": "JavaScript"
     },
     {
-      "key": "typescript",
+      "key": "a-typescript",
       "label": "TypeScript"
     },
     {
-      "key": "architecture",
+      "key": "a-architecture",
       "label": "Architecture"
     },
     {
-      "key": "react",
+      "key": "a-react",
       "label": "React"
     },
     {
-      "key": "security",
+      "key": "a-security",
       "label": "Security"
+    },
+    {
+      "key": "a-vscode-extension",
+      "label": "VSCode Extension"
+    },
+    {
+      "key": "a-concurrency",
+      "label": "Concurrency"
+    },
+    {
+      "key": "a-dom-api",
+      "label": "DOM API"
     }
   ],
   "mentorFiles": {
     "spec": "docs/superpowers/specs/2026-03-28-ui-redesign-design.md",
     "plan": "docs/superpowers/plans/2026-03-28-ui-redesign.md"
   },
-  "extensionVersion": "0.1.0",
-  "locale": "ja"
+  "locale": "ja",
+  "enableMentor": true,
+  "extensionVersion": "0.1.0"
 }

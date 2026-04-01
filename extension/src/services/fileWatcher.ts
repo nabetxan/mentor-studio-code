@@ -139,6 +139,34 @@ export class FileWatcherService implements vscode.Disposable {
     }
     await writeFile(historyPath, JSON.stringify(history, null, 2) + "\n");
 
+    // Also update unresolved_gaps in progress.json
+    const progressPath = join(
+      this.workspaceRoot,
+      this.mentorPath,
+      "progress.json",
+    );
+    try {
+      const progressRaw = await readFile(progressPath, "utf-8");
+      const progress = parseProgressData(progressRaw);
+      if (progress) {
+        let changed = false;
+        for (const gap of progress.unresolved_gaps) {
+          if (gap.topic === fromKey) {
+            gap.topic = toKey;
+            changed = true;
+          }
+        }
+        if (changed) {
+          await writeFile(
+            progressPath,
+            JSON.stringify(progress, null, 2) + "\n",
+          );
+        }
+      }
+    } catch {
+      // progress.json may not exist yet — skip
+    }
+
     if (!this.config) return;
     this.config = {
       ...this.config,

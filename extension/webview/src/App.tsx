@@ -58,6 +58,7 @@ export function App() {
           break;
         case "noConfig":
           setHasConfig(false);
+          setLocale(message.locale);
           break;
         case "addTopicResult":
           if (message.ok && message.key) {
@@ -100,19 +101,14 @@ export function App() {
     return (
       <div className="no-config">
         <p>
-          <code>.mentor-studio.json</code> が見つかりません。 / not found.
+          <code>.mentor-studio.json</code> {t("app.noConfig.notFound", locale)}
         </p>
-        <p>
-          コマンドパレットから &quot;Mentor Studio: Setup Mentor&quot;
-          を実行してください。
-          <br />
-          Run &quot;Mentor Studio: Setup Mentor&quot; from the command palette.
-        </p>
+        <p>{t("app.noConfig.instruction", locale)}</p>
         <button
           className="btn-primary"
           onClick={() => postMessage({ type: "runSetup" })}
         >
-          セットアップを実行する / Run Setup
+          {t("app.noConfig.button", locale)}
         </button>
       </div>
     );
@@ -131,9 +127,10 @@ export function App() {
               }}
               aria-label={t("app.menu", locale)}
             >
-              <span />
-              <span />
-              <span />
+              <span className="hamburger-line" />
+              <span className="hamburger-line" />
+              <span className="hamburger-line" />
+              {settingsHasWarning && <span className="hamburger-badge">!</span>}
             </button>
             {menuOpen && (
               <div className="hamburger-menu">
@@ -150,6 +147,9 @@ export function App() {
                     {t_ === "overview" && <OverviewIcon />}
                     {t_ === "settings" && <SettingsIcon />}
                     <span>{t(`app.tab.${t_}`, locale)}</span>
+                    {t_ === "settings" && settingsHasWarning && (
+                      <span className="hamburger-item-badge">!</span>
+                    )}
                   </button>
                 ))}
               </div>

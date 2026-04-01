@@ -130,6 +130,12 @@ export function Overview({
           <div className="section-heading">{t("overview.topics", locale)}</div>
           {data.byTopic.map((topic) => {
             const isExpanded = expandedTopics[topic.topic] ?? false;
+            const resolvedLabel =
+              topic.label !== topic.topic
+                ? topic.label
+                : (config?.topics?.find((c) => c.key === topic.topic)?.label ??
+                  topic.label);
+            const displayLabel = resolvedLabel.replace(/^[a-z]-/, "");
             const topicGaps = data.unresolvedGaps.filter(
               (g) => g.topic === topic.topic,
             );
@@ -172,33 +178,31 @@ export function Overview({
                     </button>
                   </div>
                 ) : (
-                  <div className="topic-header">
-                    <button
-                      className="topic-header-toggle"
-                      onClick={() => toggleTopic(topic.topic)}
+                  <div
+                    className="topic-header"
+                    onClick={() => toggleTopic(topic.topic)}
+                  >
+                    <i
+                      className={
+                        isExpanded ? "chevron-icon open" : "chevron-icon"
+                      }
                     >
-                      <span className="topic-label">{topic.label}</span>
-                      <span className="score-pill">
-                        {topic.correct}/{topic.total}
-                        {t("overview.topic.scoreUnit", locale)}
-                      </span>
-                      <i
-                        className={
-                          isExpanded ? "chevron-icon open" : "chevron-icon"
-                        }
-                      >
-                        ›
-                      </i>
-                    </button>
+                      ›
+                    </i>
+                    <span className="topic-label">{displayLabel}</span>
                     <button
                       className="edit-label-btn"
                       onClick={(e) =>
-                        startEditingLabel(topic.topic, topic.label, e)
+                        startEditingLabel(topic.topic, displayLabel, e)
                       }
                       title={t("overview.topic.editLabel", locale)}
                     >
                       <EditIcon />
                     </button>
+                    <span className="score-pill">
+                      {topic.correct}/{topic.total}
+                      {t("overview.topic.scoreUnit", locale)}
+                    </span>
                   </div>
                 )}
                 <div className="progress-wrap">
@@ -254,7 +258,9 @@ export function Overview({
                     </div>
                     <button
                       className={`copy-btn${copiedTopic === topic.topic ? " copied" : ""}`}
-                      onClick={() => copyReviewPrompt(topic.topic, topic.label)}
+                      onClick={() =>
+                        copyReviewPrompt(topic.topic, displayLabel)
+                      }
                     >
                       <span>
                         {copiedTopic === topic.topic
@@ -275,7 +281,7 @@ export function Overview({
                         </div>
                         {[...topicGaps]
                           .sort((a, b) =>
-                            a.first_missed.localeCompare(b.first_missed),
+                            a.last_missed.localeCompare(b.last_missed),
                           )
                           .slice(0, 3)
                           .map((gap) => (

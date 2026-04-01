@@ -42,7 +42,7 @@ describe("parseProgressData", () => {
         { task: "1", name: "Setup", plan: "phase1.md" },
         { task: "2", name: "Scaffold", plan: "phase1.md" },
       ],
-      skipped_tasks: [],
+      skipped_tasks: [{ task: "2.5", plan: "phase1.md" }],
       in_progress: [],
       unresolved_gaps: [],
     });
@@ -54,6 +54,24 @@ describe("parseProgressData", () => {
       { task: "1", name: "Setup", plan: "phase1.md" },
       { task: "2", name: "Scaffold", plan: "phase1.md" },
     ]);
+    expect(result!.skipped_tasks).toEqual([{ task: "2.5", plan: "phase1.md" }]);
+  });
+
+  it("filters out invalid skipped_tasks entries", () => {
+    const json = JSON.stringify({
+      version: "1.0",
+      current_plan: null,
+      current_task: null,
+      current_step: null,
+      next_suggest: null,
+      resume_context: null,
+      completed_tasks: [],
+      skipped_tasks: ["old-string-format", { task: "1", plan: "p.md" }, 42],
+      unresolved_gaps: [],
+    });
+    const result = parseProgressData(json);
+    expect(result).not.toBeNull();
+    expect(result!.skipped_tasks).toEqual([{ task: "1", plan: "p.md" }]);
   });
 
   it("returns null for invalid JSON", () => {
@@ -143,7 +161,7 @@ describe("parseQuestionHistory", () => {
         {
           id: "q_abc00001",
           reviewOf: null,
-          timestamp: "2026-03-01T10:00:00Z",
+          answeredAt: "2026-03-01T10:00:00Z",
           taskId: "task-1",
           topic: "typescript",
           concept: "interface vs type",
@@ -168,7 +186,7 @@ describe("parseQuestionHistory", () => {
     const json = JSON.stringify({
       history: [
         {
-          timestamp: "2026-03-01T10:00:00Z",
+          answeredAt: "2026-03-01T10:00:00Z",
           taskId: "task-1",
           topic: "typescript",
           concept: "interface vs type",
@@ -191,7 +209,7 @@ describe("parseQuestionHistory", () => {
         {
           id: "q_abc00001",
           reviewOf: "q_abc00000",
-          timestamp: "2026-03-01T10:00:00Z",
+          answeredAt: "2026-03-01T10:00:00Z",
           taskId: "task-1",
           topic: "typescript",
           concept: "test",
@@ -231,7 +249,7 @@ describe("computeDashboardData", () => {
         {
           id: "q_abc00001",
           reviewOf: null,
-          timestamp: "2026-03-01T10:00:00Z",
+          answeredAt: "2026-03-01T10:00:00Z",
           taskId: "task-1",
           topic: "typescript",
           concept: "interface vs type",
@@ -242,7 +260,7 @@ describe("computeDashboardData", () => {
         {
           id: "q_abc00002",
           reviewOf: null,
-          timestamp: "2026-03-01T11:00:00Z",
+          answeredAt: "2026-03-01T11:00:00Z",
           taskId: "task-1",
           topic: "typescript",
           concept: "generics",
@@ -253,7 +271,7 @@ describe("computeDashboardData", () => {
         {
           id: "q_abc00003",
           reviewOf: "q_abc00001",
-          timestamp: "2026-03-02T10:00:00Z",
+          answeredAt: "2026-03-02T10:00:00Z",
           taskId: "task-2",
           topic: "typescript",
           concept: "interface vs type",
@@ -275,7 +293,7 @@ describe("computeDashboardData", () => {
         {
           id: "q_abc00001",
           reviewOf: null,
-          timestamp: "2026-03-01T10:00:00Z",
+          answeredAt: "2026-03-01T10:00:00Z",
           taskId: "task-1",
           topic: "typescript",
           concept: "interface vs type",
@@ -286,7 +304,7 @@ describe("computeDashboardData", () => {
         {
           id: "q_abc00002",
           reviewOf: "q_abc00001",
-          timestamp: "2026-03-02T10:00:00Z",
+          answeredAt: "2026-03-02T10:00:00Z",
           taskId: "task-2",
           topic: "typescript",
           concept: "interface vs type",
@@ -297,7 +315,7 @@ describe("computeDashboardData", () => {
         {
           id: "q_abc00003",
           reviewOf: null,
-          timestamp: "2026-03-01T12:00:00Z",
+          answeredAt: "2026-03-01T12:00:00Z",
           taskId: "task-1",
           topic: "react",
           concept: "useState",
@@ -325,7 +343,7 @@ describe("computeDashboardData", () => {
         {
           id: "q_abc00001",
           reviewOf: "q_nonexistent",
-          timestamp: "2026-03-01T10:00:00Z",
+          answeredAt: "2026-03-01T10:00:00Z",
           taskId: "task-1",
           topic: "typescript",
           concept: "closures",
@@ -379,7 +397,7 @@ describe("computeDashboardData", () => {
           questionId: "q_abc00001",
           concept: "interface vs type",
           topic: "typescript",
-          first_missed: "2026-03-01",
+          last_missed: "2026-03-01",
           task: "task-1",
           note: "confused extends vs &",
         },
@@ -390,7 +408,7 @@ describe("computeDashboardData", () => {
         {
           id: "q_abc00001",
           reviewOf: null,
-          timestamp: "2026-03-01T10:00:00Z",
+          answeredAt: "2026-03-01T10:00:00Z",
           taskId: "task-1",
           topic: "typescript",
           concept: "interface vs type",
@@ -411,7 +429,7 @@ describe("computeDashboardData", () => {
         {
           id: "q_abc00001",
           reviewOf: null,
-          timestamp: "2026-03-01T10:00:00Z",
+          answeredAt: "2026-03-01T10:00:00Z",
           taskId: "task-1",
           topic: "typescript",
           concept: "generics",
@@ -422,7 +440,7 @@ describe("computeDashboardData", () => {
         {
           id: "q_abc00002",
           reviewOf: "q_abc00001",
-          timestamp: "2026-03-05T10:00:00Z",
+          answeredAt: "2026-03-05T10:00:00Z",
           taskId: "task-2",
           topic: "typescript",
           concept: "generics",
@@ -433,7 +451,7 @@ describe("computeDashboardData", () => {
         {
           id: "q_abc00003",
           reviewOf: "q_abc00001",
-          timestamp: "2026-03-10T10:00:00Z",
+          answeredAt: "2026-03-10T10:00:00Z",
           taskId: "task-3",
           topic: "typescript",
           concept: "generics",
@@ -452,13 +470,13 @@ describe("computeDashboardData", () => {
     expect(ts?.correct).toBe(1);
   });
 
-  it("picks last in array order when timestamps are identical", () => {
+  it("picks last in array order when answeredAt values are identical", () => {
     const history = {
       history: [
         {
           id: "q_abc00001",
           reviewOf: null,
-          timestamp: "2026-03-01T10:00:00Z",
+          answeredAt: "2026-03-01T10:00:00Z",
           taskId: "task-1",
           topic: "typescript",
           concept: "generics",
@@ -469,7 +487,7 @@ describe("computeDashboardData", () => {
         {
           id: "q_abc00002",
           reviewOf: "q_abc00001",
-          timestamp: "2026-03-01T10:00:00Z",
+          answeredAt: "2026-03-01T10:00:00Z",
           taskId: "task-1",
           topic: "typescript",
           concept: "generics",

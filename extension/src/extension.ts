@@ -104,6 +104,8 @@ export function activate(context: vscode.ExtensionContext): void {
         // doesn't exist yet
       }
 
+      const detectedLocale = vscode.env.language.startsWith("ja") ? "ja" : "en";
+
       if (existingConfig) {
         // Update extensionVersion in existing config
         existingConfig.extensionVersion = extensionVersion;
@@ -120,12 +122,13 @@ export function activate(context: vscode.ExtensionContext): void {
               repositoryName: folderName,
               enableMentor: true,
               topics: [
-                { key: "html", label: "HTML" },
-                { key: "css", label: "CSS" },
-                { key: "javascript", label: "JavaScript" },
-                { key: "typescript", label: "TypeScript" },
+                { key: "a-html", label: "HTML" },
+                { key: "a-css", label: "CSS" },
+                { key: "a-javascript", label: "JavaScript" },
+                { key: "a-typescript", label: "TypeScript" },
               ],
               mentorFiles: { spec: null, plan: null },
+              locale: detectedLocale,
               extensionVersion,
             },
             null,
@@ -201,7 +204,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
       const isJa = existingConfig
         ? existingConfig.locale !== "en"
-        : vscode.env.language.startsWith("ja");
+        : detectedLocale === "ja";
 
       // Handle CLAUDE.md
       const claudeMdUri = vscode.Uri.joinPath(wsRoot, "CLAUDE.md");

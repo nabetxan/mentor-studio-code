@@ -4,7 +4,7 @@ export interface UnresolvedGap {
   questionId: string;
   concept: string;
   topic: string;
-  first_missed: string;
+  last_missed: string;
   task: string;
   note: string;
 }
@@ -12,6 +12,11 @@ export interface UnresolvedGap {
 export interface CompletedTask {
   task: string;
   name: string;
+  plan: string;
+}
+
+export interface SkippedTask {
+  task: string;
   plan: string;
 }
 
@@ -27,7 +32,7 @@ export interface ProgressData {
   next_suggest: string | null;
   resume_context: string | null;
   completed_tasks: CompletedTask[];
-  skipped_tasks: string[];
+  skipped_tasks: SkippedTask[];
   unresolved_gaps: UnresolvedGap[];
   learner_profile?: LearnerProfile;
 }
@@ -37,7 +42,7 @@ export interface ProgressData {
 export interface QuestionHistoryEntry {
   id: string;
   reviewOf: string | null;
-  timestamp: string;
+  answeredAt: string;
   taskId: string;
   topic: string;
   concept: string;
@@ -96,7 +101,7 @@ export interface DashboardData {
 export type ExtensionMessage =
   | { type: "update"; data: DashboardData }
   | { type: "config"; data: MentorStudioConfig }
-  | { type: "noConfig" }
+  | { type: "noConfig"; locale: Locale }
   | { type: "addTopicResult"; ok: boolean; key?: string; error?: string };
 
 export type FileField = "spec" | "plan";

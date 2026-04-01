@@ -79,6 +79,14 @@ const translations = {
   },
   "settings.selectFile": { ja: "ファイルを選択", en: "Select File" },
   "settings.createPrompt": { ja: "プロンプトを作成", en: "Create prompt" },
+  "settings.createPrompt.plan": {
+    ja: "AIとプランを作成",
+    en: "Create plan with AI",
+  },
+  "settings.createPrompt.spec": {
+    ja: "AIと仕様を作成",
+    en: "Create spec with AI",
+  },
   "settings.change": { ja: "変更", en: "Change" },
   "settings.detach": { ja: "外す", en: "Detach" },
   "settings.language": { ja: "Language / 言語", en: "Language" },
@@ -103,6 +111,20 @@ const translations = {
   "settings.prompt.intake": {
     ja: "docs/mentor/skills/intake/SKILL.md を読んで、プロフィールを更新してください。",
     en: "Read docs/mentor/skills/intake/SKILL.md and update my profile.",
+  },
+
+  // No-config screen
+  "app.noConfig.notFound": {
+    ja: ".mentor-studio.json が見つかりません。",
+    en: ".mentor-studio.json not found.",
+  },
+  "app.noConfig.instruction": {
+    ja: 'コマンドパレットから "Mentor Studio: Setup Mentor" を実行してください。',
+    en: 'Run "Mentor Studio: Setup Mentor" from the command palette.',
+  },
+  "app.noConfig.button": {
+    ja: "セットアップを実行する",
+    en: "Run Setup",
   },
 
   // App-level

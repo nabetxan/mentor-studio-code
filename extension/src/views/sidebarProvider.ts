@@ -154,12 +154,16 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
   sendNoConfig(): void {
     this.hasConfig = false;
-    this.postMessage({ type: "noConfig" });
+    this.postMessage({ type: "noConfig", locale: this.detectLocale() });
+  }
+
+  private detectLocale(): Locale {
+    return vscode.env.language.startsWith("ja") ? "ja" : "en";
   }
 
   private flushState(): void {
     if (!this.hasConfig) {
-      this.postMessage({ type: "noConfig" });
+      this.postMessage({ type: "noConfig", locale: this.detectLocale() });
       return;
     }
     if (this.latestConfig) {

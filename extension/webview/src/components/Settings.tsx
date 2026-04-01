@@ -20,6 +20,7 @@ interface FileSettingProps {
   field: FileField;
   value: string | null;
   createPrompt: string;
+  buttonLabel: string;
   locale: Locale;
   warning?: boolean;
 }
@@ -29,6 +30,7 @@ function FileSetting({
   field,
   value,
   createPrompt,
+  buttonLabel,
   locale,
   warning,
 }: FileSettingProps) {
@@ -100,12 +102,23 @@ function FileSetting({
             {t("settings.selectFile", locale)}
           </button>
           <button
-            className="btn-secondary"
+            className="snippet-btn"
             onClick={handleCopyPrompt}
             title={t("settings.copyCreatePrompt", locale)}
           >
-            {copied ? <CheckIcon /> : <SparkleIcon />}{" "}
-            {t("settings.createPrompt", locale)}
+            <span className="snippet-title">{buttonLabel}</span>
+            <span className="snippet-icon">
+              {copied ? (
+                <>
+                  <CheckIcon />
+                  <span className="snippet-copied-text">
+                    {t("actions.copied", locale)}
+                  </span>
+                </>
+              ) : (
+                <SparkleIcon />
+              )}
+            </span>
           </button>
         </div>
       </div>
@@ -187,6 +200,7 @@ export function Settings({
         field="plan"
         value={mentorFiles.plan}
         createPrompt={t("settings.prompt.plan", locale)}
+        buttonLabel={t("settings.createPrompt.plan", locale)}
         locale={locale}
         warning={!mentorFiles.plan}
       />
@@ -195,6 +209,7 @@ export function Settings({
         field="spec"
         value={mentorFiles.spec}
         createPrompt={t("settings.prompt.spec", locale)}
+        buttonLabel={t("settings.createPrompt.spec", locale)}
         locale={locale}
       />
       <div className="setting-item">

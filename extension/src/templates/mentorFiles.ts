@@ -58,13 +58,20 @@ Mandatory for every concept step:
 
 ### (a) Explain
 Explain the concept with a project-relevant example.
+- Match depth and analogies to \`learner_profile.level\`
+- Tie examples to \`learner_profile.interests\` where relevant
 GATE: explanation given → proceed to (b)
 
 ### (b) Ask
 Check \`unresolved_gaps\` in progress.json:
 - Gaps related to this task's topic → ask a review question on that gap first.
-- No relevant gaps → ask 1 question about the concept needed for this step
-  (calibrate to learner's level and current code progress).
+- No relevant gaps → ask 1 question about the concept needed for this step.
+  - Calibrate question difficulty to \`learner_profile.level\`
+  - Prioritize \`learner_profile.weak_areas\` topics when a related concept appears
+- **Context rule**: When the question involves code, ALWAYS include:
+  - The relevant code snippet (inline or fenced block)
+  - The file path where the code lives (e.g. \`extension/src/services/foo.ts\`)
+  - Enough surrounding context for the user to understand what the code does
 GATE: question asked → WAIT for user
 
 ### (c) Wait
@@ -72,8 +79,18 @@ Do NOT continue until the user responds.
 GATE: user responded → proceed to (d)
 
 ### (d) Feedback
-Affirm effort → correct if wrong → reinforce with example.
-GATE: feedback given → proceed to (e)
+Affirm effort, then respond based on answer quality:
+- **Correct** → affirm and reinforce with example
+- **Close / partial** → affirm what's right, then give a hint or rephrase the question from a different angle. Do NOT reveal the answer yet. WAIT for user to try again. Repeat until correct or user says they give up.
+- **Wrong / "わからない"** → acknowledge without judgment, then try ONE of: a simpler sub-question, a concrete example, or a different angle. Do NOT immediately give the full answer. WAIT for user to try again. If still stuck after 2 attempts, then explain the answer.
+
+After giving feedback, STOP and let the user respond. The user may want to:
+- Ask follow-up questions about the feedback (「もっとわかりやすく説明して」「この部分はどういう意味？」)
+- Confirm understanding
+- Simply acknowledge (OK, なるほど, etc.)
+
+Answer any follow-up questions before proceeding. Once the user is satisfied (or explicitly says to move on), proceed to (e).
+GATE: feedback given AND user acknowledged → proceed to (e)
 
 ### (e) RECORD ← BLOCKING
 - Correct answer (regular question) → record to \`question-history.json\`
@@ -81,7 +98,10 @@ GATE: feedback given → proceed to (e)
 - Wrong / "I don't know" / partial → record to \`question-history.json\` AND add to \`progress.json\` unresolved_gaps
 - Schema: see \`docs/mentor/skills/mentor-session/tracker-format.md\`
 
-After recording, check for learner_profile updates (if multiple conditions apply, ask one at a time and wait for each answer before asking the next):
+After recording, check for new topics and learner_profile updates (if multiple conditions apply, ask one at a time and wait for each answer before asking the next):
+- Topic not in \`.mentor-studio.json\` \`topics\` → ask: 「〇〇 は topics に未登録です。追加しますか？」
+  - On YES: add \`{ "key": "a-<kebab-case>", "label": "<Display Name>" }\` to \`.mentor-studio.json\` \`topics\` (prefix \`a-\` is required for AI-generated keys)
+  - On NO: no change
 - Concept in \`weak_areas\` answered correctly in a different context → ask: 「〇〇の理解が深まったように見えます。weak_areas から外していいですか？」
 - Concept not in \`weak_areas\` where user struggles repeatedly → ask: 「〇〇が難しそうに見えたので weak_areas に追加していいですか？」
 - Strong interest shown in a topic → ask: 「〇〇への興味を感じました。interests に追加していいですか？」
@@ -92,6 +112,8 @@ GATE: recorded → proceed to (f)
 
 ### (f) Code
 Write/modify code with line-by-line explanation.
+- Scaffolding amount based on \`learner_profile.level\`
+- Follow \`learner_profile.mentor_style\` (hints vs. full guidance)
 GATE: code written → proceed to (g)
 
 ### (g) Verify
@@ -108,7 +130,10 @@ GATE: user responded → proceed to (i)
 - Wrong / "I don't know" / partial → record to \`question-history.json\` AND add to \`progress.json\` unresolved_gaps
 - Schema: see \`docs/mentor/skills/mentor-session/tracker-format.md\`
 
-After recording, check for learner_profile updates (if multiple conditions apply, ask one at a time and wait for each answer before asking the next):
+After recording, check for new topics and learner_profile updates (if multiple conditions apply, ask one at a time and wait for each answer before asking the next):
+- Topic not in \`.mentor-studio.json\` \`topics\` → ask: 「〇〇 は topics に未登録です。追加しますか？」
+  - On YES: add \`{ "key": "a-<kebab-case>", "label": "<Display Name>" }\` to \`.mentor-studio.json\` \`topics\` (prefix \`a-\` is required for AI-generated keys)
+  - On NO: no change
 - Concept in \`weak_areas\` answered correctly in a different context → ask: 「〇〇の理解が深まったように見えます。weak_areas から外していいですか？」
 - Concept not in \`weak_areas\` where user struggles repeatedly → ask: 「〇〇が難しそうに見えたので weak_areas に追加していいですか？」
 - Strong interest shown in a topic → ask: 「〇〇への興味を感じました。interests に追加していいですか？」
@@ -123,12 +148,29 @@ Then say: "進捗を保存しました。ここで一区切りです。新しい
 
 GATE: recorded + progress.json updated + message sent → cycle complete
 
+## Task Skip
+
+When the user asks to skip the current task:
+
+1. Add \`{ "task": "<current_task>", "plan": "<current_plan>" }\` to \`skipped_tasks\` in \`docs/mentor/progress.json\`
+2. Follow the "Next Task Selection" flow below
+
 ## Task Completion
 
 Run in order, never skip:
 
 1. Update \`docs/mentor/progress.json\`: add to completed_tasks, increment current_task, update resume_context
-2. Overwrite \`docs/mentor/current-task.md\` with next task content (read from mentorFiles.plan in \`.mentor-studio.json\`)
+2. Follow the "Next Task Selection" flow below
+
+## Next Task Selection
+
+After a task is completed or skipped:
+
+1. If \`skipped_tasks\` is not empty → ask:
+   > 「次のタスクに進みますか？それとも、スキップしたタスク（<list skipped task names>）に取り組みますか？」
+   - User chooses next task → overwrite \`docs/mentor/current-task.md\` with next task content (read from mentorFiles.plan in \`.mentor-studio.json\`)
+   - User chooses a skipped task → remove it from \`skipped_tasks\`, set it as \`current_task\`, overwrite \`docs/mentor/current-task.md\` with that task's content
+2. If \`skipped_tasks\` is empty → overwrite \`docs/mentor/current-task.md\` with next task content (read from mentorFiles.plan in \`.mentor-studio.json\`)
 
 ## References (load on demand)
 
@@ -152,9 +194,9 @@ Records every answer to a mentor-asked question, inside a top-level \`"history"\
 {
   "id": "string (q_ + 8 random alphanumeric characters, e.g. q_V1StGXR8)",
   "reviewOf": "string (root question id) | null",
-  "timestamp": "ISO 8601 string",
+  "answeredAt": "ISO 8601 string",
   "taskId": "string (e.g. phase2.3-task8)",
-  "topic": "string",
+  "topic": "string (must match a key from .mentor-studio.json topics, e.g. a-react)",
   "concept": "string (specific concept being tested)",
   "question": "string (exact question asked)",
   "userAnswer": "string",
@@ -181,9 +223,9 @@ Records every answer to a mentor-asked question, inside a top-level \`"history"\
 {
   "id": "q_Kx9mP2nL",
   "reviewOf": null,
-  "timestamp": "2026-03-25T00:05:00Z",
+  "answeredAt": "2026-03-25T00:05:00Z",
   "taskId": "phase2.3-task8",
-  "topic": "React hooks",
+  "topic": "a-react",
   "concept": "useEffect dependency array",
   "question": "useEffect の [locale] は何をしている？",
   "userAnswer": "localeが変わったときにeffectを再実行するタイミングをReactに伝える",
@@ -197,9 +239,9 @@ Records every answer to a mentor-asked question, inside a top-level \`"history"\
 {
   "id": "q_7jRtW3vB",
   "reviewOf": null,
-  "timestamp": "2026-03-25T00:02:00Z",
+  "answeredAt": "2026-03-25T00:02:00Z",
   "taskId": "phase2.3-task8",
-  "topic": "React hooks - useEffect dependency array",
+  "topic": "a-react",
   "concept": "useEffect dependency array",
   "question": "useEffect の [locale] は何をしている？",
   "userAnswer": ".mentor-studio.json に保存されたlocale",
@@ -213,9 +255,9 @@ Records every answer to a mentor-asked question, inside a top-level \`"history"\
 {
   "id": "q_Np4xQ8mK",
   "reviewOf": "q_7jRtW3vB",
-  "timestamp": "2026-03-28T10:00:00Z",
+  "answeredAt": "2026-03-28T10:00:00Z",
   "taskId": "phase3-task1",
-  "topic": "React hooks",
+  "topic": "a-react",
   "concept": "useEffect dependency array",
   "question": "useEffectの第2引数に[count]を渡すとどういう動きになる？",
   "userAnswer": "countが変わるたびにeffectが再実行される",
@@ -237,8 +279,11 @@ Each entry represents a concept gap not yet resolved through a correct review an
 \`\`\`json
 {
   "questionId": "string (id of the root question-history entry that created this gap)",
-  "topic": "string",
-  "detail": "string (what specifically was misunderstood)"
+  "topic": "string (must match a key from .mentor-studio.json topics, e.g. a-react)",
+  "concept": "string (specific concept being tested)",
+  "last_missed": "ISO 8601 string (timestamp of the most recent incorrect answer)",
+  "task": "string (taskId where the gap was first created)",
+  "note": "string (what specifically was misunderstood)"
 }
 \`\`\`
 
@@ -248,13 +293,22 @@ Each entry represents a concept gap not yet resolved through a correct review an
 - When adding a gap from a review question (\`reviewOf\` is not null), use the \`reviewOf\` value (the root id), not the review entry's own \`id\`
 - When creating a review question for this gap, set \`reviewOf\` to this \`questionId\`
 
+### last_missed field rules
+
+- Set to the \`answeredAt\` of the incorrect answer when the gap is first created
+- **Update** this value each time a review question for this gap is answered incorrectly
+- When a review question is answered correctly, the entire gap entry is removed from unresolved_gaps
+
 ### Example
 
 \`\`\`json
 {
   "questionId": "q_7jRtW3vB",
-  "topic": "React hooks - useEffect dependency array",
-  "detail": "useEffectの依存配列[locale]をファイル保存と誤解した。依存配列はReactがeffectを再実行するタイミングを決めるもの。"
+  "topic": "a-react",
+  "concept": "useEffect dependency array",
+  "last_missed": "2026-03-25T00:02:00Z",
+  "task": "phase2.3-task8",
+  "note": "useEffectの依存配列[locale]をファイル保存と誤解した。依存配列はReactがeffectを再実行するタイミングを決めるもの。"
 }
 \`\`\`
 
@@ -470,17 +524,6 @@ Write to \`docs/mentor/progress.json\` — add or overwrite the \`learner_profil
 \`\`\`
 
 Then say: 「プロフィールを保存しました。では始めましょう！」and return control to the caller to continue from the unresolved_gaps check.
-
-## How learner_profile Shapes Mentoring
-
-Use \`learner_profile\` to calibrate every part of the Teaching Cycle:
-
-| Step | How to use learner_profile |
-|---|---|
-| (a) Explain | Match depth and analogies to \`level\`; tie examples to \`interests\` where relevant |
-| (b) Ask | Calibrate question difficulty to \`level\`; prioritize \`weak_areas\` topics when a related concept appears |
-| (f) Code | Amount of scaffolding based on \`level\`; follow \`mentor_style\` (more hints vs. more guidance) |
-| Tone | Pacing and encouragement style matches \`mentor_style\` |
 `;
 
 export const QUESTION_HISTORY_JSON = JSON.stringify({ history: [] }, null, 2);

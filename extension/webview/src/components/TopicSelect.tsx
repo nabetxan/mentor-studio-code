@@ -93,25 +93,22 @@ export function TopicSelect({
       </button>
       {open && (
         <div className="topic-select-dropdown">
-          {options.map((opt) => (
-            <button
-              key={opt.key}
-              className={`topic-select-item${opt.key === value ? " selected" : ""}`}
-              onClick={() => handleSelect(opt.key)}
-            >
-              {opt.label}
-            </button>
-          ))}
+          {[...options]
+            .sort((a, b) =>
+              a.label.localeCompare(b.label, undefined, { numeric: true }),
+            )
+            .map((opt) => (
+              <button
+                key={opt.key}
+                className={`topic-select-item${opt.key === value ? " selected" : ""}`}
+                onClick={() => handleSelect(opt.key)}
+              >
+                {opt.label}
+              </button>
+            ))}
           <div className="topic-select-separator" />
           <div className="topic-select-add">
             <div className="form-row">
-              <input
-                className="form-input"
-                value={newLabel}
-                onChange={(e) => setNewLabel(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={t("overview.topic.newTopic", locale)}
-              />
               <button
                 className="btn-primary"
                 disabled={addDisabled}
@@ -119,6 +116,13 @@ export function TopicSelect({
               >
                 +
               </button>
+              <input
+                className="form-input"
+                value={newLabel}
+                onChange={(e) => setNewLabel(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={t("overview.topic.newTopic", locale)}
+              />
             </div>
             {addTopicError && (
               <div className="topic-select-error">{addTopicError}</div>
