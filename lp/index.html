@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mentor Studio Code — AIに"教えてもらう"ためのVSCode拡張</title>
+    <meta
+      name="description"
+      content="コードが動くだけじゃない。理解できているか、確認しながら学ぼう。VSCode拡張として動くAIメンターツール。"
+    />
+    <meta
+      property="og:title"
+      content='Mentor Studio Code — AIに"教えてもらう"ためのVSCode拡張'
+    />
+    <meta
+      property="og:description"
+      content="コードが動くだけじゃない。理解できているか、確認しながら学ぼう。"
+    />
+    <meta
+      property="og:image"
+      content="https://nabetxan.github.io/mentor-studio-code/images/icon.png"
+    />
+    <meta
+      property="og:url"
+      content="https://nabetxan.github.io/mentor-studio-code/"
+    />
+    <meta property="og:type" content="website" />
+    <link rel="icon" href="images/icon.png" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <!-- 1. Header -->
+    <header class="header" id="top">
+      <div class="header-inner">
+        <a href="#top" class="logo">
+          <img
+            src="images/icon.png"
+            alt="Mentor Studio Code"
+            class="logo-icon"
+          />
+          <span class="logo-text">Mentor Studio Code</span>
+        </a>
+        <nav class="nav">
+          <a href="#features" data-ja="特徴" data-en="Features">特徴</a>
+          <a
+            href="#screenshots"
+            data-ja="スクリーンショット"
+            data-en="Screenshots"
+            >スクリーンショット</a
+          >
+          <a href="#setup" data-ja="セットアップ" data-en="Setup"
+            >セットアップ</a
+          >
+          <button
+            class="lang-toggle"
+            id="lang-toggle"
+            aria-label="Toggle language"
+          >
+            <span class="lang-option" data-lang="ja">JA</span>
+            <span class="lang-separator">/</span>
+            <span class="lang-option" data-lang="en">EN</span>
+          </button>
+        </nav>
+      </div>
+    </header>
+
+    <!-- 2. Hero -->
+    <section class="hero">
+      <span class="hero-label">VSCODE EXTENSION</span>
+      <h1
+        data-ja='AIに"教えてもらう"ためのVSCode拡張'
+        data-en="A VSCode Extension to Learn From AI"
+      >
+        AIに"教えてもらう"ためのVSCode拡張
+      </h1>
+      <p
+        class="hero-sub"
+        data-ja="コードが動くだけじゃない。理解できているか、確認しながら学ぼう。"
+        data-en="Don't just make it work. Make sure you understand it."
+      >
+        コードが動くだけじゃない。理解できているか、確認しながら学ぼう。
+      </p>
+      <div class="cta-group">
+        <a
+          href="https://github.com/nabetxan/mentor-studio-code/releases"
+          class="btn btn-primary"
+          data-ja="Marketplaceからインストール"
+          data-en="Install from Marketplace"
+          >Marketplaceからインストール</a
+        >
+        <a
+          href="https://github.com/nabetxan/mentor-studio-code"
+          class="btn btn-secondary"
+          >GitHub →</a
+        >
+      </div>
+    </section>
+
+    <!-- 3. Problem Statement -->
+    <section class="section problem">
+      <h2
+        data-ja="AIが書いてくれるけど、自分のものになっていない"
+        data-en="AI writes the code, but it's not yours yet"
+      >
+        AIが書いてくれるけど、自分のものになっていない
+      </h2>
+      <div class="problem-steps">
+        <div class="problem-step">
+          <span class="problem-icon">🤖</span>
+          <p data-ja="AIがコードを書く" data-en="AI writes the code">
+            AIがコードを書く
+          </p>
+        </div>
+        <div class="problem-step">
+          <span class="problem-icon">✅</span>
+          <p data-ja="動く。テスト通る。" data-en="It works. Tests pass.">
+            動く。テスト通る。
+          </p>
+        </div>
+        <div class="problem-step problem-step--highlight">
+          <span class="problem-icon">❓</span>
+          <p data-ja="でも説明できる？" data-en="But can you explain it?">
+            でも説明できる？
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Features -->
+    <section class="section features" id="features">
+      <h2
+        data-ja="3つのタブで学びを可視化"
+        data-en="Visualize your learning with 3 tabs"
+      >
+        3つのタブで学びを可視化
+      </h2>
+      <div class="feature-cards">
+        <div class="feature-card">
+          <h3>Actions</h3>
+          <p
+            data-ja="ワンクリックでメンターに質問。タスク開始・レビュー依頼もここから。"
+            data-en="Ask your mentor with one click. Start tasks and request reviews here."
+          >
+            ワンクリックでメンターに質問。タスク開始・レビュー依頼もここから。
+          </p>
+        </div>
+        <div class="feature-card">
+          <h3>Overview</h3>
+          <p
+            data-ja="正答率・トピック別進捗・弱点をダッシュボードで一覧。"
+            data-en="See accuracy rates, topic progress, and weak areas at a glance."
+          >
+            正答率・トピック別進捗・弱点をダッシュボードで一覧。
+          </p>
+        </div>
+        <div class="feature-card">
+          <h3>Settings</h3>
+          <p
+            data-ja="言語切替・メンターON/OFF・ドキュメント連携。"
+            data-en="Language toggle, mentor ON/OFF, and document linking."
+          >
+            言語切替・メンターON/OFF・ドキュメント連携。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. Screenshots (future: replace with <video> when Remotion video is ready) -->
+    <section class="section screenshots" id="screenshots">
+      <h2 data-ja="実際の画面" data-en="See it in action">実際の画面</h2>
+      <div class="screenshot-scroll">
+        <!-- Replace these placeholders/images with <video src="demo.mp4"> when available -->
+        <div class="screenshot-item">
+          <div
+            class="screenshot-placeholder"
+            data-ja="Overview"
+            data-en="Overview"
+          >
+            Overview
+          </div>
+        </div>
+        <div class="screenshot-item">
+          <div
+            class="screenshot-placeholder"
+            data-ja="Actions"
+            data-en="Actions"
+          >
+            Actions
+          </div>
+        </div>
+        <div class="screenshot-item">
+          <div
+            class="screenshot-placeholder"
+            data-ja="メンター対話"
+            data-en="Mentor Chat"
+          >
+            メンター対話
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. Category Comparison -->
+    <section class="section comparison">
+      <h2
+        data-ja="既存ツールにないもの"
+        data-en="What existing tools are missing"
+      >
+        既存ツールにないもの
+      </h2>
+      <p
+        class="section-sub"
+        data-ja="どのカテゴリにも、学びを完結させる仕組みがなかった。"
+        data-en="No category of tools had a complete learning loop."
+      >
+        どのカテゴリにも、学びを完結させる仕組みがなかった。
+      </p>
+      <div class="comparison-cards">
+        <div class="comparison-card">
+          <h3
+            data-ja="AIコーディングアシスタント"
+            data-en="AI Coding Assistants"
+          >
+            AIコーディングアシスタント
+          </h3>
+          <p
+            data-ja="コードは書いてくれる。でも理解できたかは見てくれない。"
+            data-en="They write code for you. But they don't check if you understand it."
+          >
+            コードは書いてくれる。でも理解できたかは見てくれない。
+          </p>
+          <span
+            class="comparison-missing"
+            data-ja="✗ 学習トラッキングなし"
+            data-en="✗ No learning tracking"
+            >✗ 学習トラッキングなし</span
+          >
+        </div>
+        <div class="comparison-card">
+          <h3 data-ja="学習プラットフォーム" data-en="Learning Platforms">
+            学習プラットフォーム
+          </h3>
+          <p
+            data-ja="用意された問題は解ける。でも自分のプロジェクトでは使えない。"
+            data-en="You can solve prepared exercises. But not in your own project."
+          >
+            用意された問題は解ける。でも自分のプロジェクトでは使えない。
+          </p>
+          <span
+            class="comparison-missing"
+            data-ja="✗ IDE統合なし"
+            data-en="✗ No IDE integration"
+            >✗ IDE統合なし</span
+          >
+        </div>
+        <div class="comparison-card">
+          <h3 data-ja="VSCode学習拡張" data-en="VSCode Learning Extensions">
+            VSCode学習拡張
+          </h3>
+          <p
+            data-ja="フラッシュカードは作れる。でもAIが教えてくれるわけじゃない。"
+            data-en="You can make flashcards. But AI doesn't mentor you."
+          >
+            フラッシュカードは作れる。でもAIが教えてくれるわけじゃない。
+          </p>
+          <span
+            class="comparison-missing"
+            data-ja="✗ AIメンタリングなし"
+            data-en="✗ No AI mentoring"
+            >✗ AIメンタリングなし</span
+          >
+        </div>
+        <div class="comparison-card">
+          <h3 data-ja="AIメンターツール" data-en="AI Mentor Tools">
+            AIメンターツール
+          </h3>
+          <p
+            data-ja="教えてはくれる。でもセッションが終われば忘れてしまう。"
+            data-en="They teach you. But forget everything when the session ends."
+          >
+            教えてはくれる。でもセッションが終われば忘れてしまう。
+          </p>
+          <span
+            class="comparison-missing"
+            data-ja="✗ 履歴保存・弱点可視化なし"
+            data-en="✗ No history or weakness tracking"
+            >✗ 履歴保存・弱点可視化なし</span
+          >
+        </div>
+      </div>
+      <div class="comparison-summary">
+        <h3>Mentor Studio Code</h3>
+        <div class="comparison-checks">
+          <span data-ja="✅ AIメンタリング" data-en="✅ AI Mentoring"
+            >✅ AIメンタリング</span
+          >
+          <span data-ja="✅ 学習ログ自動収集" data-en="✅ Auto Log Collection"
+            >✅ 学習ログ自動収集</span
+          >
+          <span data-ja="✅ IDE統合" data-en="✅ IDE Integration"
+            >✅ IDE統合</span
+          >
+          <span data-ja="✅ 弱点可視化" data-en="✅ Weakness Visualization"
+            >✅ 弱点可視化</span
+          >
+        </div>
+        <p
+          data-ja="自分のプロジェクトで学びながら、弱点が自動で可視化される。"
+          data-en="Learn in your own project. See your weak spots automatically."
+        >
+          自分のプロジェクトで学びながら、弱点が自動で可視化される。
+        </p>
+      </div>
+    </section>
+
+    <!-- 7. Setup Steps -->
+    <section class="section setup" id="setup">
+      <h2 data-ja="4ステップで始められる" data-en="Get started in 4 steps">
+        4ステップで始められる
+      </h2>
+      <div class="setup-steps">
+        <div class="setup-step">
+          <span class="step-number">1</span>
+          <p
+            data-ja="VSCode Marketplace から拡張をインストール"
+            data-en="Install from VSCode Marketplace"
+          >
+            VSCode Marketplace から拡張をインストール
+          </p>
+        </div>
+        <div class="setup-step">
+          <span class="step-number">2</span>
+          <p
+            data-ja="コマンドパレットから Mentor Studio: Setup を実行"
+            data-en="Run Mentor Studio: Setup from the command palette"
+          >
+            コマンドパレットから Mentor Studio: Setup を実行
+          </p>
+        </div>
+        <div class="setup-step">
+          <span class="step-number">3</span>
+          <p
+            data-ja="Claude Code でメンターと一緒に開発を開始"
+            data-en="Start coding with your AI mentor in Claude Code"
+          >
+            Claude Code でメンターと一緒に開発を開始
+          </p>
+        </div>
+        <div class="setup-step">
+          <span class="step-number">4</span>
+          <p
+            data-ja="サイドバーで学習進捗が可視化される"
+            data-en="See your learning progress in the sidebar"
+          >
+            サイドバーで学習進捗が可視化される
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. Target Users -->
+    <section class="section target">
+      <h2 data-ja="こんな人におすすめ" data-en="Who is this for?">
+        こんな人におすすめ
+      </h2>
+      <div class="target-cards">
+        <div class="target-card">
+          <span class="target-icon">🎓</span>
+          <p
+            data-ja="AIと一緒にコードを書きながら学びたい人"
+            data-en="Developers who want to learn while coding with AI"
+          >
+            AIと一緒にコードを書きながら学びたい人
+          </p>
+        </div>
+        <div class="target-card">
+          <span class="target-icon">📊</span>
+          <p
+            data-ja="自分の理解度を客観的に把握したい人"
+            data-en="Learners who want to objectively track their understanding"
+          >
+            自分の理解度を客観的に把握したい人
+          </p>
+        </div>
+        <div class="target-card">
+          <span class="target-icon">🔄</span>
+          <p
+            data-ja="弱点を見つけて効率よく復習したい人"
+            data-en="Anyone who wants to find and review their weak spots efficiently"
+          >
+            弱点を見つけて効率よく復習したい人
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9. Footer CTA -->
+    <footer class="footer">
+      <h2 data-ja="今すぐ始めよう" data-en="Get Started">今すぐ始めよう</h2>
+      <div class="cta-group">
+        <a
+          href="https://github.com/nabetxan/mentor-studio-code/releases"
+          class="btn btn-primary"
+          data-ja="Marketplaceからインストール"
+          data-en="Install from Marketplace"
+          >Marketplaceからインストール</a
+        >
+        <a
+          href="https://github.com/nabetxan/mentor-studio-code"
+          class="btn btn-secondary"
+          >GitHub →</a
+        >
+      </div>
+      <p class="footer-license">MIT License · Free & Open Source</p>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>
