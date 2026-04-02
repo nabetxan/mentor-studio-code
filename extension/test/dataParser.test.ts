@@ -327,14 +327,12 @@ describe("computeDashboardData", () => {
     };
 
     const result = computeDashboardData(baseProgress, history, topics);
+    // Topics with 100% rate are filtered out from byTopic
     const ts = result.byTopic.find((t) => t.topic === "typescript");
-    expect(ts?.total).toBe(1);
-    expect(ts?.correct).toBe(1);
-    expect(ts?.rate).toBe(1.0);
+    expect(ts).toBeUndefined();
 
     const react = result.byTopic.find((t) => t.topic === "react");
-    expect(react?.total).toBe(1);
-    expect(react?.correct).toBe(1);
+    expect(react).toBeUndefined();
   });
 
   it("treats orphaned reviewOf as its own root", () => {
@@ -465,9 +463,9 @@ describe("computeDashboardData", () => {
     const result = computeDashboardData(baseProgress, history, topics);
     expect(result.totalQuestions).toBe(3);
     expect(result.correctRate).toBe(1.0);
+    // Topic with 100% rate is filtered out from byTopic
     const ts = result.byTopic.find((t) => t.topic === "typescript");
-    expect(ts?.total).toBe(1);
-    expect(ts?.correct).toBe(1);
+    expect(ts).toBeUndefined();
   });
 
   it("picks last in array order when answeredAt values are identical", () => {

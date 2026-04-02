@@ -257,12 +257,14 @@ export function computeDashboardData(
     });
   }
 
-  byTopic.sort((a, b) => a.rate - b.rate);
+  // Hide topics where all questions are answered correctly (rate === 1)
+  const filtered = byTopic.filter((t) => t.rate < 1);
+  filtered.sort((a, b) => a.rate - b.rate);
 
   return {
     totalQuestions,
     correctRate,
-    byTopic,
+    byTopic: filtered,
     unresolvedGaps: progress.unresolved_gaps,
     completedTasks: progress.completed_tasks,
     currentTask: progress.current_task,
