@@ -115,13 +115,45 @@ export function Overview({
         <div className="stat-card wide">
           <div className="stat-lbl">{t("overview.currentTask", locale)}</div>
           <div className="stat-val">
-            {data.currentTask === null
-              ? t("overview.notStarted", locale)
-              : `${t("overview.taskPrefix", locale)} ${data.currentTask}`}
+            {data.currentTask === null ? (
+              t("overview.notStarted", locale)
+            ) : (
+              <a
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  postMessage({
+                    type: "openFile",
+                    relativePath: "docs/mentor/current-task.md",
+                  });
+                }}
+                className="file-path-link"
+              >
+                {`${t("overview.taskPrefix", locale)} ${data.currentTask}`}
+              </a>
+            )}
           </div>
-          {config?.mentorFiles?.plan && (
-            <div className="stat-sub">{config.mentorFiles.plan}</div>
-          )}
+          {config?.mentorFiles?.plan != null &&
+            (() => {
+              const planPath = config.mentorFiles.plan;
+              return (
+                <div className="stat-sub">
+                  <a
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      postMessage({
+                        type: "openFile",
+                        relativePath: planPath,
+                      });
+                    }}
+                    className="file-path-link"
+                  >
+                    {planPath}
+                  </a>
+                </div>
+              );
+            })()}
         </div>
       </div>
 

@@ -1,3 +1,5 @@
+import * as os from "os";
+import * as path from "path";
 import * as vscode from "vscode";
 import { FileWatcherService } from "./services/fileWatcher";
 import {
@@ -206,51 +208,114 @@ export function activate(context: vscode.ExtensionContext): void {
         ? existingConfig.locale !== "en"
         : detectedLocale === "ja";
 
-      // Handle CLAUDE.md
-      const claudeMdUri = vscode.Uri.joinPath(wsRoot, "CLAUDE.md");
+      // Handle CLAUDE.md — let user choose project-wide or personal
       const mentorRef = "@docs/mentor/rules/MENTOR_RULES.md";
-      let claudeContent = "";
-      let claudeExists = false;
+
+      // Build personal CLAUDE.md path: ~/.claude/projects/-Users-xxx/CLAUDE.md
+      const wsPath = wsRoot.fsPath;
+      const projectDirName = wsPath.replace(/\//g, "-");
+      const personalClaudeMdPath = path.join(
+        os.homedir(),
+        ".claude",
+        "projects",
+        projectDirName,
+        "CLAUDE.md",
+      );
+      const personalClaudeMdUri = vscode.Uri.file(personalClaudeMdPath);
+      const projectClaudeMdUri = vscode.Uri.joinPath(wsRoot, "CLAUDE.md");
+
+      // Check if mentorRef already exists in either location
+      let personalContent = "";
+      let personalExists = false;
+      let projectContent = "";
+      let projectExists = false;
 
       try {
-        const raw = await vscode.workspace.fs.readFile(claudeMdUri);
-        claudeContent = Buffer.from(raw).toString();
-        claudeExists = true;
+        const raw = await vscode.workspace.fs.readFile(personalClaudeMdUri);
+        personalContent = Buffer.from(raw).toString();
+        personalExists = true;
       } catch {
         // doesn't exist
       }
 
+      try {
+        const raw = await vscode.workspace.fs.readFile(projectClaudeMdUri);
+        projectContent = Buffer.from(raw).toString();
+        projectExists = true;
+      } catch {
+        // doesn't exist
+      }
+
+      const alreadyInPersonal = personalContent.includes(mentorRef);
+      const alreadyInProject = projectContent.includes(mentorRef);
+
       let claudeAction = "skipped (already contains mentorRef)";
 
-      if (!claudeExists) {
-        // New project: auto-create without dialog
-        await vscode.workspace.fs.writeFile(
-          claudeMdUri,
-          Buffer.from(mentorRef + "\n"),
-        );
-        claudeAction = "created (new file)";
-      } else if (!claudeContent.includes(mentorRef)) {
-        // Existing file: ask before appending
-        const userChoice = await vscode.window.showInformationMessage(
+      if (!alreadyInPersonal && !alreadyInProject) {
+        // Ask user where to add the reference
+        const projectLabel = isJa
+          ? "プロジェクト (CLAUDE.md)"
+          : "Project (CLAUDE.md)";
+        const personalLabel = isJa
+          ? "個人設定 (~/.claude/projects/)"
+          : "Personal (~/.claude/projects/)";
+        const skipLabel = isJa ? "スキップ" : "Skip";
+
+        const target = await vscode.window.showInformationMessage(
           isJa
-            ? `CLAUDE.md に "${mentorRef}" を追加しますか？`
-            : `Append "${mentorRef}" to CLAUDE.md?`,
-          isJa ? "はい" : "Yes",
-          isJa ? "スキップ" : "Skip",
+            ? `メンター設定の参照をどこに追加しますか？\nプロジェクト: チーム全員に適用\n個人設定: 自分だけに適用`
+            : `Where should the mentor config reference be added?\nProject: applies to the whole team\nPersonal: applies only to you`,
+          { modal: true },
+          projectLabel,
+          personalLabel,
+          skipLabel,
         );
-        if (userChoice === (isJa ? "はい" : "Yes")) {
-          const newContent =
-            claudeContent.trimEnd() + "\n\n" + mentorRef + "\n";
-          await vscode.workspace.fs.writeFile(
-            claudeMdUri,
-            Buffer.from(newContent),
+
+        if (target === projectLabel) {
+          if (!projectExists) {
+            await vscode.workspace.fs.writeFile(
+              projectClaudeMdUri,
+              Buffer.from(mentorRef + "\n"),
+            );
+            claudeAction = "created project CLAUDE.md";
+          } else {
+            const newContent =
+              projectContent.trimEnd() + "\n\n" + mentorRef + "\n";
+            await vscode.workspace.fs.writeFile(
+              projectClaudeMdUri,
+              Buffer.from(newContent),
+            );
+            claudeAction = "appended to project CLAUDE.md";
+          }
+        } else if (target === personalLabel) {
+          // Ensure the personal projects directory exists
+          const personalDirUri = vscode.Uri.file(
+            path.dirname(personalClaudeMdPath),
           );
-          claudeAction = "appended";
+          try {
+            await vscode.workspace.fs.createDirectory(personalDirUri);
+          } catch {
+            // already exists
+          }
+
+          if (!personalExists) {
+            await vscode.workspace.fs.writeFile(
+              personalClaudeMdUri,
+              Buffer.from(mentorRef + "\n"),
+            );
+            claudeAction = "created personal CLAUDE.md";
+          } else {
+            const newContent =
+              personalContent.trimEnd() + "\n\n" + mentorRef + "\n";
+            await vscode.workspace.fs.writeFile(
+              personalClaudeMdUri,
+              Buffer.from(newContent),
+            );
+            claudeAction = "appended to personal CLAUDE.md";
+          }
         } else {
           claudeAction = "skipped by user";
         }
-      } else {
-        // Already contains the reference, do nothing
       }
 
       // Output results
@@ -269,6 +334,7 @@ export function activate(context: vscode.ExtensionContext): void {
         isJa
           ? "Mentor Studio のセットアップが完了しました！ダッシュボードを有効にするにはリロードしてください。"
           : "Mentor Studio setup complete! Reload to activate the dashboard.",
+        { modal: true },
         reloadButton,
       );
       if (choice === reloadButton) {
@@ -335,7 +401,7 @@ export function activate(context: vscode.ExtensionContext): void {
             : `Mentor Studio has been updated (v${currentVersion}). Run Setup to apply the latest prompts.`;
           const button = isJa ? "Setup を実行" : "Run Setup";
           void vscode.window
-            .showInformationMessage(message, button)
+            .showInformationMessage(message, { modal: true }, button)
             .then((choice) => {
               if (choice === button) {
                 void vscode.commands.executeCommand("mentor-studio.setup");

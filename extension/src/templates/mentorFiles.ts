@@ -45,6 +45,21 @@ description: Use when starting a mentor session or resuming one — loads sessio
 - Ask more than 1 question at a time
 - Skip the RECORD step
 - Proceed past a GATE without meeting its condition
+- Run an external skill/agent AND the mentor Teaching Cycle at the same time
+
+## External Skill / Agent Handoff
+
+When you determine that the current task requires an external skill or agent (e.g. brainstorming, spec/plan creation, systematic debugging, or any workflow that conflicts with the Teaching Cycle):
+
+1. **Stop the Teaching Cycle** — do not attempt to run both flows simultaneously.
+2. **Announce the handoff** — tell the user which skill/agent you are switching to and why. Follow the Language Rule for all user-facing messages.
+3. **Guide next steps** — tell the user (in user's language per Language Rule):
+   - The external skill/agent will take over from here.
+   - If a Spec or Plan file is produced, they can set it from the **Settings tab** in Mentor Studio.
+   - Once set, start a new session to continue with mentor-guided learning.
+4. **Proceed with the external skill/agent** — follow its instructions normally.
+
+Do NOT attempt to return to the Teaching Cycle within the same session after handing off.
 
 ## Session Start
 
@@ -157,24 +172,23 @@ GATE: recorded + progress.json updated + message sent → cycle complete
 When the user asks to skip the current task:
 
 1. Add \`{ "task": "<current_task>", "plan": "<current_plan>" }\` to \`skipped_tasks\` in \`docs/mentor/progress.json\`
-2. Follow the "Next Task Selection" flow below
+2. Follow the "Task Completion" flow below (skip step 1 — the task is not completed)
 
 ## Task Completion
 
 Run in order, never skip:
 
 1. Update \`docs/mentor/progress.json\`: add to completed_tasks, increment current_task, update resume_context
-2. Follow the "Next Task Selection" flow below
+2. Determine the next task:
+   a. If \`skipped_tasks\` is not empty → ask:
+      > 「次のタスクに進みますか？それとも、スキップしたタスク（<list skipped task names>）に取り組みますか？」
+      - User chooses next task → read the next task from the plan (mentorFiles.plan in \`.mentor-studio.json\`)
+      - User chooses a skipped task → remove it from \`skipped_tasks\`, use that task's content
+   b. If \`skipped_tasks\` is empty → read the next task from the plan (mentorFiles.plan in \`.mentor-studio.json\`)
+3. **Immediately** overwrite \`docs/mentor/current-task.md\` with the selected next task content
+4. Update \`docs/mentor/progress.json\`: set \`current_task\` to the selected task id, update \`resume_context\` to describe the new task
 
-## Next Task Selection
-
-After a task is completed or skipped:
-
-1. If \`skipped_tasks\` is not empty → ask:
-   > 「次のタスクに進みますか？それとも、スキップしたタスク（<list skipped task names>）に取り組みますか？」
-   - User chooses next task → overwrite \`docs/mentor/current-task.md\` with next task content (read from mentorFiles.plan in \`.mentor-studio.json\`)
-   - User chooses a skipped task → remove it from \`skipped_tasks\`, set it as \`current_task\`, overwrite \`docs/mentor/current-task.md\` with that task's content
-2. If \`skipped_tasks\` is empty → overwrite \`docs/mentor/current-task.md\` with next task content (read from mentorFiles.plan in \`.mentor-studio.json\`)
+Steps 3 and 4 MUST complete before the session ends. If the session ends before these steps, the next session will start with stale \`current-task.md\`.
 
 ## References (load on demand)
 

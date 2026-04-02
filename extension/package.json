@@ -24,7 +24,7 @@
       "activitybar": [
         {
           "id": "mentor-studio",
-          "title": "Mentor Studio",
+          "title": "Mentor Studio Code",
           "icon": "$(mortar-board)"
         }
       ]
@@ -34,7 +34,7 @@
         {
           "type": "webview",
           "id": "mentor-studio.sidebar",
-          "name": "Dashboard",
+          "name": "",
           "icon": "$(mortar-board)"
         }
       ]

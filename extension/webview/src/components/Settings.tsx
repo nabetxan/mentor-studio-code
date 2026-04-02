@@ -57,6 +57,7 @@ function FileSetting({
   if (value) {
     return (
       <div className={`setting-item${warning ? " setting-item--warning" : ""}`}>
+        {warning && <span className="setting-warning-badge">!</span>}
         <div className="setting-label">{label}</div>
         <div className="setting-value">
           <a
@@ -91,6 +92,7 @@ function FileSetting({
 
   return (
     <div className={`setting-item${warning ? " setting-item--warning" : ""}`}>
+      {warning && <span className="setting-warning-badge">!</span>}
       <div className="setting-label">{label}</div>
       <div className="setting-unset">
         <span className="setting-warning">{t("settings.unset", locale)}</span>
@@ -156,6 +158,7 @@ function ProfileSection({ profileLastUpdated, locale }: ProfileSectionProps) {
     <div
       className={`setting-item${!profileLastUpdated ? " setting-item--warning" : ""}`}
     >
+      {!profileLastUpdated && <span className="setting-warning-badge">!</span>}
       <p className="actions-description">{t("actions.description", locale)}</p>
       <button className="snippet-btn" onClick={handleCopy}>
         <span className="snippet-title">

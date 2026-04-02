@@ -110,6 +110,7 @@ export function App() {
         >
           {t("app.noConfig.button", locale)}
         </button>
+        <p className="no-config-hint">{t("app.noConfig.hint", locale)}</p>
       </div>
     );
   }

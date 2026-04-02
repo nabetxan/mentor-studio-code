@@ -115,16 +115,20 @@ const translations = {
 
   // No-config screen
   "app.noConfig.notFound": {
-    ja: ".mentor-studio.json が見つかりません。",
-    en: ".mentor-studio.json not found.",
+    ja: "が見つかりません。",
+    en: "not found.",
   },
   "app.noConfig.instruction": {
-    ja: 'コマンドパレットから "Mentor Studio: Setup Mentor" を実行してください。',
-    en: 'Run "Mentor Studio: Setup Mentor" from the command palette.',
+    ja: '下のボタンをクリックするか、コマンドパレットから "Mentor Studio: Setup Mentor" を実行してください。',
+    en: 'Click the button below, or run "Mentor Studio: Setup Mentor" from the command palette.',
   },
   "app.noConfig.button": {
     ja: "セットアップを実行する",
     en: "Run Setup",
+  },
+  "app.noConfig.hint": {
+    ja: ".mentor-studio.json を作成し、メンターの初期設定を行います。",
+    en: "Creates .mentor-studio.json and sets up the initial mentor configuration.",
   },
 
   // App-level
