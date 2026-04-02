@@ -212,7 +212,15 @@ export function Overview({
                 ) : (
                   <div
                     className="topic-header"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => toggleTopic(topic.topic)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        toggleTopic(topic.topic);
+                      }
+                    }}
                   >
                     <i
                       className={

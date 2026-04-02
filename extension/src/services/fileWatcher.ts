@@ -147,24 +147,25 @@ export class FileWatcherService implements vscode.Disposable {
     );
     try {
       const progressRaw = await readFile(progressPath, "utf-8");
-      const progress = parseProgressData(progressRaw);
-      if (progress) {
+      const rawObj = JSON.parse(progressRaw) as Record<string, unknown>;
+      if (
+        typeof rawObj === "object" &&
+        rawObj !== null &&
+        Array.isArray(rawObj.unresolved_gaps)
+      ) {
         let changed = false;
-        for (const gap of progress.unresolved_gaps) {
+        for (const gap of rawObj.unresolved_gaps as Record<string, unknown>[]) {
           if (gap.topic === fromKey) {
             gap.topic = toKey;
             changed = true;
           }
         }
         if (changed) {
-          await writeFile(
-            progressPath,
-            JSON.stringify(progress, null, 2) + "\n",
-          );
+          await writeFile(progressPath, JSON.stringify(rawObj, null, 2) + "\n");
         }
       }
     } catch {
-      // progress.json may not exist yet — skip
+      // progress.json may not exist yet or invalid — skip
     }
 
     if (!this.config) return;

@@ -58,7 +58,7 @@ export function App() {
           break;
         case "noConfig":
           setHasConfig(false);
-          setLocale(message.locale);
+          setLocale(message.locale ?? locale);
           break;
         case "addTopicResult":
           if (message.ok && message.key) {

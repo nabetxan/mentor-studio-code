@@ -101,7 +101,7 @@ export interface DashboardData {
 export type ExtensionMessage =
   | { type: "update"; data: DashboardData }
   | { type: "config"; data: MentorStudioConfig }
-  | { type: "noConfig"; locale: Locale }
+  | { type: "noConfig"; locale?: Locale }
   | { type: "addTopicResult"; ok: boolean; key?: string; error?: string };
 
 export type FileField = "spec" | "plan";
