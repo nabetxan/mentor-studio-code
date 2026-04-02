@@ -132,6 +132,7 @@ const translations = {
   },
 
   // App-level
+  "app.warning": { ja: "警告あり", en: "Has warnings" },
   "app.menu": { ja: "メニュー", en: "Menu" },
   "app.addTopicFailed": {
     ja: "トピックの追加に失敗しました",

@@ -4,6 +4,7 @@
   "description": "Track your learning progress and review history with AI mentor sessions in VS Code",
   "version": "0.1.0",
   "icon": "images/icon.png",
+  "license": "MIT",
   "publisher": "nabetxan",
   "repository": {
     "type": "git",
@@ -71,6 +72,6 @@
     "@types/vscode": "~1.85.0",
     "esbuild": "^0.24.0",
     "typescript": "^5.7.0",
-    "vitest": "^3.0.0"
+    "vitest": "^4.1.0"
   }
 }

@@ -28,6 +28,11 @@ export function App() {
     null,
   );
   const appRef = useRef<HTMLDivElement>(null);
+  const localeRef = useRef(locale);
+
+  useEffect(() => {
+    localeRef.current = locale;
+  }, [locale]);
 
   useEffect(() => {
     const el = appRef.current;
@@ -58,7 +63,7 @@ export function App() {
           break;
         case "noConfig":
           setHasConfig(false);
-          setLocale(message.locale ?? locale);
+          setLocale(message.locale ?? localeRef.current);
           break;
         case "addTopicResult":
           if (message.ok && message.key) {
@@ -131,13 +136,18 @@ export function App() {
               <span className="hamburger-line" />
               <span className="hamburger-line" />
               <span className="hamburger-line" />
-              {settingsHasWarning && <span className="hamburger-badge">!</span>}
+              {settingsHasWarning && (
+                <span className="hamburger-badge" aria-hidden="true">
+                  !
+                </span>
+              )}
             </button>
             {menuOpen && (
-              <div className="hamburger-menu">
+              <div className="hamburger-menu" role="menu">
                 {(["actions", "overview", "settings"] as Tab[]).map((t_) => (
                   <button
                     key={t_}
+                    role="menuitem"
                     className={`hamburger-item${tab === t_ ? " active" : ""}`}
                     onClick={() => {
                       setTab(t_);
@@ -149,7 +159,9 @@ export function App() {
                     {t_ === "settings" && <SettingsIcon />}
                     <span>{t(`app.tab.${t_}`, locale)}</span>
                     {t_ === "settings" && settingsHasWarning && (
-                      <span className="hamburger-item-badge">!</span>
+                      <span className="hamburger-item-badge" aria-hidden="true">
+                        !
+                      </span>
                     )}
                   </button>
                 ))}
@@ -157,8 +169,12 @@ export function App() {
             )}
           </>
         ) : (
-          <div className="tabs-buttons">
+          <div className="tabs-buttons" role="tablist">
             <button
+              role="tab"
+              id="tab-actions"
+              aria-selected={tab === "actions"}
+              aria-controls="tabpanel-actions"
               className={tab === "actions" ? "active" : ""}
               onClick={() => setTab("actions")}
             >
@@ -166,6 +182,10 @@ export function App() {
               <span>{t("app.tab.actions", locale)}</span>
             </button>
             <button
+              role="tab"
+              id="tab-overview"
+              aria-selected={tab === "overview"}
+              aria-controls="tabpanel-overview"
               className={tab === "overview" ? "active" : ""}
               onClick={() => setTab("overview")}
             >
@@ -173,23 +193,37 @@ export function App() {
               <span>{t("app.tab.overview", locale)}</span>
             </button>
             <button
+              role="tab"
+              id="tab-settings"
+              aria-selected={tab === "settings"}
+              aria-controls="tabpanel-settings"
               className={tab === "settings" ? "active" : ""}
               onClick={() => setTab("settings")}
             >
               <span className="tab-btn-inner">
                 <SettingsIcon />
                 <span>{t("app.tab.settings", locale)}</span>
-                {settingsHasWarning && <span className="tab-badge">!</span>}
+                {settingsHasWarning && (
+                  <span
+                    className="tab-badge"
+                    aria-label={t("app.warning", locale)}
+                  >
+                    !
+                  </span>
+                )}
               </span>
             </button>
           </div>
         )}
         <div className="tabs-mentor">
-          <span className="tabs-mentor-label">
+          <span className="tabs-mentor-label" id="mentor-toggle-label">
             {t("settings.enableMentor", locale)}
           </span>
           <label className="mentor-toggle">
-            <span className={!enableMentor ? "mentor-toggle-active" : ""}>
+            <span
+              aria-hidden="true"
+              className={!enableMentor ? "mentor-toggle-active" : ""}
+            >
               OFF
             </span>
             <input
@@ -197,14 +231,23 @@ export function App() {
               className="toggle-checkbox"
               checked={enableMentor}
               onChange={() => handleEnableMentorChange(!enableMentor)}
+              aria-labelledby="mentor-toggle-label"
             />
-            <span className={enableMentor ? "mentor-toggle-active" : ""}>
+            <span
+              aria-hidden="true"
+              className={enableMentor ? "mentor-toggle-active" : ""}
+            >
               ON
             </span>
           </label>
         </div>
       </nav>
-      <main className="content">
+      <main
+        className="content"
+        role="tabpanel"
+        id={`tabpanel-${tab}`}
+        aria-labelledby={`tab-${tab}`}
+      >
         {tab === "actions" && <Actions locale={locale} />}
         {tab === "overview" && (
           <Overview

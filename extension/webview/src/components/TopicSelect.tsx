@@ -87,25 +87,31 @@ export function TopicSelect({
       <button
         className="form-select"
         type="button"
+        aria-expanded={open}
+        aria-haspopup="listbox"
         onClick={() => setOpen((prev) => !prev)}
       >
         {selectedLabel}
       </button>
       {open && (
         <div className="topic-select-dropdown">
-          {[...options]
-            .sort((a, b) =>
-              a.label.localeCompare(b.label, undefined, { numeric: true }),
-            )
-            .map((opt) => (
-              <button
-                key={opt.key}
-                className={`topic-select-item${opt.key === value ? " selected" : ""}`}
-                onClick={() => handleSelect(opt.key)}
-              >
-                {opt.label}
-              </button>
-            ))}
+          <div role="listbox" aria-label={t("overview.topic.mergeTo", locale)}>
+            {[...options]
+              .sort((a, b) =>
+                a.label.localeCompare(b.label, undefined, { numeric: true }),
+              )
+              .map((opt) => (
+                <button
+                  key={opt.key}
+                  role="option"
+                  aria-selected={opt.key === value}
+                  className={`topic-select-item${opt.key === value ? " selected" : ""}`}
+                  onClick={() => handleSelect(opt.key)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+          </div>
           <div className="topic-select-separator" />
           <div className="topic-select-add">
             <div className="form-row">

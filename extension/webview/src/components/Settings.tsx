@@ -3,7 +3,7 @@ import type {
   Locale,
   MentorStudioConfig,
 } from "@mentor-studio/shared";
-import { useEffect, useRef, useState } from "react";
+import { useCopyFeedback } from "../hooks/useCopyFeedback";
 import { t } from "../i18n";
 import { postMessage } from "../vscodeApi";
 import { CheckIcon, CopyIcon, SparkleIcon } from "./icons";
@@ -34,30 +34,22 @@ function FileSetting({
   locale,
   warning,
 }: FileSettingProps) {
-  const [copied, setCopied] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (timerRef.current !== null) {
-        clearTimeout(timerRef.current);
-      }
-    };
-  }, []);
+  const [copiedKey, triggerCopy] = useCopyFeedback();
+  const copied = copiedKey !== null;
 
   const handleCopyPrompt = () => {
-    if (timerRef.current !== null) {
-      clearTimeout(timerRef.current);
-    }
-    setCopied(true);
     postMessage({ type: "copy", text: createPrompt });
-    timerRef.current = setTimeout(() => setCopied(false), 2000);
+    triggerCopy("copied");
   };
 
   if (value) {
     return (
       <div className={`setting-item${warning ? " setting-item--warning" : ""}`}>
-        {warning && <span className="setting-warning-badge">!</span>}
+        {warning && (
+          <span className="setting-warning-badge" aria-hidden="true">
+            !
+          </span>
+        )}
         <div className="setting-label">{label}</div>
         <div className="setting-value">
           <a
@@ -92,7 +84,11 @@ function FileSetting({
 
   return (
     <div className={`setting-item${warning ? " setting-item--warning" : ""}`}>
-      {warning && <span className="setting-warning-badge">!</span>}
+      {warning && (
+        <span className="setting-warning-badge" aria-hidden="true">
+          !
+        </span>
+      )}
       <div className="setting-label">{label}</div>
       <div className="setting-unset">
         <span className="setting-warning">{t("settings.unset", locale)}</span>
@@ -109,7 +105,7 @@ function FileSetting({
             title={t("settings.copyCreatePrompt", locale)}
           >
             <span className="snippet-title">{buttonLabel}</span>
-            <span className="snippet-icon">
+            <span className="snippet-icon" aria-live="polite">
               {copied ? (
                 <>
                   <CheckIcon />
@@ -134,31 +130,23 @@ interface ProfileSectionProps {
 }
 
 function ProfileSection({ profileLastUpdated, locale }: ProfileSectionProps) {
-  const [copied, setCopied] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (timerRef.current !== null) {
-        clearTimeout(timerRef.current);
-      }
-    };
-  }, []);
+  const [copiedKey, triggerCopy] = useCopyFeedback();
+  const copied = copiedKey !== null;
 
   const handleCopy = () => {
-    if (timerRef.current !== null) {
-      clearTimeout(timerRef.current);
-    }
-    setCopied(true);
     postMessage({ type: "copy", text: t("settings.prompt.intake", locale) });
-    timerRef.current = setTimeout(() => setCopied(false), 2000);
+    triggerCopy("copied");
   };
 
   return (
     <div
       className={`setting-item${!profileLastUpdated ? " setting-item--warning" : ""}`}
     >
-      {!profileLastUpdated && <span className="setting-warning-badge">!</span>}
+      {!profileLastUpdated && (
+        <span className="setting-warning-badge" aria-hidden="true">
+          !
+        </span>
+      )}
       <p className="actions-description">{t("actions.description", locale)}</p>
       <button className="snippet-btn" onClick={handleCopy}>
         <span className="snippet-title">
@@ -166,7 +154,7 @@ function ProfileSection({ profileLastUpdated, locale }: ProfileSectionProps) {
             ? t("settings.profile.update", locale)
             : t("settings.profile.register", locale)}
         </span>
-        <span className="snippet-icon">
+        <span className="snippet-icon" aria-live="polite">
           {copied ? (
             <>
               <CheckIcon />
@@ -216,9 +204,14 @@ export function Settings({
         locale={locale}
       />
       <div className="setting-item">
-        <div className="setting-label">{t("settings.language", locale)}</div>
+        <div className="setting-label" id="locale-toggle-label">
+          {t("settings.language", locale)}
+        </div>
         <label className="locale-toggle">
-          <span className={locale === "en" ? "locale-active" : ""}>
+          <span
+            aria-hidden="true"
+            className={locale === "en" ? "locale-active" : ""}
+          >
             English
           </span>
           <input
@@ -226,8 +219,14 @@ export function Settings({
             className="locale-checkbox"
             checked={locale === "ja"}
             onChange={() => onLocaleChange(locale === "ja" ? "en" : "ja")}
+            aria-labelledby="locale-toggle-label"
           />
-          <span className={locale === "ja" ? "locale-active" : ""}>日本語</span>
+          <span
+            aria-hidden="true"
+            className={locale === "ja" ? "locale-active" : ""}
+          >
+            日本語
+          </span>
         </label>
       </div>
     </div>

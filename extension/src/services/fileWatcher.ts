@@ -27,6 +27,7 @@ export class FileWatcherService implements vscode.Disposable {
     private mentorPath: string,
     private onDataChanged: (data: DashboardData) => void,
     private onConfigChanged?: (config: MentorStudioConfig | null) => void,
+    private log?: (message: string) => void,
   ) {}
 
   async start(): Promise<void> {
@@ -38,18 +39,12 @@ export class FileWatcherService implements vscode.Disposable {
     );
     const watcher = vscode.workspace.createFileSystemWatcher(pattern);
 
-    watcher.onDidChange(
-      () =>
-        void this.refresh().catch((err) =>
-          console.error("refresh failed", err),
-        ),
-    );
-    watcher.onDidCreate(
-      () =>
-        void this.refresh().catch((err) =>
-          console.error("refresh failed", err),
-        ),
-    );
+    const onFileChange = () =>
+      void this.refresh().catch((err) =>
+        this.log?.(`refresh failed: ${String(err)}`),
+      );
+    watcher.onDidChange(onFileChange);
+    watcher.onDidCreate(onFileChange);
     this.disposables.push(watcher);
 
     const configPattern = new vscode.RelativePattern(
@@ -64,7 +59,7 @@ export class FileWatcherService implements vscode.Disposable {
         .then(() => {
           this.onConfigChanged?.(this.config);
         })
-        .catch((err) => console.error("loadConfig failed", err));
+        .catch((err) => this.log?.(`loadConfig failed: ${String(err)}`));
     };
     configWatcher.onDidChange(reloadConfig);
     configWatcher.onDidCreate(reloadConfig);
@@ -154,9 +149,11 @@ export class FileWatcherService implements vscode.Disposable {
         Array.isArray(rawObj.unresolved_gaps)
       ) {
         let changed = false;
-        for (const gap of rawObj.unresolved_gaps as Record<string, unknown>[]) {
-          if (gap.topic === fromKey) {
-            gap.topic = toKey;
+        for (const gap of rawObj.unresolved_gaps as unknown[]) {
+          if (typeof gap !== "object" || gap === null) continue;
+          const g = gap as Record<string, unknown>;
+          if (g.topic === fromKey) {
+            g.topic = toKey;
             changed = true;
           }
         }

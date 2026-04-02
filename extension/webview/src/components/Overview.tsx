@@ -3,7 +3,8 @@ import type {
   Locale,
   MentorStudioConfig,
 } from "@mentor-studio/shared";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
+import { useCopyFeedback } from "../hooks/useCopyFeedback";
 import { t } from "../i18n";
 import { postMessage } from "../vscodeApi";
 import { CheckIcon, CloseIcon, CopyIcon, EditIcon } from "./icons";
@@ -35,16 +36,7 @@ export function Overview({
   } | null>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
   const [mergeTargets, setMergeTargets] = useState<Record<string, string>>({});
-  const [copiedTopic, setCopiedTopic] = useState<string | null>(null);
-  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (copyTimerRef.current !== null) {
-        clearTimeout(copyTimerRef.current);
-      }
-    };
-  }, []);
+  const [copiedTopic, triggerCopy] = useCopyFeedback();
 
   if (!data) {
     return <div className="empty">{t("overview.noData", locale)}</div>;
@@ -89,16 +81,12 @@ export function Overview({
   }
 
   function copyReviewPrompt(key: string, label: string) {
-    if (copyTimerRef.current !== null) {
-      clearTimeout(copyTimerRef.current);
-    }
     const text = t("overview.topic.reviewPrompt", locale).replace(
       "{label}",
       label,
     );
     postMessage({ type: "copy", text });
-    setCopiedTopic(key);
-    copyTimerRef.current = setTimeout(() => setCopiedTopic(null), 2000);
+    triggerCopy(key);
   }
 
   return (
@@ -198,6 +186,7 @@ export function Overview({
                       className="inline-edit-btn save"
                       onClick={saveLabel}
                       title={t("overview.topic.save", locale)}
+                      aria-label={t("overview.topic.save", locale)}
                     >
                       <CheckIcon />
                     </button>
@@ -205,6 +194,7 @@ export function Overview({
                       className="inline-edit-btn cancel"
                       onClick={cancelEditingLabel}
                       title={t("overview.topic.cancel", locale)}
+                      aria-label={t("overview.topic.cancel", locale)}
                     >
                       <CloseIcon />
                     </button>
@@ -214,6 +204,7 @@ export function Overview({
                     className="topic-header"
                     role="button"
                     tabIndex={0}
+                    aria-expanded={isExpanded}
                     onClick={() => toggleTopic(topic.topic)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
@@ -236,6 +227,7 @@ export function Overview({
                         startEditingLabel(topic.topic, displayLabel, e)
                       }
                       title={t("overview.topic.editLabel", locale)}
+                      aria-label={t("overview.topic.editLabel", locale)}
                     >
                       <EditIcon />
                     </button>
@@ -246,13 +238,20 @@ export function Overview({
                   </div>
                 )}
                 <div className="progress-wrap">
-                  <div className="progress-bar">
+                  <div
+                    className="progress-bar"
+                    role="progressbar"
+                    aria-valuenow={Math.round(topic.rate * 100)}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label={`${displayLabel} ${Math.round(topic.rate * 100)}%`}
+                  >
                     <div
                       className="progress-fill"
                       style={{ width: `${Math.round(topic.rate * 100)}%` }}
                     />
                   </div>
-                  <span className="progress-pct">
+                  <span className="progress-pct" aria-hidden="true">
                     {Math.round(topic.rate * 100)}%
                   </span>
                 </div>
@@ -302,7 +301,7 @@ export function Overview({
                         copyReviewPrompt(topic.topic, displayLabel)
                       }
                     >
-                      <span>
+                      <span aria-live="polite">
                         {copiedTopic === topic.topic
                           ? t("actions.copied", locale)
                           : t("overview.topic.copyReview", locale)}
