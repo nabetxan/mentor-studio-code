@@ -7,7 +7,7 @@ const translations = {
     en: "Copy the AI prompt. Paste it into your AI chat.",
   },
   "actions.copied": { ja: "Copied!", en: "Copied!" },
-  "actions.startNextTask": { ja: "次のタスクを始める", en: "Start next task" },
+  "actions.startNextTask": { ja: "タスクを始める", en: "Start task" },
   "actions.reviewImplementation": {
     ja: "実装をレビューする",
     en: "Review implementation",
@@ -18,20 +18,36 @@ const translations = {
     en: "Start Comprehension check",
   },
   "actions.prompt.startNextTask": {
-    ja: ".mentor/rules/MENTOR_RULES.md を読んで、次のタスクを始めましょう。",
-    en: "Read .mentor/rules/MENTOR_RULES.md and start the next task.",
+    ja: "@.mentor/rules/MENTOR_RULES.md [flow:session-start] タスク開始",
+    en: "@.mentor/rules/MENTOR_RULES.md [flow:session-start] Start the task.",
   },
   "actions.prompt.reviewImplementation": {
-    ja: ".mentor/rules/MENTOR_RULES.md を読んで、現在のタスクの実装をレビューしてください。",
-    en: "Read .mentor/rules/MENTOR_RULES.md and review the current task implementation.",
+    ja: "@.mentor/rules/MENTOR_RULES.md [flow:implementation-review] 現在のタスクの実装をレビューしてください。",
+    en: "@.mentor/rules/MENTOR_RULES.md [flow:implementation-review] Review the current task implementation.",
   },
   "actions.prompt.startReview": {
-    ja: ".mentor/rules/MENTOR_RULES.md を読んで、unresolved_gaps にある概念の復習を始めましょう。",
-    en: "Read .mentor/rules/MENTOR_RULES.md and start reviewing concepts in unresolved_gaps.",
+    ja: "@.mentor/rules/MENTOR_RULES.md [flow:review] これまでの学習でつまづいた概念の復習を始めましょう。",
+    en: "@.mentor/rules/MENTOR_RULES.md [flow:review] Start reviewing concepts the learner has stumbled on.",
   },
   "actions.prompt.startCheck": {
-    ja: ".mentor/rules/MENTOR_RULES.md を読んで、現在のプロジェクトに関わる学習ポイントについて理解度チェックを実施してください。",
-    en: "Read .mentor/rules/MENTOR_RULES.md, and run a comprehension check for the current project's learning points.",
+    ja: "@.mentor/rules/MENTOR_RULES.md [flow:comprehension-check] 現在のプロジェクトに関わる学習ポイントについて理解度チェックを実施してください。",
+    en: "@.mentor/rules/MENTOR_RULES.md [flow:comprehension-check] Run a comprehension check for the current project's learning points.",
+  },
+  "actions.tooltip.startNextTask": {
+    ja: "クリックでプロンプトをコピー → AIチャットに貼り付けてタスクを開始。タスクがセットされていない時は何をやりたいか教えてください。",
+    en: "Click to copy prompt → paste in AI chat to start a task. If no task is set, tell the AI what you'd like to work on",
+  },
+  "actions.tooltip.reviewImplementation": {
+    ja: "クリックでプロンプトをコピー → AIチャットに貼り付けて実装をレビュー。今のタスクが実装できているかコードレビューします。",
+    en: "Click to copy prompt → paste in AI chat to review implementation. Once your current task is implemented, get a code review",
+  },
+  "actions.tooltip.startReview": {
+    ja: "クリックでプロンプトをコピー → AIチャットに貼り付けて復習を開始。これまでつまづいた問題を出していきます。",
+    en: "Click to copy prompt → paste in AI chat to start review. You'll get questions on concepts you've stumbled on before",
+  },
+  "actions.tooltip.startCheck": {
+    ja: "クリックでプロンプトをコピー → AIチャットに貼り付けて理解度チェックを開始。プロジェクト横断的に出題されます。",
+    en: "Click to copy prompt → paste in AI chat to start comprehension check. Questions will cover topics across the project",
   },
 
   // Overview tab
@@ -42,14 +58,18 @@ const translations = {
   "overview.notStarted": { ja: "未開始", en: "Not started" },
   "overview.topics": { ja: "復習トピック", en: "Review Topics" },
   "overview.noData": { ja: "データなし", en: "No data yet" },
+  "overview.allCorrect": {
+    ja: "全問正解！やったね！",
+    en: "All correct! Great job!",
+  },
   "overview.topic.scoreUnit": { ja: "問", en: "" },
   "overview.topic.reviewSample": {
     ja: "復習内容の一部",
     en: "Review sample",
   },
   "overview.topic.copyHint": {
-    ja: "AIへのプロンプトがコピーされます。そのままチャットに貼り付けて使えます。",
-    en: "Copy the AI prompt. Paste it into your AI chat.",
+    ja: "クリックでプロンプトをコピー → AIチャットに貼り付けてこのトピックの復習を開始。これまでつまづいた問題を出していきます。",
+    en: "Click to copy prompt → paste in AI chat to start reviewing this topic. You'll get questions on concepts you've stumbled on before.",
   },
   "overview.topic.copyReview": {
     ja: "トピック復習",
@@ -62,8 +82,8 @@ const translations = {
   "overview.topic.merge": { ja: "統合", en: "Merge" },
   "overview.topic.newTopic": { ja: "新しいトピック", en: "New topic" },
   "overview.topic.reviewPrompt": {
-    ja: ".mentor/rules/MENTOR_RULES.md を読んで、{label} の復習を始めましょう。",
-    en: "Read .mentor/rules/MENTOR_RULES.md and start reviewing {label}.",
+    ja: "@.mentor/rules/MENTOR_RULES.md [flow:review] {label} の復習を始めましょう。",
+    en: "@.mentor/rules/MENTOR_RULES.md [flow:review] Start reviewing {label}.",
   },
 
   // Settings tab
@@ -92,25 +112,33 @@ const translations = {
   "settings.language": { ja: "Language / 言語", en: "Language" },
   "settings.enableMentor": { ja: "メンター機能", en: "Mentor" },
   "settings.prompt.spec": {
-    ja: ".mentor/rules/CREATE_SPEC.md を読んで、仕様ファイルを作成してください。不足している情報があればユーザーに質問してください。/brainstorm",
-    en: "Read .mentor/rules/CREATE_SPEC.md and create a spec file. Ask the user if any information is missing. /brainstorm",
+    ja: "@.mentor/rules/CREATE_SPEC.md 仕様ファイルを作成してください。不足している情報があればユーザーに質問してください。/brainstorm if available",
+    en: "@.mentor/rules/CREATE_SPEC.md Create a spec file. Ask the user if any information is missing. /brainstorm if available",
   },
   "settings.prompt.plan": {
-    ja: ".mentor/rules/CREATE_PLAN.md を読んで、プランファイルを作成してください。何のプランを作るかはユーザーに質問してください。/write-plan",
-    en: "Read .mentor/rules/CREATE_PLAN.md and create a plan file. Ask the user what kind of plan to create. /write-plan",
+    ja: "@.mentor/rules/CREATE_PLAN.md プランファイルを作成してください。何のプランを作るかはユーザーに質問してください。/write-plan if available",
+    en: "@.mentor/rules/CREATE_PLAN.md Create a plan file. Ask the user what kind of plan to create. /write-plan if available",
   },
   "settings.profile.register": {
     ja: "プロフィール登録",
     en: "Register Profile",
   },
   "settings.profile.update": { ja: "プロフィール更新", en: "Update Profile" },
-  "settings.copyCreatePrompt": {
-    ja: "このファイルを作成するプロンプトをコピー",
-    en: "Copy prompt to create this file",
+  "settings.copyCreatePrompt.plan": {
+    ja: "クリックでプロンプトをコピー → AIチャットに貼り付けて実装プランを作成",
+    en: "Click to copy prompt → paste in AI chat to create an implementation plan",
+  },
+  "settings.copyCreatePrompt.spec": {
+    ja: "クリックでプロンプトをコピー → AIチャットに貼り付けて仕様を作成",
+    en: "Click to copy prompt → paste in AI chat to create a spec",
+  },
+  "settings.copyCreatePrompt.profile": {
+    ja: "クリックでプロンプトをコピー → AIチャットに貼り付けてプロフィールを登録・更新。5つの質問に答えると、あなたに合った学習体験が提供されます。",
+    en: "Click to copy prompt → paste in AI chat to register or update your profile. Answering five questions will provide a personalized learning experience.",
   },
   "settings.prompt.intake": {
-    ja: ".mentor/skills/intake/SKILL.md を読んで、プロフィールを更新してください。",
-    en: "Read .mentor/skills/intake/SKILL.md and update my profile.",
+    ja: "@.mentor/skills/intake/SKILL.md プロフィールを更新してください。",
+    en: "@.mentor/skills/intake/SKILL.md Update my profile.",
   },
 
   // No-config screen
@@ -127,8 +155,8 @@ const translations = {
     en: "Run Setup",
   },
   "app.noConfig.hint": {
-    ja: ".mentor/config.json を作成し、メンターの初期設定を行います。",
-    en: "Creates .mentor/config.json and sets up the initial mentor configuration.",
+    ja: "* Setup Mentorを実行するとプロジェクトのルートディレクトリに .mentor フォルダが作成されます。また、メンター機能を利用するために必要な一文をCLAUDE.mdへ追加しますがプロジェクトのCLAUDE.mdに追加するか、個人のCLAUDE.mdに追加するか選択できます。",
+    en: "* Running Setup Mentor creates a .mentor folder in your project root. It also adds a line to CLAUDE.md that's needed for the mentor feature — you can choose whether to add it to the project CLAUDE.md or your personal CLAUDE.md.",
   },
 
   // App-level

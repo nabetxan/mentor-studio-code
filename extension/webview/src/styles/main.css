@@ -410,36 +410,6 @@ body {
   margin-bottom: 2px;
 }
 
-.copy-hint {
-  font-size: 0.8rem;
-  line-height: 1.4;
-}
-
-.copy-btn {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  max-width: 200px;
-  background: var(--vscode-editor-background);
-  border: 1px solid var(--vscode-focusBorder);
-  border-radius: 6px;
-  padding: 8px 10px;
-  font-size: 0.917rem;
-  color: var(--vscode-foreground);
-  font-family: inherit;
-  cursor: pointer;
-}
-
-.copy-btn:hover {
-  background: var(--vscode-list-hoverBackground);
-}
-
-.copy-btn svg {
-  fill: var(--vscode-focusBorder);
-  width: 13px;
-  height: 13px;
-}
-
 .wrong-section {
   padding-top: 4px;
   display: flex;
@@ -538,6 +508,14 @@ body {
   padding: 24px 0;
 }
 
+.all-correct-message {
+  text-align: center;
+  padding: 16px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--vscode-focusBorder);
+}
+
 .btn-primary,
 .btn-secondary {
   border: none;
@@ -589,7 +567,7 @@ body {
 
 .actions-description {
   font-size: 0.8rem;
-  margin: 0 0 12px 0;
+  margin: 8px 4px;
   line-height: 1.5;
 }
 
@@ -601,11 +579,14 @@ body {
   margin: 0;
 }
 
+.snippet-list > .snippet-btn {
+  flex: 1 1 200px;
+}
+
 .snippet-btn {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex: 1 1 200px;
   max-width: 100%;
   background: var(--vscode-editor-background);
   border: 1px solid var(--vscode-panel-border);
@@ -621,6 +602,35 @@ body {
 
 .snippet-btn:hover {
   background: var(--vscode-list-hoverBackground);
+}
+
+.snippet-btn[data-tooltip] {
+  position: relative;
+}
+
+.snippet-btn[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 0;
+  top: 100%;
+  margin-top: 4px;
+  background: var(--vscode-editorHoverWidget-background, #252526);
+  color: var(--vscode-editorHoverWidget-foreground, #ccc);
+  border: 1px solid var(--vscode-editorHoverWidget-border, #454545);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  white-space: normal;
+  max-width: 260px;
+  line-height: 1.4;
+  z-index: 10;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s 0.2s;
+}
+
+.snippet-btn[data-tooltip]:hover::after {
+  opacity: 1;
 }
 
 .snippet-btn:active {

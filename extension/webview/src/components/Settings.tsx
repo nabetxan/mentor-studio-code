@@ -4,6 +4,7 @@ import type {
   MentorStudioConfig,
 } from "@mentor-studio/shared";
 import { useCopyFeedback } from "../hooks/useCopyFeedback";
+import type { TranslationKey } from "../i18n";
 import { t } from "../i18n";
 import { postMessage } from "../vscodeApi";
 import { CheckIcon, CopyIcon, SparkleIcon } from "./icons";
@@ -21,6 +22,7 @@ interface FileSettingProps {
   value: string | null;
   createPrompt: string;
   buttonLabel: string;
+  tooltipKey: TranslationKey;
   locale: Locale;
   warning?: boolean;
 }
@@ -31,6 +33,7 @@ function FileSetting({
   value,
   createPrompt,
   buttonLabel,
+  tooltipKey,
   locale,
   warning,
 }: FileSettingProps) {
@@ -104,7 +107,7 @@ function FileSetting({
           <button
             className="snippet-btn"
             onClick={handleCopyPrompt}
-            title={t("settings.copyCreatePrompt", locale)}
+            data-tooltip={t(tooltipKey, locale)}
           >
             <span className="snippet-title">{buttonLabel}</span>
             <span className="snippet-icon" aria-live="polite">
@@ -150,25 +153,31 @@ function ProfileSection({ profileLastUpdated, locale }: ProfileSectionProps) {
         </span>
       )}
       <p className="actions-description">{t("actions.description", locale)}</p>
-      <button className="snippet-btn" onClick={handleCopy}>
-        <span className="snippet-title">
-          {profileLastUpdated
-            ? t("settings.profile.update", locale)
-            : t("settings.profile.register", locale)}
-        </span>
-        <span className="snippet-icon" aria-live="polite">
-          {copied ? (
-            <>
-              <CheckIcon />
-              <span className="snippet-copied-text">
-                {t("actions.copied", locale)}
-              </span>
-            </>
-          ) : (
-            <CopyIcon />
-          )}
-        </span>
-      </button>
+      <div className="setting-actions-vertical">
+        <button
+          className="snippet-btn"
+          onClick={handleCopy}
+          data-tooltip={t("settings.copyCreatePrompt.profile", locale)}
+        >
+          <span className="snippet-title">
+            {profileLastUpdated
+              ? t("settings.profile.update", locale)
+              : t("settings.profile.register", locale)}
+          </span>
+          <span className="snippet-icon" aria-live="polite">
+            {copied ? (
+              <>
+                <CheckIcon />
+                <span className="snippet-copied-text">
+                  {t("actions.copied", locale)}
+                </span>
+              </>
+            ) : (
+              <CopyIcon />
+            )}
+          </span>
+        </button>
+      </div>
     </div>
   );
 }
@@ -194,6 +203,7 @@ export function Settings({
         value={mentorFiles.plan}
         createPrompt={t("settings.prompt.plan", locale)}
         buttonLabel={t("settings.createPrompt.plan", locale)}
+        tooltipKey="settings.copyCreatePrompt.plan"
         locale={locale}
         warning={!mentorFiles.plan}
       />
@@ -203,6 +213,7 @@ export function Settings({
         value={mentorFiles.spec}
         createPrompt={t("settings.prompt.spec", locale)}
         buttonLabel={t("settings.createPrompt.spec", locale)}
+        tooltipKey="settings.copyCreatePrompt.spec"
         locale={locale}
       />
       <div className="setting-item">
