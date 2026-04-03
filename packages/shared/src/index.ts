@@ -10,6 +10,7 @@ export type {
   ProgressData,
   QuestionHistory,
   QuestionHistoryEntry,
+  SkippedTask,
   TopicConfig,
   TopicStats,
   UnresolvedGap,

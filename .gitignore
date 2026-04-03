@@ -6,3 +6,4 @@ dist/
 settings.local.json
 docs/
 docsBackup/
+.mentor/

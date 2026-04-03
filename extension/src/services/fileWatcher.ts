@@ -28,6 +28,7 @@ export class FileWatcherService implements vscode.Disposable {
     private mentorPath: string,
     private onDataChanged: (data: DashboardData) => void,
     private onConfigChanged?: (config: MentorStudioConfig | null) => void,
+    private log?: (message: string) => void,
   ) {}
 
   async start(): Promise<void> {
@@ -39,23 +40,17 @@ export class FileWatcherService implements vscode.Disposable {
     );
     const watcher = vscode.workspace.createFileSystemWatcher(pattern);
 
-    watcher.onDidChange(
-      () =>
-        void this.refresh().catch((err) =>
-          console.error("refresh failed", err),
-        ),
-    );
-    watcher.onDidCreate(
-      () =>
-        void this.refresh().catch((err) =>
-          console.error("refresh failed", err),
-        ),
-    );
+    const onFileChange = () =>
+      void this.refresh().catch((err) =>
+        this.log?.(`refresh failed: ${String(err)}`),
+      );
+    watcher.onDidChange(onFileChange);
+    watcher.onDidCreate(onFileChange);
     this.disposables.push(watcher);
 
     const configPattern = new vscode.RelativePattern(
       this.workspaceRoot,
-      ".mentor-studio.json",
+      ".mentor/config.json",
     );
     const configWatcher =
       vscode.workspace.createFileSystemWatcher(configPattern);
@@ -65,7 +60,7 @@ export class FileWatcherService implements vscode.Disposable {
         .then(() => {
           this.onConfigChanged?.(this.config);
         })
-        .catch((err) => console.error("loadConfig failed", err));
+        .catch((err) => this.log?.(`loadConfig failed: ${String(err)}`));
     };
     configWatcher.onDidChange(reloadConfig);
     configWatcher.onDidCreate(reloadConfig);
@@ -80,7 +75,7 @@ export class FileWatcherService implements vscode.Disposable {
 
   private async loadConfig(): Promise<void> {
     try {
-      const configPath = join(this.workspaceRoot, ".mentor-studio.json");
+      const configPath = join(this.workspaceRoot, ".mentor", "config.json");
       const raw = await readFile(configPath, "utf-8");
       this.config = parseConfig(raw);
       this.rawConfig = JSON.parse(raw) as Record<string, unknown>;
@@ -142,6 +137,37 @@ export class FileWatcherService implements vscode.Disposable {
     }
     await writeFile(historyPath, JSON.stringify(history, null, 2) + "\n");
 
+    // Also update unresolved_gaps in progress.json
+    const progressPath = join(
+      this.workspaceRoot,
+      this.mentorPath,
+      "progress.json",
+    );
+    try {
+      const progressRaw = await readFile(progressPath, "utf-8");
+      const rawObj = JSON.parse(progressRaw) as Record<string, unknown>;
+      if (
+        typeof rawObj === "object" &&
+        rawObj !== null &&
+        Array.isArray(rawObj.unresolved_gaps)
+      ) {
+        let changed = false;
+        for (const gap of rawObj.unresolved_gaps as unknown[]) {
+          if (typeof gap !== "object" || gap === null) continue;
+          const g = gap as Record<string, unknown>;
+          if (g.topic === fromKey) {
+            g.topic = toKey;
+            changed = true;
+          }
+        }
+        if (changed) {
+          await writeFile(progressPath, JSON.stringify(rawObj, null, 2) + "\n");
+        }
+      }
+    } catch {
+      // progress.json may not exist yet or invalid — skip
+    }
+
     if (!this.config) return;
     this.config = {
       ...this.config,
@@ -190,7 +216,7 @@ export class FileWatcherService implements vscode.Disposable {
   }
 
   private async saveConfig(): Promise<void> {
-    const configPath = join(this.workspaceRoot, ".mentor-studio.json");
+    const configPath = join(this.workspaceRoot, ".mentor", "config.json");
     // Preserve unknown fields by merging into the raw JSON object
     const merged = { ...this.rawConfig, ...this.config };
     await writeFile(configPath, JSON.stringify(merged, null, 2) + "\n");

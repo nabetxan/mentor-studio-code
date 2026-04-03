@@ -1,38 +1,15 @@
 import * as vscode from "vscode";
+import { runSetup } from "./commands/setup";
 import { FileWatcherService } from "./services/fileWatcher";
-import {
-  CREATE_PLAN_MD,
-  CREATE_SPEC_MD,
-  CURRENT_TASK_MD,
-  INTAKE_SKILL_MD,
-  MENTOR_RULES_MD,
-  MENTOR_SESSION_SKILL_MD,
-  PROGRESS_JSON,
-  QUESTION_HISTORY_JSON,
-  TRACKER_FORMAT_MD,
-} from "./templates/mentorFiles";
 import { SidebarProvider } from "./views/sidebarProvider";
 
 let outputChannel: vscode.OutputChannel | undefined;
 
 function getOutputChannel(): vscode.OutputChannel {
   if (!outputChannel) {
-    outputChannel = vscode.window.createOutputChannel("Mentor Studio");
+    outputChannel = vscode.window.createOutputChannel("Mentor Studio Code");
   }
   return outputChannel;
-}
-
-async function writeIfMissing(
-  uri: vscode.Uri,
-  content: string,
-): Promise<boolean> {
-  try {
-    await vscode.workspace.fs.stat(uri);
-    return false;
-  } catch {
-    await vscode.workspace.fs.writeFile(uri, Buffer.from(content));
-    return true;
-  }
 }
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -41,237 +18,7 @@ export function activate(context: vscode.ExtensionContext): void {
   // Setup command — always available
   const setupCommand = vscode.commands.registerCommand(
     "mentor-studio.setup",
-    async () => {
-      const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
-      if (!wsRoot) {
-        const isJa = vscode.env.language.startsWith("ja");
-        vscode.window.showErrorMessage(
-          isJa ? "先にフォルダを開いてください。" : "Open a folder first.",
-        );
-        return;
-      }
-
-      const mentorFilesPath = vscode.workspace
-        .getConfiguration("mentor-studio")
-        .get<string>("mentorFilesPath", "docs/mentor");
-
-      const folderName =
-        vscode.workspace.workspaceFolders?.[0]?.name ?? "my-project";
-
-      // Ensure directories exist
-      const mentorDirUri = vscode.Uri.joinPath(wsRoot, mentorFilesPath);
-      const rulesDirUri = vscode.Uri.joinPath(mentorDirUri, "rules");
-      await vscode.workspace.fs.createDirectory(mentorDirUri);
-      await vscode.workspace.fs.createDirectory(rulesDirUri);
-
-      const createdFiles: string[] = [];
-      const skippedFiles: string[] = [];
-
-      // Template files: always overwrite so updates to extension templates take effect
-      const writeTemplate = async (
-        uri: vscode.Uri,
-        content: string,
-        label: string,
-      ): Promise<void> => {
-        await vscode.workspace.fs.writeFile(uri, Buffer.from(content));
-        createdFiles.push(label);
-      };
-
-      // Data files: only write if missing so user progress is never overwritten
-      const writeDataIfMissing = async (
-        uri: vscode.Uri,
-        content: string,
-        label: string,
-      ): Promise<void> => {
-        const created = await writeIfMissing(uri, content);
-        (created ? createdFiles : skippedFiles).push(label);
-      };
-
-      // Create or update .mentor-studio.json
-      const configUri = vscode.Uri.joinPath(wsRoot, ".mentor-studio.json");
-      const extensionVersion = (
-        context.extension.packageJSON as { version: string }
-      ).version;
-
-      let existingConfig: Record<string, unknown> | null = null;
-      try {
-        const raw = await vscode.workspace.fs.readFile(configUri);
-        existingConfig = JSON.parse(Buffer.from(raw).toString()) as Record<
-          string,
-          unknown
-        >;
-      } catch {
-        // doesn't exist yet
-      }
-
-      if (existingConfig) {
-        // Update extensionVersion in existing config
-        existingConfig.extensionVersion = extensionVersion;
-        await vscode.workspace.fs.writeFile(
-          configUri,
-          Buffer.from(JSON.stringify(existingConfig, null, 2) + "\n"),
-        );
-        skippedFiles.push(".mentor-studio.json (updated version)");
-      } else {
-        // Create new config
-        const configContent =
-          JSON.stringify(
-            {
-              repositoryName: folderName,
-              enableMentor: true,
-              topics: [
-                { key: "html", label: "HTML" },
-                { key: "css", label: "CSS" },
-                { key: "javascript", label: "JavaScript" },
-                { key: "typescript", label: "TypeScript" },
-              ],
-              mentorFiles: { spec: null, plan: null },
-              extensionVersion,
-            },
-            null,
-            2,
-          ) + "\n";
-        await vscode.workspace.fs.writeFile(
-          configUri,
-          Buffer.from(configContent),
-        );
-        createdFiles.push(".mentor-studio.json");
-      }
-
-      // Prompt files — always overwrite
-      await writeTemplate(
-        vscode.Uri.joinPath(rulesDirUri, "MENTOR_RULES.md"),
-        MENTOR_RULES_MD,
-        "rules/MENTOR_RULES.md",
-      );
-      await writeTemplate(
-        vscode.Uri.joinPath(rulesDirUri, "CREATE_PLAN.md"),
-        CREATE_PLAN_MD,
-        "rules/CREATE_PLAN.md",
-      );
-      await writeTemplate(
-        vscode.Uri.joinPath(rulesDirUri, "CREATE_SPEC.md"),
-        CREATE_SPEC_MD,
-        "rules/CREATE_SPEC.md",
-      );
-      const mentorSessionDirUri = vscode.Uri.joinPath(
-        mentorDirUri,
-        "skills",
-        "mentor-session",
-      );
-      await vscode.workspace.fs.createDirectory(mentorSessionDirUri);
-      await writeTemplate(
-        vscode.Uri.joinPath(mentorSessionDirUri, "SKILL.md"),
-        MENTOR_SESSION_SKILL_MD,
-        "skills/mentor-session/SKILL.md",
-      );
-      await writeTemplate(
-        vscode.Uri.joinPath(mentorSessionDirUri, "tracker-format.md"),
-        TRACKER_FORMAT_MD,
-        "skills/mentor-session/tracker-format.md",
-      );
-      const intakeDirUri = vscode.Uri.joinPath(
-        mentorDirUri,
-        "skills",
-        "intake",
-      );
-      await vscode.workspace.fs.createDirectory(intakeDirUri);
-      await writeTemplate(
-        vscode.Uri.joinPath(intakeDirUri, "SKILL.md"),
-        INTAKE_SKILL_MD,
-        "skills/intake/SKILL.md",
-      );
-
-      // Data files — only write if missing
-      await writeDataIfMissing(
-        vscode.Uri.joinPath(mentorDirUri, "progress.json"),
-        PROGRESS_JSON + "\n",
-        "progress.json",
-      );
-      await writeDataIfMissing(
-        vscode.Uri.joinPath(mentorDirUri, "question-history.json"),
-        QUESTION_HISTORY_JSON + "\n",
-        "question-history.json",
-      );
-      await writeDataIfMissing(
-        vscode.Uri.joinPath(mentorDirUri, "current-task.md"),
-        CURRENT_TASK_MD,
-        "current-task.md",
-      );
-
-      const isJa = existingConfig
-        ? existingConfig.locale !== "en"
-        : vscode.env.language.startsWith("ja");
-
-      // Handle CLAUDE.md
-      const claudeMdUri = vscode.Uri.joinPath(wsRoot, "CLAUDE.md");
-      const mentorRef = "@docs/mentor/rules/MENTOR_RULES.md";
-      let claudeContent = "";
-      let claudeExists = false;
-
-      try {
-        const raw = await vscode.workspace.fs.readFile(claudeMdUri);
-        claudeContent = Buffer.from(raw).toString();
-        claudeExists = true;
-      } catch {
-        // doesn't exist
-      }
-
-      let claudeAction = "skipped (already contains mentorRef)";
-
-      if (!claudeExists) {
-        // New project: auto-create without dialog
-        await vscode.workspace.fs.writeFile(
-          claudeMdUri,
-          Buffer.from(mentorRef + "\n"),
-        );
-        claudeAction = "created (new file)";
-      } else if (!claudeContent.includes(mentorRef)) {
-        // Existing file: ask before appending
-        const userChoice = await vscode.window.showInformationMessage(
-          isJa
-            ? `CLAUDE.md に "${mentorRef}" を追加しますか？`
-            : `Append "${mentorRef}" to CLAUDE.md?`,
-          isJa ? "はい" : "Yes",
-          isJa ? "スキップ" : "Skip",
-        );
-        if (userChoice === (isJa ? "はい" : "Yes")) {
-          const newContent =
-            claudeContent.trimEnd() + "\n\n" + mentorRef + "\n";
-          await vscode.workspace.fs.writeFile(
-            claudeMdUri,
-            Buffer.from(newContent),
-          );
-          claudeAction = "appended";
-        } else {
-          claudeAction = "skipped by user";
-        }
-      } else {
-        // Already contains the reference, do nothing
-      }
-
-      // Output results
-      const ch = getOutputChannel();
-      ch.appendLine("=== Mentor Studio Setup Results ===");
-      ch.appendLine(
-        `Created: ${createdFiles.join(", ") || "none (all existed)"}`,
-      );
-      ch.appendLine(`Skipped: ${skippedFiles.join(", ") || "none"}`);
-      ch.appendLine(`CLAUDE.md: ${claudeAction}`);
-      ch.show(true);
-
-      // Prompt reload with a button
-      const reloadButton = isJa ? "ウィンドウを再読み込み" : "Reload Window";
-      const choice = await vscode.window.showInformationMessage(
-        isJa
-          ? "Mentor Studio のセットアップが完了しました！ダッシュボードを有効にするにはリロードしてください。"
-          : "Mentor Studio setup complete! Reload to activate the dashboard.",
-        reloadButton,
-      );
-      if (choice === reloadButton) {
-        vscode.commands.executeCommand("workbench.action.reloadWindow");
-      }
-    },
+    () => runSetup(context, getOutputChannel()),
   );
   context.subscriptions.push(setupCommand);
 
@@ -280,9 +27,7 @@ export function activate(context: vscode.ExtensionContext): void {
     return;
   }
 
-  const mentorPath = vscode.workspace
-    .getConfiguration("mentor-studio")
-    .get<string>("mentorFilesPath", "docs/mentor");
+  const mentorPath = ".mentor";
 
   // Sidebar provider
   const sidebarProvider = new SidebarProvider(context.extensionUri);
@@ -305,6 +50,7 @@ export function activate(context: vscode.ExtensionContext): void {
         sidebarProvider.sendNoConfig();
       }
     },
+    (msg) => getOutputChannel().appendLine(msg),
   );
 
   sidebarProvider.setTopicHandlers({
@@ -314,8 +60,15 @@ export function activate(context: vscode.ExtensionContext): void {
     addTopic: (label) => watcher.addTopic(label),
   });
 
-  const currentVersion = (context.extension.packageJSON as { version: string })
-    .version;
+  const currentPkg = context.extension.packageJSON as Record<string, unknown>;
+  const currentVersion =
+    typeof currentPkg.version === "string" ? currentPkg.version : "0.0.0";
+
+  // Version check using globalState (persists across sessions, independent of workspace)
+  const previousVersion = context.globalState.get<string>("extensionVersion");
+  const isVersionUpdated =
+    previousVersion !== undefined && previousVersion !== currentVersion;
+  void context.globalState.update("extensionVersion", currentVersion);
 
   void watcher
     .start()
@@ -324,12 +77,11 @@ export function activate(context: vscode.ExtensionContext): void {
       if (config) {
         sidebarProvider.sendConfig(config);
 
-        // Version check: prompt setup if extension was updated
-        if (config.extensionVersion !== currentVersion) {
+        if (isVersionUpdated) {
           const isJa = config.locale !== "en";
           const message = isJa
-            ? `Mentor Studio が更新されました (v${currentVersion})。最新のプロンプトを適用するには Setup を実行してください。`
-            : `Mentor Studio has been updated (v${currentVersion}). Run Setup to apply the latest prompts.`;
+            ? `Mentor Studio Code が更新されました (v${currentVersion})。最新のプロンプトを適用するには Setup を実行してください。`
+            : `Mentor Studio Code has been updated (v${currentVersion}). Run Setup to apply the latest prompts.`;
           const button = isJa ? "Setup を実行" : "Run Setup";
           void vscode.window
             .showInformationMessage(message, button)
@@ -344,7 +96,9 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     })
     .catch((err: unknown) => {
-      console.error("Mentor Studio: failed to start file watcher", err);
+      getOutputChannel().appendLine(
+        `Failed to start file watcher: ${String(err)}`,
+      );
       sidebarProvider.sendNoConfig();
     });
 

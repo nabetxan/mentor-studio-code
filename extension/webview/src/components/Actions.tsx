@@ -1,5 +1,5 @@
 import type { Locale } from "@mentor-studio/shared";
-import { useEffect, useRef, useState } from "react";
+import { useCopyFeedback } from "../hooks/useCopyFeedback";
 import type { TranslationKey } from "../i18n";
 import { t } from "../i18n";
 import { postMessage } from "../vscodeApi";
@@ -39,24 +39,11 @@ interface ActionsProps {
 }
 
 export function Actions({ locale }: ActionsProps) {
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (timerRef.current !== null) {
-        clearTimeout(timerRef.current);
-      }
-    };
-  }, []);
+  const [copiedId, triggerCopy] = useCopyFeedback();
 
   const handleCopy = (snippet: Snippet) => {
-    if (timerRef.current !== null) {
-      clearTimeout(timerRef.current);
-    }
-    setCopiedId(snippet.id);
+    triggerCopy(snippet.id);
     postMessage({ type: "copy", text: t(snippet.promptKey, locale) });
-    timerRef.current = setTimeout(() => setCopiedId(null), 2000);
   };
 
   return (
@@ -70,7 +57,7 @@ export function Actions({ locale }: ActionsProps) {
             onClick={() => handleCopy(snippet)}
           >
             <span className="snippet-title">{t(snippet.titleKey, locale)}</span>
-            <span className="snippet-icon">
+            <span className="snippet-icon" aria-live="polite">
               {copiedId === snippet.id ? (
                 <>
                   <CheckIcon />

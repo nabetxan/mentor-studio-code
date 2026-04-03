@@ -154,12 +154,16 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
   sendNoConfig(): void {
     this.hasConfig = false;
-    this.postMessage({ type: "noConfig" });
+    this.postMessage({ type: "noConfig", locale: this.detectLocale() });
+  }
+
+  private detectLocale(): Locale {
+    return vscode.env.language.startsWith("ja") ? "ja" : "en";
   }
 
   private flushState(): void {
     if (!this.hasConfig) {
-      this.postMessage({ type: "noConfig" });
+      this.postMessage({ type: "noConfig", locale: this.detectLocale() });
       return;
     }
     if (this.latestConfig) {
@@ -177,31 +181,29 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     if (!wsRoot) {
       return;
     }
-    const configUri = vscode.Uri.joinPath(wsRoot, ".mentor-studio.json");
+    const configUri = vscode.Uri.joinPath(wsRoot, ".mentor", "config.json");
     try {
-      const rawStr = Buffer.from(
-        await vscode.workspace.fs.readFile(configUri),
-      ).toString();
-      const parsed = parseConfig(rawStr);
+      const raw = await vscode.workspace.fs.readFile(configUri);
+      const rawText = Buffer.from(raw).toString();
+      const parsed = parseConfig(rawText);
       if (!parsed) {
         vscode.window.showErrorMessage(
-          ".mentor-studio.json has invalid format",
+          ".mentor/config.json has invalid format",
         );
         return;
       }
+      // Preserve unknown fields by merging typed changes into raw JSON
+      const rawObj = JSON.parse(rawText) as Record<string, unknown>;
       mutate(parsed);
-      // Preserve unknown fields by merging into the raw JSON object
-      const rawObj = JSON.parse(rawStr) as Record<string, unknown>;
-      const merged = { ...rawObj, ...parsed };
+      Object.assign(rawObj, parsed);
       await vscode.workspace.fs.writeFile(
         configUri,
-        Buffer.from(JSON.stringify(merged, null, 2) + "\n"),
+        Buffer.from(JSON.stringify(rawObj, null, 2) + "\n"),
       );
       this.latestConfig = parsed;
       this.postMessage({ type: "config", data: parsed });
-    } catch (err) {
-      console.error("Failed to update .mentor-studio.json", err);
-      vscode.window.showErrorMessage("Failed to update .mentor-studio.json");
+    } catch {
+      vscode.window.showErrorMessage("Failed to update .mentor/config.json");
     }
   }
 
