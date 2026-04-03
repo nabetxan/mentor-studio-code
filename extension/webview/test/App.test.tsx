@@ -69,7 +69,7 @@ describe("App", () => {
   it("shows no-config message when noConfig is received", () => {
     render(<App />);
     simulateMessage({ type: "noConfig" });
-    expect(screen.getAllByText(/\.mentor-studio\.json/).length).toBeGreaterThan(
+    expect(screen.getAllByText(/\.mentor\/config\.json/).length).toBeGreaterThan(
       0,
     );
   });

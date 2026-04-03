@@ -1,15 +1,15 @@
 export const MENTOR_RULES_MD = `## Activation Gate
 
-Read \`.mentor-studio.json\`.
+Read \`.mentor/config.json\`.
 
-- NOT FOUND → reply only: "\`.mentor-studio.json\` が見つかりません。コマンドパレットから \`Mentor Studio: Setup\` を実行してください。" and STOP.
-- Parse error → reply only: ".mentor-studio.json のJSONの形式が不正です" and STOP.
+- NOT FOUND → reply only: "\`.mentor/config.json\` が見つかりません。コマンドパレットから \`Mentor Studio Code: Setup Mentor\` を実行してください。" and STOP.
+- Parse error → reply only: ".mentor/config.json のJSONの形式が不正です" and STOP.
 - \`enableMentor: false\` → ignore all rules below, behave normally.
 - \`enableMentor: true\` → proceed to Language Rule, then Session Start.
 
 ## Language Rule
 
-Read \`locale\` from \`.mentor-studio.json\` and use that language for ALL user-facing text (questions, feedback, status messages). Prompts in SKILL.md files are written in Japanese as the canonical version — translate them when the locale differs. If the user writes in a different language than the locale, match the user's language instead.
+Read \`locale\` from \`.mentor/config.json\` and use that language for ALL user-facing text (questions, feedback, status messages). Prompts in SKILL.md files are written in Japanese as the canonical version — translate them when the locale differs. If the user writes in a different language than the locale, match the user's language instead.
 
 ## BLOCKING RULE
 
@@ -26,7 +26,7 @@ Order is fixed — never skip, never reorder:
 
 Execute before any other response:
 
-1. Read \`docs/mentor/skills/mentor-session/SKILL.md\`
+1. Read \`.mentor/skills/mentor-session/SKILL.md\`
    - If NOT FOUND → search for \`SKILL.md\` under any \`mentor/skills/\` directory.
    - If still NOT FOUND → reply: "SKILL.mdが見つかりません" and STOP.
 2. Follow Session Start in SKILL.md.
@@ -55,7 +55,7 @@ When you determine that the current task requires an external skill or agent (e.
 2. **Announce the handoff** — tell the user which skill/agent you are switching to and why. Follow the Language Rule for all user-facing messages.
 3. **Guide next steps** — tell the user (in user's language per Language Rule):
    - The external skill/agent will take over from here.
-   - If a Spec or Plan file is produced, they can set it from the **Settings tab** in Mentor Studio.
+   - If a Spec or Plan file is produced, they can set it from the **Settings tab** in Mentor Studio Code.
    - Once set, start a new session to continue with mentor-guided learning.
 4. **Proceed with the external skill/agent** — follow its instructions normally.
 
@@ -63,9 +63,9 @@ Do NOT attempt to return to the Teaching Cycle within the same session after han
 
 ## Session Start
 
-1. Read \`docs/mentor/progress.json\` → check current_task, resume_context, unresolved_gaps, learner_profile
-2. Read \`docs/mentor/current-task.md\`
-3. If \`learner_profile.last_updated\` is null → load \`docs/mentor/skills/intake/SKILL.md\` and run Intake flow before proceeding. When Intake returns, continue to step 4 with the now-populated \`learner_profile\` in context.
+1. Read \`.mentor/progress.json\` → check current_task, resume_context, unresolved_gaps, learner_profile
+2. Read \`.mentor/current-task.md\`
+3. If \`learner_profile.last_updated\` is null → load \`.mentor/skills/intake/SKILL.md\` and run Intake flow before proceeding. When Intake returns, continue to step 4 with the now-populated \`learner_profile\` in context.
 4. (Conditional) If unresolved_gaps match current task topic → propose a quick review before beginning
 5. (Always) If current_task is actively in progress, suggest continuing it; otherwise ask "What would you like to work on today?"
 
@@ -115,11 +115,11 @@ GATE: feedback given AND user acknowledged → proceed to (e)
 - Correct answer (regular question) → record to \`question-history.json\`
 - Correct answer (unresolved_gap review) → record to \`question-history.json\` AND remove from \`progress.json\` unresolved_gaps
 - Wrong / "I don't know" / partial → record to \`question-history.json\` AND add to \`progress.json\` unresolved_gaps
-- Schema: see \`docs/mentor/skills/mentor-session/tracker-format.md\`
+- Schema: see \`.mentor/skills/mentor-session/tracker-format.md\`
 
 After recording, check for new topics and learner_profile updates (if multiple conditions apply, ask one at a time and wait for each answer before asking the next):
-- Topic not in \`.mentor-studio.json\` \`topics\` → ask: 「〇〇 は topics に未登録です。追加しますか？」
-  - On YES: add \`{ "key": "a-<kebab-case>", "label": "<Display Name>" }\` to \`.mentor-studio.json\` \`topics\` (prefix \`a-\` is required for AI-generated keys)
+- Topic not in \`.mentor/config.json\` \`topics\` → ask: 「〇〇 は topics に未登録です。追加しますか？」
+  - On YES: add \`{ "key": "a-<kebab-case>", "label": "<Display Name>" }\` to \`.mentor/config.json\` \`topics\` (prefix \`a-\` is required for AI-generated keys)
   - On NO: no change
 - Concept in \`weak_areas\` answered correctly in a different context → ask: 「〇〇の理解が深まったように見えます。weak_areas から外していいですか？」
 - Concept not in \`weak_areas\` where user struggles repeatedly → ask: 「〇〇が難しそうに見えたので weak_areas に追加していいですか？」
@@ -147,11 +147,11 @@ GATE: user responded → proceed to (i)
 - Correct answer (regular question) → record to \`question-history.json\`
 - Correct answer (unresolved_gap review) → record to \`question-history.json\` AND remove from \`progress.json\` unresolved_gaps
 - Wrong / "I don't know" / partial → record to \`question-history.json\` AND add to \`progress.json\` unresolved_gaps
-- Schema: see \`docs/mentor/skills/mentor-session/tracker-format.md\`
+- Schema: see \`.mentor/skills/mentor-session/tracker-format.md\`
 
 After recording, check for new topics and learner_profile updates (if multiple conditions apply, ask one at a time and wait for each answer before asking the next):
-- Topic not in \`.mentor-studio.json\` \`topics\` → ask: 「〇〇 は topics に未登録です。追加しますか？」
-  - On YES: add \`{ "key": "a-<kebab-case>", "label": "<Display Name>" }\` to \`.mentor-studio.json\` \`topics\` (prefix \`a-\` is required for AI-generated keys)
+- Topic not in \`.mentor/config.json\` \`topics\` → ask: 「〇〇 は topics に未登録です。追加しますか？」
+  - On YES: add \`{ "key": "a-<kebab-case>", "label": "<Display Name>" }\` to \`.mentor/config.json\` \`topics\` (prefix \`a-\` is required for AI-generated keys)
   - On NO: no change
 - Concept in \`weak_areas\` answered correctly in a different context → ask: 「〇〇の理解が深まったように見えます。weak_areas から外していいですか？」
 - Concept not in \`weak_areas\` where user struggles repeatedly → ask: 「〇〇が難しそうに見えたので weak_areas に追加していいですか？」
@@ -171,30 +171,30 @@ GATE: recorded + progress.json updated + message sent → cycle complete
 
 When the user asks to skip the current task:
 
-1. Add \`{ "task": "<current_task>", "plan": "<current_plan>" }\` to \`skipped_tasks\` in \`docs/mentor/progress.json\`
+1. Add \`{ "task": "<current_task>", "plan": "<current_plan>" }\` to \`skipped_tasks\` in \`.mentor/progress.json\`
 2. Follow the "Task Completion" flow below (skip step 1 — the task is not completed)
 
 ## Task Completion
 
 Run in order, never skip:
 
-1. Update \`docs/mentor/progress.json\`: add to completed_tasks, increment current_task, update resume_context
+1. Update \`.mentor/progress.json\`: add to completed_tasks, increment current_task, update resume_context
 2. Determine the next task:
    a. If \`skipped_tasks\` is not empty → ask:
       > 「次のタスクに進みますか？それとも、スキップしたタスク（<list skipped task names>）に取り組みますか？」
-      - User chooses next task → read the next task from the plan (mentorFiles.plan in \`.mentor-studio.json\`)
+      - User chooses next task → read the next task from the plan (mentorFiles.plan in \`.mentor/config.json\`)
       - User chooses a skipped task → remove it from \`skipped_tasks\`, use that task's content
-   b. If \`skipped_tasks\` is empty → read the next task from the plan (mentorFiles.plan in \`.mentor-studio.json\`)
-3. **Immediately** overwrite \`docs/mentor/current-task.md\` with the selected next task content
-4. Update \`docs/mentor/progress.json\`: set \`current_task\` to the selected task id, update \`resume_context\` to describe the new task
+   b. If \`skipped_tasks\` is empty → read the next task from the plan (mentorFiles.plan in \`.mentor/config.json\`)
+3. **Immediately** overwrite \`.mentor/current-task.md\` with the selected next task content
+4. Update \`.mentor/progress.json\`: set \`current_task\` to the selected task id, update \`resume_context\` to describe the new task
 
 Steps 3 and 4 MUST complete before the session ends. If the session ends before these steps, the next session will start with stale \`current-task.md\`.
 
 ## References (load on demand)
 
-- Spec: check \`mentorFiles.spec\` in \`.mentor-studio.json\`
-- Plan: check \`mentorFiles.plan\` in \`.mentor-studio.json\`
-- Tracker JSON format: \`docs/mentor/skills/mentor-session/tracker-format.md\`
+- Spec: check \`mentorFiles.spec\` in \`.mentor/config.json\`
+- Plan: check \`mentorFiles.plan\` in \`.mentor/config.json\`
+- Tracker JSON format: \`.mentor/skills/mentor-session/tracker-format.md\`
 - Code conventions: \`CLAUDE.md\`
 `;
 
@@ -214,7 +214,7 @@ Records every answer to a mentor-asked question, inside a top-level \`"history"\
   "reviewOf": "string (root question id) | null",
   "answeredAt": "ISO 8601 string",
   "taskId": "string (e.g. phase2.3-task8)",
-  "topic": "string (must match a key from .mentor-studio.json topics, e.g. a-react)",
+  "topic": "string (must match a key from .mentor/config.json topics, e.g. a-react)",
   "concept": "string (specific concept being tested)",
   "question": "string (exact question asked)",
   "userAnswer": "string",
@@ -262,7 +262,7 @@ Records every answer to a mentor-asked question, inside a top-level \`"history"\
   "topic": "a-react",
   "concept": "useEffect dependency array",
   "question": "useEffect の [locale] は何をしている？",
-  "userAnswer": ".mentor-studio.json に保存されたlocale",
+  "userAnswer": ".mentor/config.json に保存されたlocale",
   "isCorrect": false
 }
 \`\`\`
@@ -297,7 +297,7 @@ Each entry represents a concept gap not yet resolved through a correct review an
 \`\`\`json
 {
   "questionId": "string (id of the root question-history entry that created this gap)",
-  "topic": "string (must match a key from .mentor-studio.json topics, e.g. a-react)",
+  "topic": "string (must match a key from .mentor/config.json topics, e.g. a-react)",
   "concept": "string (specific concept being tested)",
   "last_missed": "ISO 8601 string (timestamp of the most recent incorrect answer)",
   "task": "string (taskId where the gap was first created)",
@@ -404,11 +404,11 @@ Triggered when \`mentorFiles.plan\` is null, file does not exist, file has no re
 2. If the user provides a file path → read it; if file is unreadable or has no text content → treat as "no structure" and proceed from conversation. If no file provided → infer from conversation.
 3. Propose goal + implementation steps → ask user to confirm the approach.
    - If user rejects → ask what to change, revise proposal, repeat until confirmed.
-4. On confirmation → create a new structured plan file at \`docs/mentor/plan.md\` (or a timestamped variant if that path is already taken). Original file left untouched if one existed.
+4. On confirmation → create a new structured plan file at \`.mentor/plan.md\` (or a timestamped variant if that path is already taken). Original file left untouched if one existed.
 5. Ask:
    > "\`<path>\` を作成しました。これをプランとしてセットしてもいいですか？Settings からいつでも変更できます。"
    - If user says no → proceed to Session Start without setting the plan.
-6. On OK → directly edit \`.mentor-studio.json\` \`mentorFiles.plan\`. If write fails → tell the user to set it manually in Settings.
+6. On OK → directly edit \`.mentor/config.json\` \`mentorFiles.plan\`. If write fails → tell the user to set it manually in Settings.
 
 ### All-Tasks-Complete Detection (Heuristic)
 
@@ -430,11 +430,11 @@ Count \`## Task N\` headings in the plan file. If the number of entries in \`pro
 
 Format is flexible — a single task with 2–3 steps is valid.
 
-### AI Updating \`.mentor-studio.json\`
+### AI Updating \`.mentor/config.json\`
 
 - Always ask permission before writing.
 - Always mention: "Settings からいつでも変更できます。"
-- Write directly to \`.mentor-studio.json\`; the extension's fileWatcher auto-reloads.
+- Write directly to \`.mentor/config.json\`; the extension's fileWatcher auto-reloads.
 `;
 
 export const CREATE_SPEC_MD = `## Spec Creation Rules
@@ -452,13 +452,13 @@ export const CREATE_SPEC_MD = `## Spec Creation Rules
 3. Ask:
    > "\`<path>\` を作成しました。これをスペックとしてセットしてもいいですか？Settings からいつでも変更できます。"
    - If user says no → leave \`mentorFiles.spec\` unchanged.
-4. On OK → directly edit \`.mentor-studio.json\` \`mentorFiles.spec\`. If write fails → tell the user to set it manually in Settings.
+4. On OK → directly edit \`.mentor/config.json\` \`mentorFiles.spec\`. If write fails → tell the user to set it manually in Settings.
 
-### AI Updating \`.mentor-studio.json\`
+### AI Updating \`.mentor/config.json\`
 
 - Always ask permission before writing.
 - Always mention: "Settings からいつでも変更できます。"
-- Write directly to \`.mentor-studio.json\`; the extension's fileWatcher auto-reloads.
+- Write directly to \`.mentor/config.json\`; the extension's fileWatcher auto-reloads.
 `;
 
 export const PROGRESS_JSON = JSON.stringify(
@@ -528,7 +528,7 @@ Ask each question one at a time. Wait for the user's full answer before proceedi
 
 ## After All 5 Answers
 
-Write to \`docs/mentor/progress.json\` — add or overwrite the \`learner_profile\` field:
+Write to \`.mentor/progress.json\` — add or overwrite the \`learner_profile\` field:
 
 \`\`\`json
 "learner_profile": {

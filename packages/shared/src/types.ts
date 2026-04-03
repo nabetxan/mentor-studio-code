@@ -1,4 +1,4 @@
-// === Progress data (matches docs/mentor/progress.json) ===
+// === Progress data (matches .mentor/progress.json) ===
 
 export interface UnresolvedGap {
   questionId: string;
@@ -37,7 +37,7 @@ export interface ProgressData {
   learner_profile?: LearnerProfile;
 }
 
-// === Question history (matches docs/mentor/question-history.json) ===
+// === Question history (matches .mentor/question-history.json) ===
 
 export interface QuestionHistoryEntry {
   id: string;
@@ -55,7 +55,7 @@ export interface QuestionHistory {
   history: QuestionHistoryEntry[];
 }
 
-// === Project config (matches .mentor-studio.json) ===
+// === Project config (matches .mentor/config.json) ===
 
 export interface TopicConfig {
   key: string;

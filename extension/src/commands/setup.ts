@@ -42,9 +42,7 @@ export async function runSetup(
     return;
   }
 
-  const mentorFilesPath = vscode.workspace
-    .getConfiguration("mentor-studio")
-    .get<string>("mentorFilesPath", "docs/mentor");
+  const mentorFilesPath = ".mentor";
 
   const folderName =
     vscode.workspace.workspaceFolders?.[0]?.name ?? "my-project";
@@ -78,8 +76,8 @@ export async function runSetup(
     (created ? createdFiles : skippedFiles).push(label);
   };
 
-  // Create or update .mentor-studio.json
-  const configUri = vscode.Uri.joinPath(wsRoot, ".mentor-studio.json");
+  // Create or update .mentor/config.json
+  const configUri = vscode.Uri.joinPath(wsRoot, ".mentor", "config.json");
   const pkg = context.extension.packageJSON as Record<string, unknown>;
   const extensionVersion =
     typeof pkg.version === "string" ? pkg.version : "0.0.0";
@@ -104,7 +102,7 @@ export async function runSetup(
       configUri,
       Buffer.from(JSON.stringify(existingConfig, null, 2) + "\n"),
     );
-    skippedFiles.push(".mentor-studio.json (updated version)");
+    skippedFiles.push(".mentor/config.json (updated version)");
   } else {
     // Create new config
     const configContent =
@@ -126,7 +124,7 @@ export async function runSetup(
         2,
       ) + "\n";
     await vscode.workspace.fs.writeFile(configUri, Buffer.from(configContent));
-    createdFiles.push(".mentor-studio.json");
+    createdFiles.push(".mentor/config.json");
   }
 
   // Prompt files — always overwrite
@@ -191,7 +189,7 @@ export async function runSetup(
     : detectedLocale === "ja";
 
   // Handle CLAUDE.md — let user choose project-wide or personal
-  const mentorRef = "@docs/mentor/rules/MENTOR_RULES.md";
+  const mentorRef = "@.mentor/rules/MENTOR_RULES.md";
 
   // Build personal CLAUDE.md path: ~/.claude/projects/-Users-xxx/CLAUDE.md
   const wsPath = wsRoot.fsPath;
@@ -300,7 +298,7 @@ export async function runSetup(
   }
 
   // Output results
-  outputChannel.appendLine("=== Mentor Studio Setup Results ===");
+  outputChannel.appendLine("=== Mentor Studio Code Setup Results ===");
   outputChannel.appendLine(
     `Created: ${createdFiles.join(", ") || "none (all existed)"}`,
   );
@@ -312,8 +310,8 @@ export async function runSetup(
   const reloadButton = isJa ? "ウィンドウを再読み込み" : "Reload Window";
   const choice = await vscode.window.showInformationMessage(
     isJa
-      ? "Mentor Studio のセットアップが完了しました！ダッシュボードを有効にするにはリロードしてください。"
-      : "Mentor Studio setup complete! Reload to activate the dashboard.",
+      ? "Mentor Studio Code のセットアップが完了しました！ダッシュボードを有効にするにはリロードしてください。"
+      : "Mentor Studio Code setup complete! Reload to activate the dashboard.",
     { modal: true },
     reloadButton,
   );

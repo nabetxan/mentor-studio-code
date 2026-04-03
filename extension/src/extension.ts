@@ -7,7 +7,7 @@ let outputChannel: vscode.OutputChannel | undefined;
 
 function getOutputChannel(): vscode.OutputChannel {
   if (!outputChannel) {
-    outputChannel = vscode.window.createOutputChannel("Mentor Studio");
+    outputChannel = vscode.window.createOutputChannel("Mentor Studio Code");
   }
   return outputChannel;
 }
@@ -27,9 +27,7 @@ export function activate(context: vscode.ExtensionContext): void {
     return;
   }
 
-  const mentorPath = vscode.workspace
-    .getConfiguration("mentor-studio")
-    .get<string>("mentorFilesPath", "docs/mentor");
+  const mentorPath = ".mentor";
 
   // Sidebar provider
   const sidebarProvider = new SidebarProvider(context.extensionUri);
@@ -66,6 +64,12 @@ export function activate(context: vscode.ExtensionContext): void {
   const currentVersion =
     typeof currentPkg.version === "string" ? currentPkg.version : "0.0.0";
 
+  // Version check using globalState (persists across sessions, independent of workspace)
+  const previousVersion = context.globalState.get<string>("extensionVersion");
+  const isVersionUpdated =
+    previousVersion !== undefined && previousVersion !== currentVersion;
+  void context.globalState.update("extensionVersion", currentVersion);
+
   void watcher
     .start()
     .then(() => {
@@ -73,15 +77,14 @@ export function activate(context: vscode.ExtensionContext): void {
       if (config) {
         sidebarProvider.sendConfig(config);
 
-        // Version check: prompt setup if extension was updated
-        if (config.extensionVersion !== currentVersion) {
+        if (isVersionUpdated) {
           const isJa = config.locale !== "en";
           const message = isJa
-            ? `Mentor Studio が更新されました (v${currentVersion})。最新のプロンプトを適用するには Setup を実行してください。`
-            : `Mentor Studio has been updated (v${currentVersion}). Run Setup to apply the latest prompts.`;
+            ? `Mentor Studio Code が更新されました (v${currentVersion})。最新のプロンプトを適用するには Setup を実行してください。`
+            : `Mentor Studio Code has been updated (v${currentVersion}). Run Setup to apply the latest prompts.`;
           const button = isJa ? "Setup を実行" : "Run Setup";
           void vscode.window
-            .showInformationMessage(message, { modal: true }, button)
+            .showInformationMessage(message, button)
             .then((choice) => {
               if (choice === button) {
                 void vscode.commands.executeCommand("mentor-studio.setup");

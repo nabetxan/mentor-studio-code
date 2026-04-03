@@ -112,7 +112,7 @@ export function Overview({
                   e.preventDefault();
                   postMessage({
                     type: "openFile",
-                    relativePath: "docs/mentor/current-task.md",
+                    relativePath: ".mentor/current-task.md",
                   });
                 }}
                 className="file-path-link"

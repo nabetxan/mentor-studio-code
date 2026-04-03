@@ -49,7 +49,7 @@ export class FileWatcherService implements vscode.Disposable {
 
     const configPattern = new vscode.RelativePattern(
       this.workspaceRoot,
-      ".mentor-studio.json",
+      ".mentor/config.json",
     );
     const configWatcher =
       vscode.workspace.createFileSystemWatcher(configPattern);
@@ -74,7 +74,7 @@ export class FileWatcherService implements vscode.Disposable {
 
   private async loadConfig(): Promise<void> {
     try {
-      const configPath = join(this.workspaceRoot, ".mentor-studio.json");
+      const configPath = join(this.workspaceRoot, ".mentor", "config.json");
       const raw = await readFile(configPath, "utf-8");
       this.config = parseConfig(raw);
     } catch {
@@ -209,7 +209,7 @@ export class FileWatcherService implements vscode.Disposable {
   }
 
   private async saveConfig(): Promise<void> {
-    const configPath = join(this.workspaceRoot, ".mentor-studio.json");
+    const configPath = join(this.workspaceRoot, ".mentor", "config.json");
     await writeFile(configPath, JSON.stringify(this.config, null, 2) + "\n");
     this.onConfigChanged?.(this.config);
     await this.refresh();

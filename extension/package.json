@@ -17,7 +17,7 @@
     "Education"
   ],
   "activationEvents": [
-    "workspaceContains:.mentor-studio.json"
+    "workspaceContains:.mentor/config.json"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -44,19 +44,9 @@
       {
         "command": "mentor-studio.setup",
         "title": "Setup Mentor",
-        "category": "Mentor Studio"
+        "category": "Mentor Studio Code"
       }
-    ],
-    "configuration": {
-      "title": "Mentor Studio",
-      "properties": {
-        "mentor-studio.mentorFilesPath": {
-          "type": "string",
-          "default": "docs/mentor",
-          "description": "Path to mentor data files relative to workspace root"
-        }
-      }
-    }
+    ]
   },
   "scripts": {
     "build": "node esbuild.config.mjs",

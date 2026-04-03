@@ -30,15 +30,15 @@ The dashboard displays your mentor session progress.
 1. Open the project you want to build with AI Mentor in VS Code
 2. Open the Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`)
 3. Run `Mentor Studio: Setup Mentor`
-4. A `.mentor-studio.json` file is generated in the project root
+4. A `.mentor/config.json` file is generated in the `.mentor/` directory
 5. When the "Reload Window" dialog appears, click it
-6. After reload, the Mentor Studio icon appears in the Activity Bar
+6. After reload, the Mentor Studio Code icon appears in the Activity Bar
 
 > **Tip:** If you open the dashboard before running Setup, you will see a prompt to run it.
 
 ## Usage
 
-Click the Mentor Studio icon in the Activity Bar to open the dashboard. The dashboard is a single sidebar with three tabs.
+Click the Mentor Studio Code icon in the Activity Bar to open the dashboard. The dashboard is a single sidebar with three tabs.
 
 The **Mentor** ON/OFF toggle in the navigation bar lets you enable or disable the mentor feature. The setting is read at the start of each session, so changes take effect from the next session.
 
@@ -93,15 +93,15 @@ Claude Code を活用したAIメンターセッションで、学習の進捗と
 1. AIメンターと一緒に開発したいプロジェクトを VS Code で開く
 2. コマンドパレットを開く（`Cmd+Shift+P` / `Ctrl+Shift+P`）
 3. `Mentor Studio: Setup Mentor` を実行する
-4. プロジェクトルートに `.mentor-studio.json` が生成される
+4. `.mentor/` ディレクトリに `.mentor/config.json` が生成される
 5. 「Reload Window」ダイアログが表示されたら押す
-6. リロード後、アクティビティバーに Mentor Studio アイコンが表示される
+6. リロード後、アクティビティバーに Mentor Studio Code アイコンが表示される
 
 > **ヒント:** Setup を実行する前にダッシュボードを開くと、セットアップを促すメッセージが表示されます。
 
 ## 使い方
 
-アクティビティバーの Mentor Studio アイコンをクリックするとダッシュボードが開きます。ダッシュボードは1つのサイドバーに3つのタブで構成されています。
+アクティビティバーの Mentor Studio Code アイコンをクリックするとダッシュボードが開きます。ダッシュボードは1つのサイドバーに3つのタブで構成されています。
 
 ナビゲーションバーの右端にある **メンター機能** の ON/OFF トグルで、メンター機能を切り替えられます。設定はセッション開始時に読み込まれるため、切り替え後は新しいセッションから反映されます。
 

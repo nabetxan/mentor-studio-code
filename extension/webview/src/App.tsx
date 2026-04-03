@@ -106,7 +106,7 @@ export function App() {
     return (
       <div className="no-config">
         <p>
-          <code>.mentor-studio.json</code> {t("app.noConfig.notFound", locale)}
+          <code>.mentor/config.json</code> {t("app.noConfig.notFound", locale)}
         </p>
         <p>{t("app.noConfig.instruction", locale)}</p>
         <button

@@ -89,10 +89,12 @@ function FileSetting({
           !
         </span>
       )}
-      <div className="setting-label">{label}</div>
-      <div className="setting-unset">
+      <div className="setting-label-row">
+        <div className="setting-label">{label}</div>
         <span className="setting-warning">{t("settings.unset", locale)}</span>
-        <div className="setting-actions">
+      </div>
+      <div className="setting-unset">
+        <div className="setting-actions-vertical">
           <button
             className="btn-primary"
             onClick={() => postMessage({ type: "selectFile", field })}
