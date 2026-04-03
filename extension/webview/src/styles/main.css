@@ -588,7 +588,7 @@ body {
   justify-content: space-between;
   align-items: center;
   max-width: 100%;
-  background: var(--vscode-editor-background);
+  background: var(--vscode-list-hoverBackground);
   border: 1px solid var(--vscode-panel-border);
   border-radius: 6px;
   padding: 8px 10px;
@@ -601,7 +601,7 @@ body {
 }
 
 .snippet-btn:hover {
-  background: var(--vscode-list-hoverBackground);
+  background: var(--vscode-editor-background);
 }
 
 .snippet-btn[data-tooltip] {
