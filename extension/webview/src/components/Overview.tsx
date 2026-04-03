@@ -3,7 +3,8 @@ import type {
   Locale,
   MentorStudioConfig,
 } from "@mentor-studio/shared";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
+import { useCopyFeedback } from "../hooks/useCopyFeedback";
 import { t } from "../i18n";
 import { postMessage } from "../vscodeApi";
 import { CheckIcon, CloseIcon, CopyIcon, EditIcon } from "./icons";
@@ -35,16 +36,7 @@ export function Overview({
   } | null>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
   const [mergeTargets, setMergeTargets] = useState<Record<string, string>>({});
-  const [copiedTopic, setCopiedTopic] = useState<string | null>(null);
-  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (copyTimerRef.current !== null) {
-        clearTimeout(copyTimerRef.current);
-      }
-    };
-  }, []);
+  const [copiedTopic, triggerCopy] = useCopyFeedback();
 
   if (!data) {
     return <div className="empty">{t("overview.noData", locale)}</div>;
@@ -89,16 +81,12 @@ export function Overview({
   }
 
   function copyReviewPrompt(key: string, label: string) {
-    if (copyTimerRef.current !== null) {
-      clearTimeout(copyTimerRef.current);
-    }
     const text = t("overview.topic.reviewPrompt", locale).replace(
       "{label}",
       label,
     );
     postMessage({ type: "copy", text });
-    setCopiedTopic(key);
-    copyTimerRef.current = setTimeout(() => setCopiedTopic(null), 2000);
+    triggerCopy(key);
   }
 
   return (
@@ -115,13 +103,45 @@ export function Overview({
         <div className="stat-card wide">
           <div className="stat-lbl">{t("overview.currentTask", locale)}</div>
           <div className="stat-val">
-            {data.currentTask === null
-              ? t("overview.notStarted", locale)
-              : `${t("overview.taskPrefix", locale)} ${data.currentTask}`}
+            {data.currentTask === null ? (
+              t("overview.notStarted", locale)
+            ) : (
+              <a
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  postMessage({
+                    type: "openFile",
+                    relativePath: ".mentor/current-task.md",
+                  });
+                }}
+                className="file-path-link"
+              >
+                {`${t("overview.taskPrefix", locale)} ${data.currentTask}`}
+              </a>
+            )}
           </div>
-          {config?.mentorFiles?.plan && (
-            <div className="stat-sub">{config.mentorFiles.plan}</div>
-          )}
+          {config?.mentorFiles?.plan != null &&
+            (() => {
+              const planPath = config.mentorFiles.plan;
+              return (
+                <div className="stat-sub">
+                  <a
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      postMessage({
+                        type: "openFile",
+                        relativePath: planPath,
+                      });
+                    }}
+                    className="file-path-link"
+                  >
+                    {planPath}
+                  </a>
+                </div>
+              );
+            })()}
         </div>
       </div>
 
@@ -130,6 +150,12 @@ export function Overview({
           <div className="section-heading">{t("overview.topics", locale)}</div>
           {data.byTopic.map((topic) => {
             const isExpanded = expandedTopics[topic.topic] ?? false;
+            const resolvedLabel =
+              topic.label !== topic.topic
+                ? topic.label
+                : (config?.topics?.find((c) => c.key === topic.topic)?.label ??
+                  topic.label);
+            const displayLabel = resolvedLabel.replace(/^[a-z]-/, "");
             const topicGaps = data.unresolvedGaps.filter(
               (g) => g.topic === topic.topic,
             );
@@ -160,6 +186,7 @@ export function Overview({
                       className="inline-edit-btn save"
                       onClick={saveLabel}
                       title={t("overview.topic.save", locale)}
+                      aria-label={t("overview.topic.save", locale)}
                     >
                       <CheckIcon />
                     </button>
@@ -167,48 +194,64 @@ export function Overview({
                       className="inline-edit-btn cancel"
                       onClick={cancelEditingLabel}
                       title={t("overview.topic.cancel", locale)}
+                      aria-label={t("overview.topic.cancel", locale)}
                     >
                       <CloseIcon />
                     </button>
                   </div>
                 ) : (
-                  <div className="topic-header">
-                    <button
-                      className="topic-header-toggle"
-                      onClick={() => toggleTopic(topic.topic)}
+                  <div
+                    className="topic-header"
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={isExpanded}
+                    onClick={() => toggleTopic(topic.topic)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        toggleTopic(topic.topic);
+                      }
+                    }}
+                  >
+                    <i
+                      className={
+                        isExpanded ? "chevron-icon open" : "chevron-icon"
+                      }
                     >
-                      <span className="topic-label">{topic.label}</span>
-                      <span className="score-pill">
-                        {topic.correct}/{topic.total}
-                        {t("overview.topic.scoreUnit", locale)}
-                      </span>
-                      <i
-                        className={
-                          isExpanded ? "chevron-icon open" : "chevron-icon"
-                        }
-                      >
-                        ›
-                      </i>
-                    </button>
+                      ›
+                    </i>
+                    <span className="topic-label">{displayLabel}</span>
                     <button
                       className="edit-label-btn"
                       onClick={(e) =>
-                        startEditingLabel(topic.topic, topic.label, e)
+                        startEditingLabel(topic.topic, displayLabel, e)
                       }
                       title={t("overview.topic.editLabel", locale)}
+                      aria-label={t("overview.topic.editLabel", locale)}
                     >
                       <EditIcon />
                     </button>
+                    <span className="score-pill">
+                      {topic.correct}/{topic.total}
+                      {t("overview.topic.scoreUnit", locale)}
+                    </span>
                   </div>
                 )}
                 <div className="progress-wrap">
-                  <div className="progress-bar">
+                  <div
+                    className="progress-bar"
+                    role="progressbar"
+                    aria-valuenow={Math.round(topic.rate * 100)}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label={`${displayLabel} ${Math.round(topic.rate * 100)}%`}
+                  >
                     <div
                       className="progress-fill"
                       style={{ width: `${Math.round(topic.rate * 100)}%` }}
                     />
                   </div>
-                  <span className="progress-pct">
+                  <span className="progress-pct" aria-hidden="true">
                     {Math.round(topic.rate * 100)}%
                   </span>
                 </div>
@@ -254,9 +297,11 @@ export function Overview({
                     </div>
                     <button
                       className={`copy-btn${copiedTopic === topic.topic ? " copied" : ""}`}
-                      onClick={() => copyReviewPrompt(topic.topic, topic.label)}
+                      onClick={() =>
+                        copyReviewPrompt(topic.topic, displayLabel)
+                      }
                     >
-                      <span>
+                      <span aria-live="polite">
                         {copiedTopic === topic.topic
                           ? t("actions.copied", locale)
                           : t("overview.topic.copyReview", locale)}
@@ -275,7 +320,7 @@ export function Overview({
                         </div>
                         {[...topicGaps]
                           .sort((a, b) =>
-                            a.first_missed.localeCompare(b.first_missed),
+                            a.last_missed.localeCompare(b.last_missed),
                           )
                           .slice(0, 3)
                           .map((gap) => (

@@ -69,7 +69,9 @@ describe("App", () => {
   it("shows no-config message when noConfig is received", () => {
     render(<App />);
     simulateMessage({ type: "noConfig" });
-    expect(screen.getByText(/\.mentor-studio\.json/)).toBeTruthy();
+    expect(screen.getAllByText(/\.mentor\/config\.json/).length).toBeGreaterThan(
+      0,
+    );
   });
 
   it("shows Actions tab by default (ja)", () => {

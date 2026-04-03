@@ -4,6 +4,7 @@
   "description": "Track your learning progress and review history with AI mentor sessions in VS Code",
   "version": "0.1.0",
   "icon": "images/icon.png",
+  "license": "MIT",
   "publisher": "nabetxan",
   "repository": {
     "type": "git",
@@ -16,7 +17,7 @@
     "Education"
   ],
   "activationEvents": [
-    "workspaceContains:.mentor-studio.json"
+    "workspaceContains:.mentor/config.json"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -24,7 +25,7 @@
       "activitybar": [
         {
           "id": "mentor-studio",
-          "title": "Mentor Studio",
+          "title": "Mentor Studio Code",
           "icon": "$(mortar-board)"
         }
       ]
@@ -34,7 +35,7 @@
         {
           "type": "webview",
           "id": "mentor-studio.sidebar",
-          "name": "Dashboard",
+          "name": "",
           "icon": "$(mortar-board)"
         }
       ]
@@ -43,19 +44,9 @@
       {
         "command": "mentor-studio.setup",
         "title": "Setup Mentor",
-        "category": "Mentor Studio"
+        "category": "Mentor Studio Code"
       }
-    ],
-    "configuration": {
-      "title": "Mentor Studio",
-      "properties": {
-        "mentor-studio.mentorFilesPath": {
-          "type": "string",
-          "default": "docs/mentor",
-          "description": "Path to mentor data files relative to workspace root"
-        }
-      }
-    }
+    ]
   },
   "scripts": {
     "build": "node esbuild.config.mjs",
@@ -71,6 +62,6 @@
     "@types/vscode": "~1.85.0",
     "esbuild": "^0.24.0",
     "typescript": "^5.7.0",
-    "vitest": "^3.0.0"
+    "vitest": "^4.1.0"
   }
 }
