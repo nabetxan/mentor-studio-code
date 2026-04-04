@@ -98,7 +98,6 @@ const translations = {
     en: "Select a file from your workspace",
   },
   "settings.selectFile": { ja: "ファイルを選択", en: "Select File" },
-  "settings.createPrompt": { ja: "プロンプトを作成", en: "Create prompt" },
   "settings.createPrompt.plan": {
     ja: "AIとプランを作成",
     en: "Create plan with AI",
