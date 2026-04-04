@@ -101,4 +101,26 @@ describe("Settings", () => {
     const warnings = screen.getAllByText("⚠ Not set");
     expect(warnings).toHaveLength(2);
   });
+
+  it("renders Remove Mentor button and description", () => {
+    render(<Settings {...defaultProps} />);
+    expect(screen.getByText("メンター参照をCLAUDE.mdから削除")).toBeTruthy();
+  });
+
+  it("sends removeMentor message when button clicked", async () => {
+    const { postMessage } = await import("../src/vscodeApi");
+    render(<Settings {...defaultProps} />);
+
+    const removeButton = screen.getByText("メンター参照をCLAUDE.mdから削除");
+    fireEvent.click(removeButton);
+
+    expect(postMessage).toHaveBeenCalledWith({ type: "removeMentor" });
+  });
+
+  it("renders Remove Mentor button in English", () => {
+    render(<Settings {...defaultProps} locale="en" />);
+    expect(
+      screen.getByText("Remove Mentor reference from CLAUDE.md"),
+    ).toBeTruthy();
+  });
 });

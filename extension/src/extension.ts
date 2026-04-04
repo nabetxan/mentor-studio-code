@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { runRemoveMentor } from "./commands/removeMentor";
 import { runSetup } from "./commands/setup";
 import { FileWatcherService } from "./services/fileWatcher";
 import { SidebarProvider } from "./views/sidebarProvider";
@@ -21,6 +22,12 @@ export function activate(context: vscode.ExtensionContext): void {
     () => runSetup(context, getOutputChannel()),
   );
   context.subscriptions.push(setupCommand);
+
+  const removeMentorCommand = vscode.commands.registerCommand(
+    "mentor-studio.removeMentor",
+    () => runRemoveMentor(getOutputChannel()),
+  );
+  context.subscriptions.push(removeMentorCommand);
 
   // Sidebar provider — register before workspace check so the panel is
   // visible even when no folder is open.

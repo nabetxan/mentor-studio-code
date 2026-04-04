@@ -1,6 +1,5 @@
-import * as os from "os";
-import * as path from "path";
 import * as vscode from "vscode";
+import { findMentorRef, promptAndAddMentorRef } from "../services/claudeMd";
 import {
   CREATE_PLAN_MD,
   CREATE_SPEC_MD,
@@ -103,6 +102,10 @@ export async function runSetup(
   if (existingConfig) {
     // Update extensionVersion in existing config
     existingConfig.extensionVersion = extensionVersion;
+    if (!existingConfig.workspacePath) {
+      existingConfig.workspacePath = wsRoot.fsPath;
+    }
+    delete (existingConfig as Record<string, unknown>).extensionUninstalled;
     await vscode.workspace.fs.writeFile(
       configUri,
       Buffer.from(JSON.stringify(existingConfig, null, 2) + "\n"),
@@ -124,6 +127,7 @@ export async function runSetup(
           mentorFiles: { spec: null, plan: null },
           locale: detectedLocale,
           extensionVersion,
+          workspacePath: wsRoot.fsPath,
         },
         null,
         2,
@@ -194,109 +198,15 @@ export async function runSetup(
     : detectedLocale === "ja";
 
   // Handle CLAUDE.md — let user choose project-wide or personal
-  const mentorRef = "@.mentor/rules/MENTOR_RULES.md";
-
-  // Build personal CLAUDE.md path: ~/.claude/projects/-Users-xxx/CLAUDE.md
-  const wsPath = wsRoot.fsPath;
-  const projectDirName = wsPath.replace(/\//g, "-");
-  const personalClaudeMdPath = path.join(
-    os.homedir(),
-    ".claude",
-    "projects",
-    projectDirName,
-    "CLAUDE.md",
-  );
-  const personalClaudeMdUri = vscode.Uri.file(personalClaudeMdPath);
-  const projectClaudeMdUri = vscode.Uri.joinPath(wsRoot, "CLAUDE.md");
-
-  // Check if mentorRef already exists in either location
-  let personalContent = "";
-  let personalExists = false;
-  let projectContent = "";
-  let projectExists = false;
-
-  try {
-    const raw = await vscode.workspace.fs.readFile(personalClaudeMdUri);
-    personalContent = Buffer.from(raw).toString();
-    personalExists = true;
-  } catch {
-    // doesn't exist
-  }
-
-  try {
-    const raw = await vscode.workspace.fs.readFile(projectClaudeMdUri);
-    projectContent = Buffer.from(raw).toString();
-    projectExists = true;
-  } catch {
-    // doesn't exist
-  }
-
-  const alreadyInPersonal = personalContent.includes(mentorRef);
-  const alreadyInProject = projectContent.includes(mentorRef);
-
+  const refStatus = await findMentorRef(wsRoot);
   let claudeAction = "skipped (already contains mentorRef)";
 
-  if (!alreadyInPersonal && !alreadyInProject) {
-    // Ask user where to add the reference
-    const projectLabel = isJa
-      ? "プロジェクト (CLAUDE.md)"
-      : "Project (CLAUDE.md)";
-    const personalLabel = isJa
-      ? "個人設定 (~/.claude/projects/)"
-      : "Personal (~/.claude/projects/)";
-    const skipLabel = isJa ? "スキップ" : "Skip";
-
-    const target = await vscode.window.showInformationMessage(
-      isJa
-        ? `メンター設定の参照をどこに追加しますか？\nプロジェクト: チーム全員に適用\n個人設定: 自分だけに適用`
-        : `Where should the mentor config reference be added?\nProject: applies to the whole team\nPersonal: applies only to you`,
-      { modal: true },
-      projectLabel,
-      personalLabel,
-      skipLabel,
-    );
-
-    if (target === projectLabel) {
-      if (!projectExists) {
-        await vscode.workspace.fs.writeFile(
-          projectClaudeMdUri,
-          Buffer.from(mentorRef + "\n"),
-        );
-        claudeAction = "created project CLAUDE.md";
-      } else {
-        const newContent = projectContent.trimEnd() + "\n\n" + mentorRef + "\n";
-        await vscode.workspace.fs.writeFile(
-          projectClaudeMdUri,
-          Buffer.from(newContent),
-        );
-        claudeAction = "appended to project CLAUDE.md";
-      }
-    } else if (target === personalLabel) {
-      // Ensure the personal projects directory exists
-      const personalDirUri = vscode.Uri.file(
-        path.dirname(personalClaudeMdPath),
-      );
-      try {
-        await vscode.workspace.fs.createDirectory(personalDirUri);
-      } catch {
-        // already exists
-      }
-
-      if (!personalExists) {
-        await vscode.workspace.fs.writeFile(
-          personalClaudeMdUri,
-          Buffer.from(mentorRef + "\n"),
-        );
-        claudeAction = "created personal CLAUDE.md";
-      } else {
-        const newContent =
-          personalContent.trimEnd() + "\n\n" + mentorRef + "\n";
-        await vscode.workspace.fs.writeFile(
-          personalClaudeMdUri,
-          Buffer.from(newContent),
-        );
-        claudeAction = "appended to personal CLAUDE.md";
-      }
+  if (!refStatus.personal && !refStatus.project) {
+    const result = await promptAndAddMentorRef(wsRoot, isJa);
+    if (result === "project") {
+      claudeAction = "added to project CLAUDE.md";
+    } else if (result === "personal") {
+      claudeAction = "added to personal CLAUDE.md";
     } else {
       claudeAction = "skipped by user";
     }

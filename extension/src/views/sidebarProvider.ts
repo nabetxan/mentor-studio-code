@@ -8,6 +8,7 @@ import type {
 } from "@mentor-studio/shared";
 import * as path from "node:path";
 import * as vscode from "vscode";
+import { findMentorRef, promptAndAddMentorRef } from "../services/claudeMd";
 import { parseConfig } from "../services/dataParser";
 import { getNonce } from "../utils/nonce";
 
@@ -132,6 +133,8 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
               error: "Failed to add topic",
             });
           }
+        } else if (message.type === "removeMentor") {
+          await vscode.commands.executeCommand("mentor-studio.removeMentor");
         }
       },
     );
@@ -214,8 +217,51 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
   }
 
   private async updateEnableMentor(value: boolean): Promise<void> {
+    if (!value) {
+      // Toggling OFF — just update config
+      await this.updateConfig((config) => {
+        config.enableMentor = false;
+      });
+      return;
+    }
+
+    // Toggling ON — check if @ref exists in CLAUDE.md
+    const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
+    if (!wsRoot) {
+      return;
+    }
+
+    const status = await findMentorRef(wsRoot);
+
+    if (status.personal || status.project) {
+      // Ref exists — just toggle ON
+      await this.updateConfig((config) => {
+        config.enableMentor = true;
+      });
+      return;
+    }
+
+    // Ref missing — prompt user to add it
+    const isJa = this.latestConfig?.locale !== "en";
+    const result = await promptAndAddMentorRef(wsRoot, isJa);
+
+    if (result === undefined) {
+      // User cancelled — keep enableMentor false
+      vscode.window.showInformationMessage(
+        isJa
+          ? "メンター参照が CLAUDE.md にないため、有効化できません。"
+          : "Cannot enable: mentor reference is missing from CLAUDE.md.",
+      );
+      // Re-send config to reset the toggle in the webview
+      if (this.latestConfig) {
+        this.postMessage({ type: "config", data: this.latestConfig });
+      }
+      return;
+    }
+
+    // Ref added — now toggle ON
     await this.updateConfig((config) => {
-      config.enableMentor = value;
+      config.enableMentor = true;
     });
   }
 

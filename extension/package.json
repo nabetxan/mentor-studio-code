@@ -45,6 +45,11 @@
         "command": "mentor-studio.setup",
         "title": "Setup Mentor",
         "category": "Mentor Studio Code"
+      },
+      {
+        "command": "mentor-studio.removeMentor",
+        "title": "Remove Mentor",
+        "category": "Mentor Studio Code"
       }
     ]
   },
@@ -52,7 +57,8 @@
     "build": "node esbuild.config.mjs",
     "watch": "node esbuild.config.mjs --watch",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "vscode:uninstall": "node scripts/uninstall.js"
   },
   "dependencies": {
     "@mentor-studio/shared": "*"

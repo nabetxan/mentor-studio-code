@@ -69,11 +69,13 @@ export interface MentorFiles {
 
 export interface MentorStudioConfig {
   repositoryName: string;
+  workspacePath?: string;
   topics: TopicConfig[];
   mentorFiles?: MentorFiles;
   locale?: Locale;
   enableMentor?: boolean;
   extensionVersion?: string;
+  extensionUninstalled?: boolean;
 }
 
 // === Dashboard stats (computed by extension, sent to webview) ===
@@ -119,4 +121,5 @@ export type WebviewMessage =
   | { type: "mergeTopic"; fromKey: string; toKey: string }
   | { type: "updateTopicLabel"; key: string; newLabel: string }
   | { type: "addTopic"; label: string }
-  | { type: "openFile"; relativePath: string };
+  | { type: "openFile"; relativePath: string }
+  | { type: "removeMentor" };

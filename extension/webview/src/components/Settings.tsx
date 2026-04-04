@@ -242,6 +242,18 @@ export function Settings({
           </span>
         </label>
       </div>
+      <div className="setting-separator" />
+      <div className="setting-item setting-item--remove">
+        <p className="setting-remove-description">
+          {t("settings.removeMentor.description", locale)}
+        </p>
+        <button
+          className="btn-remove"
+          onClick={() => postMessage({ type: "removeMentor" })}
+        >
+          {t("settings.removeMentor", locale)}
+        </button>
+      </div>
     </div>
   );
 }
