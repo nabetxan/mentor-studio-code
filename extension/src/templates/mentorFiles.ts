@@ -22,14 +22,18 @@ Order is fixed — never skip, never reorder:
 3. Record to question-history.json  ← THEN record
 4. Only after recording → proceed to next step or task
 
-## Session Start
+## Session Entry
 
 Execute before any other response:
 
 1. Read \`.mentor/skills/mentor-session/SKILL.md\`
    - If NOT FOUND → search for \`SKILL.md\` under any \`mentor/skills/\` directory.
    - If still NOT FOUND → reply: "SKILL.mdが見つかりません" and STOP.
-2. Follow Session Start in SKILL.md.
+2. Route to the correct flow based on the user's request:
+   - \`[flow:review]\` → follow **Review (復習)** in SKILL.md
+   - \`[flow:implementation-review]\` → follow **Implementation Review** in SKILL.md
+   - \`[flow:comprehension-check]\` → follow **Comprehension Check** in SKILL.md
+   - No flow tag or \`[flow:session-start]\` → follow **Session Start** in SKILL.md
 `;
 
 export const MENTOR_SESSION_SKILL_MD = `---
@@ -166,6 +170,73 @@ Update \`progress.json\`:
 Then say: "進捗を保存しました。ここで一区切りです。新しいセッションで続きから始められます。"
 
 GATE: recorded + progress.json updated + message sent → cycle complete
+
+## Implementation Review
+
+Triggered when the user asks to review the current task's implementation.
+
+1. Read \`.mentor/current-task.md\` to understand the task requirements.
+2. Identify and read the files relevant to the task requirements.
+3. Evaluate the implementation against the requirements:
+   - Does the code satisfy each requirement?
+   - Code quality, readability, and potential issues
+   - Suggestions for improvement (if any)
+4. Give feedback on the implementation.
+5. Ask 1 question about the implementation choices (same rules as Teaching Cycle (b) Ask — include code snippet and file path).
+   GATE: question asked → WAIT for user
+6. Follow Teaching Cycle (c)→(e): Wait → Feedback → RECORD.
+7. After recording, update \`progress.json\` resume_context.
+
+Scope: **task requirements**, not diff or branch. Evaluate whether the code fulfills what \`current-task.md\` describes.
+
+## Review (復習)
+
+Triggered when the user asks to review / practice previously missed concepts.
+
+**Scope**: If a specific topic is specified (e.g. "TypeScript の復習"), filter \`unresolved_gaps\` to that topic only. Otherwise, use all \`unresolved_gaps\`.
+
+1. Read \`progress.json\` \`unresolved_gaps\` and \`question-history.json\`.
+2. If a specific topic is specified, filter gaps to that topic only. If no matching gaps exist for the specified topic, show 「（トピック名）の復習項目はありません」 and stop.
+3. Read \`learner_profile\` from \`progress.json\` to calibrate difficulty.
+4. Select an unresolved gap to review:
+   - Prioritize gaps with older \`last_missed\` dates (least recently revisited first)
+   - Ask the concept in a **different context** from the original question (not a re-phrasing of the same question)
+5. Ask 1 review question (same rules as Teaching Cycle (b) Ask — include code snippet and file path when relevant, calibrate to learner level). Set \`reviewOf\` to the root question ID.
+   GATE: question asked → WAIT for user
+6. Follow Teaching Cycle (c)→(e): Wait → Feedback → RECORD (on correct: remove from unresolved_gaps; on wrong: keep in unresolved_gaps).
+7. After recording:
+   - If target gaps are now empty (all gaps for the specified topic, or all gaps if no topic was specified) → show 「全問クリア！復習完了です」 and stop.
+   - Otherwise → ask the user: 「もう1問続けますか？それとも結果サマリーを見ますか？」
+     - User wants to continue → go back to step 4
+     - User wants the summary → proceed to step 8
+8. Show a results summary:
+   - Number of review questions answered in this session
+   - Correct / incorrect breakdown
+   - Remaining unresolved gaps (if any)
+
+## Comprehension Check
+
+Triggered when the user asks for a comprehension check.
+
+1. Read \`question-history.json\` and \`config.json\` \`topics\` to understand what has been covered.
+2. Read \`learner_profile\` from \`progress.json\` to calibrate difficulty.
+3. Select a topic to ask about:
+   - Prioritize \`learner_profile.weak_areas\`
+   - Cover all topics with variety — avoid repeating the same topic consecutively
+   - Ask **new** questions (not re-asking the same question from history)
+4. Ask 1 question (same rules as Teaching Cycle (b) Ask — include code snippet and file path when relevant, calibrate to learner level).
+   GATE: question asked → WAIT for user
+5. Follow Teaching Cycle (c)→(e): Wait → Feedback → RECORD.
+6. After recording, ask the user: 「もう1問続けますか？それとも結果サマリーを見ますか？」
+   - User wants to continue → go back to step 3
+   - User wants the summary → proceed to step 7
+7. Show a results summary:
+   - Number of questions answered in this session
+   - Correct / incorrect breakdown
+   - Topics covered and per-topic performance
+   - Weak areas identified or confirmed
+
+Difference from Review (復習): Review re-asks concepts the learner previously got wrong (unresolved_gaps). Comprehension Check generates **new questions** across all learned topics to assess overall understanding.
 
 ## Task Skip
 

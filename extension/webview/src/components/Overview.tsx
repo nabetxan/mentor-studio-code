@@ -145,6 +145,12 @@ export function Overview({
         </div>
       </div>
 
+      {data.byTopic.length === 0 && data.totalQuestions > 0 && (
+        <div className="all-correct-message">
+          {t("overview.allCorrect", locale)}
+        </div>
+      )}
+
       {data.byTopic.length > 0 && (
         <div>
           <div className="section-heading">{t("overview.topics", locale)}</div>
@@ -292,25 +298,28 @@ export function Overview({
                       </div>
                     )}
 
-                    <div className="copy-hint">
-                      {t("overview.topic.copyHint", locale)}
-                    </div>
                     <button
-                      className={`copy-btn${copiedTopic === topic.topic ? " copied" : ""}`}
+                      className={`snippet-btn${copiedTopic === topic.topic ? " copied" : ""}`}
                       onClick={() =>
                         copyReviewPrompt(topic.topic, displayLabel)
                       }
+                      data-tooltip={t("overview.topic.copyHint", locale)}
                     >
-                      <span aria-live="polite">
-                        {copiedTopic === topic.topic
-                          ? t("actions.copied", locale)
-                          : t("overview.topic.copyReview", locale)}
+                      <span className="snippet-title">
+                        {t("overview.topic.copyReview", locale)}
                       </span>
-                      {copiedTopic === topic.topic ? (
-                        <CheckIcon />
-                      ) : (
-                        <CopyIcon />
-                      )}
+                      <span className="snippet-icon" aria-live="polite">
+                        {copiedTopic === topic.topic ? (
+                          <>
+                            <CheckIcon />
+                            <span className="snippet-copied-text">
+                              {t("actions.copied", locale)}
+                            </span>
+                          </>
+                        ) : (
+                          <CopyIcon />
+                        )}
+                      </span>
                     </button>
 
                     {topicGaps.length > 0 && (

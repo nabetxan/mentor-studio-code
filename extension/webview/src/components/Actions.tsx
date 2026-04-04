@@ -9,6 +9,7 @@ interface Snippet {
   id: string;
   titleKey: TranslationKey;
   promptKey: TranslationKey;
+  tooltipKey: TranslationKey;
 }
 
 const SNIPPETS: Snippet[] = [
@@ -16,21 +17,25 @@ const SNIPPETS: Snippet[] = [
     id: "start-next-task",
     titleKey: "actions.startNextTask",
     promptKey: "actions.prompt.startNextTask",
+    tooltipKey: "actions.tooltip.startNextTask",
   },
   {
     id: "review-implementation",
     titleKey: "actions.reviewImplementation",
     promptKey: "actions.prompt.reviewImplementation",
+    tooltipKey: "actions.tooltip.reviewImplementation",
   },
   {
     id: "start-review",
     titleKey: "actions.startReview",
     promptKey: "actions.prompt.startReview",
+    tooltipKey: "actions.tooltip.startReview",
   },
   {
     id: "start-check",
     titleKey: "actions.startCheck",
     promptKey: "actions.prompt.startCheck",
+    tooltipKey: "actions.tooltip.startCheck",
   },
 ];
 
@@ -48,13 +53,13 @@ export function Actions({ locale }: ActionsProps) {
 
   return (
     <div className="actions">
-      <p className="actions-description">{t("actions.description", locale)}</p>
       <div className="snippet-list">
         {SNIPPETS.map((snippet) => (
           <button
             className={`snippet-btn${copiedId === snippet.id ? " copied" : ""}`}
             key={snippet.id}
             onClick={() => handleCopy(snippet)}
+            data-tooltip={t(snippet.tooltipKey, locale)}
           >
             <span className="snippet-title">{t(snippet.titleKey, locale)}</span>
             <span className="snippet-icon" aria-live="polite">
@@ -72,6 +77,7 @@ export function Actions({ locale }: ActionsProps) {
           </button>
         ))}
       </div>
+      <p className="actions-description">{t("actions.description", locale)}</p>
     </div>
   );
 }
