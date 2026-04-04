@@ -2,7 +2,7 @@
   "name": "mentor-studio-code",
   "displayName": "Mentor Studio Code",
   "description": "Track your learning progress and review history with AI mentor sessions in VS Code",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "icon": "images/icon.png",
   "license": "MIT",
   "publisher": "nabetxan",
