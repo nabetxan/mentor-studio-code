@@ -22,14 +22,8 @@ export function activate(context: vscode.ExtensionContext): void {
   );
   context.subscriptions.push(setupCommand);
 
-  // If no workspace, nothing more to do
-  if (!workspaceRoot) {
-    return;
-  }
-
-  const mentorPath = ".mentor";
-
-  // Sidebar provider
+  // Sidebar provider — register before workspace check so the panel is
+  // visible even when no folder is open.
   const sidebarProvider = new SidebarProvider(context.extensionUri);
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
@@ -37,6 +31,14 @@ export function activate(context: vscode.ExtensionContext): void {
       sidebarProvider,
     ),
   );
+
+  // If no workspace, show the "no config" state and stop
+  if (!workspaceRoot) {
+    sidebarProvider.sendNoConfig();
+    return;
+  }
+
+  const mentorPath = ".mentor";
 
   // File watcher
   const watcher = new FileWatcherService(
