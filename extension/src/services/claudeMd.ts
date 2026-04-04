@@ -16,7 +16,7 @@ function getPersonalClaudeMdPath(wsRoot: vscode.Uri): string {
     os.homedir(),
     ".claude",
     "projects",
-    wsRoot.fsPath.replace(/[\\/]/g, "-"),
+    wsRoot.fsPath.replace(/[:\\/]/g, "-"),
     "CLAUDE.md",
   );
 }
