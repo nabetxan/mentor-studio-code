@@ -16,7 +16,7 @@ function getPersonalClaudeMdPath(wsRoot: vscode.Uri): string {
     os.homedir(),
     ".claude",
     "projects",
-    wsRoot.fsPath.replace(/\//g, "-"),
+    wsRoot.fsPath.replace(/[\\/]/g, "-"),
     "CLAUDE.md",
   );
 }
@@ -58,12 +58,6 @@ export function removeMentorRefFromContent(content: string): string {
   // Rejoin and collapse 3+ consecutive empty lines to 2
   const joined = filtered.join("\n");
   const collapsed = joined.replace(/\n{3,}/g, "\n\n");
-
-  // If original content ended with a single newline, ensure result does too
-  // (trim trailing blank lines but keep one newline if there's content)
-  if (collapsed === "" || collapsed === "\n") {
-    return collapsed === "" ? "" : "";
-  }
 
   // Remove trailing blank lines, then restore single trailing newline
   const trimmed = collapsed.replace(/\n+$/, "");

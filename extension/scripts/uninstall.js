@@ -35,7 +35,9 @@ function findWorkspacePaths() {
 
     // Derive workspace path candidate from directory name
     // e.g., -Users-kaori-workspace-my-app → /Users/kaori/workspace/my-app
-    const candidate = dirent.name.replace(/-/g, "/");
+    // Note: this is lossy for paths containing hyphens; workspacePath field
+    // in config.json is the authoritative source when available.
+    const candidate = dirent.name.replace(/-/g, path.sep);
 
     // Try to read config.json and get the authoritative workspacePath
     const candidateConfigPath = path.join(candidate, ".mentor", "config.json");

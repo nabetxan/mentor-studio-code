@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { removeMentorRef } from "../services/claudeMd";
+import { findMentorRef, removeMentorRef } from "../services/claudeMd";
 
 export async function runRemoveMentor(
   outputChannel: vscode.OutputChannel,
@@ -28,6 +28,10 @@ export async function runRemoveMentor(
     return;
   }
 
+  // Check if ref exists before removing
+  const refStatus = await findMentorRef(wsRoot);
+  const hadRef = refStatus.personal || refStatus.project;
+
   // Remove @ref from both CLAUDE.md locations
   await removeMentorRef(wsRoot);
 
@@ -52,14 +56,26 @@ export async function runRemoveMentor(
     }
   }
 
-  // Success notification
-  vscode.window.showInformationMessage(
-    isJa
-      ? "メンター参照を削除しました。"
-      : "Mentor reference has been removed.",
-  );
+  // Result notification
+  if (hadRef) {
+    vscode.window.showInformationMessage(
+      isJa
+        ? "メンター参照を削除しました。"
+        : "Mentor reference has been removed.",
+    );
+  } else {
+    vscode.window.showInformationMessage(
+      isJa
+        ? "CLAUDE.md にメンター参照が見つかりませんでした。メンターを無効化しました。"
+        : "No mentor reference found in CLAUDE.md. Mentor has been disabled.",
+    );
+  }
 
   outputChannel.appendLine("=== Remove Mentor ===");
-  outputChannel.appendLine("Removed mentor reference from CLAUDE.md");
+  outputChannel.appendLine(
+    hadRef
+      ? "Removed mentor reference from CLAUDE.md"
+      : "No mentor reference found in CLAUDE.md",
+  );
   outputChannel.appendLine("Set enableMentor: false");
 }

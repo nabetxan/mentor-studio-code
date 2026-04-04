@@ -102,7 +102,7 @@ describe("Settings", () => {
     expect(warnings).toHaveLength(2);
   });
 
-  it("renders Remove Mentor button and description", () => {
+  it("renders Remove Mentor button", () => {
     render(<Settings {...defaultProps} />);
     expect(screen.getByText("メンター参照をCLAUDE.mdから削除")).toBeTruthy();
   });
