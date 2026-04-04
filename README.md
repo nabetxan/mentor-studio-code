@@ -14,7 +14,7 @@ Learn to code with an AI mentor powered by Claude Code. Track your understanding
 1. Install [VS Code](https://code.visualstudio.com/) 1.85.0+ and [Claude Code Extension](https://marketplace.visualstudio.com/items?itemName=anthropic.claude-code)
 2. Download the `.vsix` from [Releases](https://github.com/nabetxan/mentor-studio-code/releases)
 3. In the Extensions tab, click `…` → `Install from VSIX…`
-4. Open Command Palette → Run `Mentor Studio: Setup Mentor`
+4. Open Command Palette → Run `Mentor Studio Code: Setup Mentor`
 
 For detailed usage, see [extension/README.md](extension/README.md).
 
@@ -40,7 +40,7 @@ AIメンターと一緒にコーディングを学ぶためのVSCode拡張。Cla
 1. [VS Code](https://code.visualstudio.com/) 1.85.0+ と [Claude Code Extension](https://marketplace.visualstudio.com/items?itemName=anthropic.claude-code) をインストール
 2. [Releases](https://github.com/nabetxan/mentor-studio-code/releases) から `.vsix` をダウンロード
 3. VS Code の拡張機能タブ → `…` → `VSIXからインストール`
-4. コマンドパレット → `Mentor Studio: Setup Mentor` を実行
+4. コマンドパレット → `Mentor Studio Code: Setup Mentor` を実行
 
 詳しい使い方は [extension/README.md](extension/README.md) をご覧ください。
 

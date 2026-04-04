@@ -29,10 +29,11 @@ The dashboard displays your mentor session progress.
 
 1. Open the project you want to build with AI Mentor in VS Code
 2. Open the Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`)
-3. Run `Mentor Studio: Setup Mentor`
-4. A `.mentor/config.json` file is generated in the `.mentor/` directory
-5. When the "Reload Window" dialog appears, click it
-6. After reload, the Mentor Studio Code icon appears in the Activity Bar
+3. Run `Mentor Studio Code: Setup Mentor`
+4. The `.mentor/` directory is created with config, rules, skills, and data files
+5. Choose where to add the mentor reference — project-wide `CLAUDE.md` or your personal settings
+6. When the "Reload Window" dialog appears, click it
+7. After reload, the Mentor Studio Code icon appears in the Activity Bar
 
 > **Tip:** If you open the dashboard before running Setup, you will see a prompt to run it.
 
@@ -59,10 +60,11 @@ Copy prompts to send to your AI mentor with one click.
 
 ### Settings
 
-| Setting           | Description                                   |
-| ----------------- | --------------------------------------------- |
-| Plan / Spec files | Link the files your mentor session references |
-| Language          | Switch between Japanese and English           |
+| Setting           | Description                                       |
+| ----------------- | ------------------------------------------------- |
+| Profile           | Register or update your learner profile           |
+| Plan / Spec files | Link the files your mentor session references     |
+| Language          | Switch between Japanese and English               |
 
 ## License
 
@@ -92,10 +94,11 @@ AIメンターと一緒にコーディングを学ぶためのVSCode拡張。自
 
 1. AIメンターと一緒に開発したいプロジェクトを VS Code で開く
 2. コマンドパレットを開く（`Cmd+Shift+P` / `Ctrl+Shift+P`）
-3. `Mentor Studio: Setup Mentor` を実行する
-4. `.mentor/` ディレクトリに `.mentor/config.json` が生成される
-5. 「Reload Window」ダイアログが表示されたら押す
-6. リロード後、アクティビティバーに Mentor Studio Code アイコンが表示される
+3. `Mentor Studio Code: Setup Mentor` を実行する
+4. `.mentor/` ディレクトリに設定・ルール・スキル・データファイルが生成される
+5. メンター参照の追加先を選択 — プロジェクト共通の `CLAUDE.md` または個人設定
+6. 「Reload Window」ダイアログが表示されたら押す
+7. リロード後、アクティビティバーに Mentor Studio Code アイコンが表示される
 
 > **ヒント:** Setup を実行する前にダッシュボードを開くと、セットアップを促すメッセージが表示されます。
 
@@ -124,6 +127,7 @@ AIメンターに渡すプロンプトをワンクリックでコピーできま
 
 | 設定項目          | 内容                                           |
 | ----------------- | ---------------------------------------------- |
+| Profile           | 学習者プロフィールの登録・更新                 |
 | Plan / Spec files | メンターセッションで参照するファイルを紐付ける |
 | Language          | 日本語・英語を切り替える                       |
 
