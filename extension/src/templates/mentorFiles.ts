@@ -4,6 +4,9 @@ Read \`.mentor/config.json\`.
 
 - NOT FOUND → reply only: "\`.mentor/config.json\` が見つかりません。コマンドパレットから \`Mentor Studio Code: Setup Mentor\` を実行してください。" and STOP.
 - Parse error → reply only: ".mentor/config.json のJSONの形式が不正です" and STOP.
+- \`extensionUninstalled: true\` → read \`locale\` from config, then reply in the appropriate language and STOP:
+  - ja: 「Mentor Studio Code がアンインストールされています。CLAUDE.md に \`@.mentor/rules/MENTOR_RULES.md\` が残っています。該当行をご自身で削除するか、Mentor Studio Code を再インストールして Settings の「Remove Mentor」ボタンでクリーンアップしてからアンインストールしてください。」
+  - en: "Mentor Studio Code has been uninstalled. The line \`@.mentor/rules/MENTOR_RULES.md\` remains in your CLAUDE.md. Please remove it manually, or reinstall Mentor Studio Code and use the 'Remove Mentor' button in Settings to clean up before uninstalling."
 - \`enableMentor: false\` → ignore all rules below, behave normally.
 - \`enableMentor: true\` → proceed to Language Rule, then Session Start.
 

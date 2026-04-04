@@ -140,6 +140,14 @@ const translations = {
     ja: "@.mentor/skills/intake/SKILL.md プロフィールを更新してください。",
     en: "@.mentor/skills/intake/SKILL.md Update my profile.",
   },
+  "settings.removeMentor": {
+    ja: "メンター参照をCLAUDE.mdから削除",
+    en: "Remove Mentor reference from CLAUDE.md",
+  },
+  "settings.removeMentor.description": {
+    ja: "Extensionをアンインストール・無効化する前に実行してください。.mentor フォルダ（学習履歴含む）は削除されません。再度 Setup を実行すればいつでも再開できます。",
+    en: "Run this before uninstalling or disabling the extension. The .mentor folder (including learning history) will not be deleted. You can resume anytime by running Setup again.",
+  },
 
   // No-config screen
   "app.noConfig.notFound": {

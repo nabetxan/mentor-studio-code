@@ -174,8 +174,15 @@ export function parseConfig(raw: string): MentorStudioConfig | null {
                 : null,
           }
         : undefined;
+    const workspacePath =
+      typeof obj.workspacePath === "string" ? obj.workspacePath : undefined;
+    const extensionUninstalled =
+      typeof obj.extensionUninstalled === "boolean"
+        ? obj.extensionUninstalled
+        : undefined;
     return {
       repositoryName: obj.repositoryName,
+      workspacePath,
       topics,
       mentorFiles,
       locale:
@@ -186,6 +193,7 @@ export function parseConfig(raw: string): MentorStudioConfig | null {
         typeof obj.extensionVersion === "string"
           ? obj.extensionVersion
           : undefined,
+      extensionUninstalled,
     };
   } catch {
     return null;

@@ -2,6 +2,7 @@ import type { TopicConfig } from "@mentor-studio/shared";
 import { describe, expect, it } from "vitest";
 import {
   computeDashboardData,
+  parseConfig,
   parseProgressData,
   parseQuestionHistory,
 } from "../src/services/dataParser";
@@ -498,5 +499,37 @@ describe("computeDashboardData", () => {
 
     const result = computeDashboardData(baseProgress, history, topics);
     expect(result.correctRate).toBe(1.0);
+  });
+});
+
+describe("parseConfig with new fields", () => {
+  it("parses workspacePath when present", () => {
+    const raw = JSON.stringify({
+      repositoryName: "test",
+      topics: [],
+      workspacePath: "/Users/test/workspace/my-project",
+    });
+    const result = parseConfig(raw);
+    expect(result?.workspacePath).toBe("/Users/test/workspace/my-project");
+  });
+
+  it("parses without workspacePath (backwards compatible)", () => {
+    const raw = JSON.stringify({
+      repositoryName: "test",
+      topics: [],
+    });
+    const result = parseConfig(raw);
+    expect(result).not.toBeNull();
+    expect(result?.workspacePath).toBeUndefined();
+  });
+
+  it("parses extensionUninstalled when present", () => {
+    const raw = JSON.stringify({
+      repositoryName: "test",
+      topics: [],
+      extensionUninstalled: true,
+    });
+    const result = parseConfig(raw);
+    expect(result?.extensionUninstalled).toBe(true);
   });
 });
