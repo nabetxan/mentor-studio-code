@@ -16,7 +16,7 @@ The dashboard displays your mentor session progress.
 - [VS Code](https://code.visualstudio.com/) 1.85.0 or later
 - [Claude Code Extension](https://marketplace.visualstudio.com/items?itemName=anthropic.claude-code) installed
 
-> **Note:** To use the AI mentor features, you must have a Claude API key configured in Claude Code.
+> **Note:** This extension uses Claude Code (Anthropic's official CLI tool) to power the AI mentor. Claude Code installation and a subscription (Claude Pro / Max) are required.
 
 ## Installation
 
@@ -79,7 +79,7 @@ AIメンターと一緒にコーディングを学ぶためのVSCode拡張。自
 - [VS Code](https://code.visualstudio.com/) 1.85.0 以上
 - [Claude Code Extension](https://marketplace.visualstudio.com/items?itemName=anthropic.claude-code) がインストールされていること
 
-> **注:** AIメンター機能を使うには、Claude Code に Claude API キーが設定されている必要があります。
+> **注:** この拡張機能はAIメンターの動作に Claude Code（Anthropic公式CLIツール）を使用します。事前に Claude Code のインストールとサブスクリプション（Claude Pro / Max）が必要です。
 
 ## インストール
 
