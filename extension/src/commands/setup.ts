@@ -36,9 +36,14 @@ export async function runSetup(
   const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
   if (!wsRoot) {
     const isJa = vscode.env.language.startsWith("ja");
-    vscode.window.showErrorMessage(
+    const openLabel = isJa ? "フォルダを開く" : "Open Folder";
+    const choice = await vscode.window.showErrorMessage(
       isJa ? "先にフォルダを開いてください。" : "Open a folder first.",
+      openLabel,
     );
+    if (choice === openLabel) {
+      await vscode.commands.executeCommand("vscode.openFolder");
+    }
     return;
   }
 
