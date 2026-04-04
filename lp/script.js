@@ -36,7 +36,7 @@
 
     var elements = document.querySelectorAll("[data-ja][data-en]");
     for (var i = 0; i < elements.length; i++) {
-      elements[i].textContent = elements[i].getAttribute("data-" + lang);
+      elements[i].innerHTML = elements[i].getAttribute("data-" + lang);
     }
 
     var options = document.querySelectorAll(".lang-option");
