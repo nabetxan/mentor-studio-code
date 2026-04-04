@@ -20,6 +20,7 @@ esbuild.config.mjs
 
 # Build artifacts and dev files
 node_modules/**
+webview/node_modules/**
 *.vsix
 **/*.map
 
