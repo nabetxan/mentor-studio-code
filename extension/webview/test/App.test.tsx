@@ -69,14 +69,14 @@ describe("App", () => {
   it("shows no-config message when noConfig is received", () => {
     render(<App />);
     simulateMessage({ type: "noConfig" });
-    expect(screen.getAllByText(/\.mentor\/config\.json/).length).toBeGreaterThan(
-      0,
-    );
+    expect(
+      screen.getAllByText(/\.mentor\/config\.json/).length,
+    ).toBeGreaterThan(0);
   });
 
   it("shows Actions tab by default (ja)", () => {
     render(<App />);
-    expect(screen.getByText("次のタスクを始める")).toBeTruthy();
+    expect(screen.getByText("タスクを始める")).toBeTruthy();
   });
 
   it("switches to Overview tab", () => {
@@ -108,7 +108,7 @@ describe("App", () => {
   it("switches to English when config has locale en", () => {
     render(<App />);
     simulateMessage({ type: "config", data: { ...mockConfig, locale: "en" } });
-    expect(screen.getByText("Start next task")).toBeTruthy();
+    expect(screen.getByText("Start task")).toBeTruthy();
   });
 
   it("sends setLocale message when locale is changed", () => {

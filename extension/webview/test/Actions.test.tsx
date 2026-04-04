@@ -13,7 +13,7 @@ describe("Actions", () => {
 
   it("renders all snippet actions in Japanese", () => {
     render(<Actions locale="ja" />);
-    expect(screen.getByText("次のタスクを始める")).toBeTruthy();
+    expect(screen.getByText("タスクを始める")).toBeTruthy();
     expect(screen.getByText("実装をレビューする")).toBeTruthy();
     expect(screen.getByText("復習を始める")).toBeTruthy();
     expect(screen.getByText("理解度チェックを始める")).toBeTruthy();
@@ -21,7 +21,7 @@ describe("Actions", () => {
 
   it("renders all snippet actions in English", () => {
     render(<Actions locale="en" />);
-    expect(screen.getByText("Start next task")).toBeTruthy();
+    expect(screen.getByText("Start task")).toBeTruthy();
     expect(screen.getByText("Review implementation")).toBeTruthy();
     expect(screen.getByText("Start review")).toBeTruthy();
     expect(screen.getByText("Start Comprehension check")).toBeTruthy();
@@ -34,7 +34,7 @@ describe("Actions", () => {
 
   it("shows check icon after click", () => {
     render(<Actions locale="ja" />);
-    const button = screen.getByText("次のタスクを始める").closest("button");
+    const button = screen.getByText("タスクを始める").closest("button");
     fireEvent.click(button!);
     expect(screen.getByText("Copied!")).toBeTruthy();
   });
@@ -43,12 +43,12 @@ describe("Actions", () => {
     const { postMessage } = await import("../src/vscodeApi");
     render(<Actions locale="ja" />);
 
-    const button = screen.getByText("次のタスクを始める").closest("button");
+    const button = screen.getByText("タスクを始める").closest("button");
     fireEvent.click(button!);
 
     expect(postMessage).toHaveBeenCalledWith({
       type: "copy",
-      text: expect.stringContaining("次のタスクを始めましょう"),
+      text: expect.stringContaining("タスク開始"),
     });
   });
 });
