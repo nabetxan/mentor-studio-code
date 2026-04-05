@@ -2,7 +2,7 @@
   "name": "mentor-studio-code",
   "displayName": "Mentor Studio Code",
   "description": "Track your learning progress and review history with AI mentor sessions in VS Code",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "icon": "images/icon.png",
   "license": "MIT",
   "publisher": "nabetxan",
@@ -36,7 +36,8 @@
           "type": "webview",
           "id": "mentor-studio.sidebar",
           "name": "",
-          "icon": "$(mortar-board)"
+          "icon": "$(mortar-board)",
+          "when": "workspaceFolderCount > 0"
         }
       ]
     },
@@ -45,6 +46,11 @@
         "command": "mentor-studio.setup",
         "title": "Setup Mentor",
         "category": "Mentor Studio Code"
+      },
+      {
+        "command": "mentor-studio.removeMentor",
+        "title": "Remove Mentor",
+        "category": "Mentor Studio Code"
       }
     ]
   },
@@ -52,7 +58,8 @@
     "build": "node esbuild.config.mjs",
     "watch": "node esbuild.config.mjs --watch",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "vscode:uninstall": "node scripts/uninstall.js"
   },
   "dependencies": {
     "@mentor-studio/shared": "*"

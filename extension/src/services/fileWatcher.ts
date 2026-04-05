@@ -5,9 +5,19 @@ import * as vscode from "vscode";
 import {
   computeDashboardData,
   parseConfig,
+  parseLearnerProfile,
   parseProgressData,
   parseQuestionHistory,
 } from "./dataParser";
+
+function isFileNotFound(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "code" in err &&
+    (err as { code: unknown }).code === "ENOENT"
+  );
+}
 
 export function generateTopicKey(label: string): string {
   const sanitized = label
@@ -22,6 +32,7 @@ export class FileWatcherService implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
   private config: MentorStudioConfig | null = null;
   private rawConfig: Record<string, unknown> | null = null;
+  private syncing = false;
 
   constructor(
     private workspaceRoot: string,
@@ -29,6 +40,7 @@ export class FileWatcherService implements vscode.Disposable {
     private onDataChanged: (data: DashboardData) => void,
     private onConfigChanged?: (config: MentorStudioConfig | null) => void,
     private log?: (message: string) => void,
+    private globalState?: vscode.Memento,
   ) {}
 
   async start(): Promise<void> {
@@ -120,6 +132,7 @@ export class FileWatcherService implements vscode.Disposable {
     const topics = this.config?.topics ?? [];
     const data = computeDashboardData(progress, history, topics);
     this.onDataChanged(data);
+    await this.syncLearnerProfile(progressPath);
   }
 
   async mergeTopic(fromKey: string, toKey: string): Promise<void> {
@@ -176,6 +189,100 @@ export class FileWatcherService implements vscode.Disposable {
     await this.saveConfig();
   }
 
+  async deleteTopics(
+    keys: string[],
+  ): Promise<{ key: string; ok: boolean; error?: string }[]> {
+    if (!this.config) {
+      return keys.map((key) => ({
+        key,
+        ok: false,
+        error: "config_not_loaded",
+      }));
+    }
+
+    // Read history and progress files once for all keys
+    const historyPath = join(
+      this.workspaceRoot,
+      this.mentorPath,
+      "question-history.json",
+    );
+    const progressPath = join(
+      this.workspaceRoot,
+      this.mentorPath,
+      "progress.json",
+    );
+
+    let historyTopics: Set<string> | null = null;
+    try {
+      const raw = await readFile(historyPath, "utf-8");
+      const history = parseQuestionHistory(raw);
+      historyTopics = new Set(history.history.map((entry) => entry.topic));
+    } catch (err: unknown) {
+      if (!isFileNotFound(err)) {
+        return keys.map((key) => ({
+          key,
+          ok: false,
+          error: "read_history_failed",
+        }));
+      }
+      historyTopics = new Set();
+    }
+
+    let progressTopics: Set<string> | null = null;
+    try {
+      const progressRaw = await readFile(progressPath, "utf-8");
+      const rawObj = JSON.parse(progressRaw) as Record<string, unknown>;
+      if (Array.isArray(rawObj.unresolved_gaps)) {
+        progressTopics = new Set(
+          (rawObj.unresolved_gaps as unknown[])
+            .filter(
+              (gap): gap is Record<string, unknown> =>
+                typeof gap === "object" && gap !== null,
+            )
+            .map((gap) => gap.topic as string),
+        );
+      } else {
+        progressTopics = new Set();
+      }
+    } catch (err: unknown) {
+      if (!isFileNotFound(err)) {
+        return keys.map((key) => ({
+          key,
+          ok: false,
+          error: "read_progress_failed",
+        }));
+      }
+      progressTopics = new Set();
+    }
+
+    // Validate each key and collect results
+    const results: { key: string; ok: boolean; error?: string }[] = [];
+    const keysToDelete: string[] = [];
+
+    for (const key of keys) {
+      if (!this.config.topics.some((t) => t.key === key)) {
+        results.push({ key, ok: false, error: "topic_not_found" });
+      } else if (historyTopics.has(key) || progressTopics.has(key)) {
+        results.push({ key, ok: false, error: "has_related_data" });
+      } else {
+        keysToDelete.push(key);
+        results.push({ key, ok: true });
+      }
+    }
+
+    // Apply all deletions and save once
+    if (keysToDelete.length > 0) {
+      const deleteSet = new Set(keysToDelete);
+      this.config = {
+        ...this.config,
+        topics: this.config.topics.filter((t) => !deleteSet.has(t.key)),
+      };
+      await this.saveConfig();
+    }
+
+    return results;
+  }
+
   async addTopic(
     label: string,
   ): Promise<{ ok: boolean; key?: string; error?: string }> {
@@ -223,6 +330,49 @@ export class FileWatcherService implements vscode.Disposable {
     this.rawConfig = merged;
     this.onConfigChanged?.(this.config);
     await this.refresh();
+  }
+
+  private async syncLearnerProfile(progressPath: string): Promise<void> {
+    if (this.syncing || !this.globalState) return;
+
+    try {
+      const rawText = await readFile(progressPath, "utf-8");
+      const rawObj = JSON.parse(rawText) as Record<string, unknown>;
+      const fileProfile = parseLearnerProfile(rawObj.learner_profile);
+      const globalProfile = parseLearnerProfile(
+        this.globalState.get<unknown>("learnerProfile"),
+      );
+
+      const fileTime = fileProfile?.last_updated
+        ? new Date(fileProfile.last_updated).getTime() || 0
+        : 0;
+      const globalTime = globalProfile?.last_updated
+        ? new Date(globalProfile.last_updated).getTime() || 0
+        : 0;
+
+      if (fileTime === 0 && globalTime === 0) return;
+
+      if (globalTime > fileTime) {
+        // globalState is newer → write to progress.json
+        this.syncing = true;
+        try {
+          rawObj.learner_profile = globalProfile;
+          await writeFile(progressPath, JSON.stringify(rawObj, null, 2) + "\n");
+          this.log?.(
+            "Synced learner_profile from globalState to progress.json",
+          );
+        } finally {
+          this.syncing = false;
+        }
+      } else if (fileTime > globalTime) {
+        // progress.json is newer → update globalState
+        await this.globalState.update("learnerProfile", fileProfile);
+        this.log?.("Synced learner_profile from progress.json to globalState");
+      }
+      // fileTime === globalTime → no-op
+    } catch (err) {
+      this.log?.(`syncLearnerProfile failed: ${String(err)}`);
+    }
   }
 
   getConfig(): MentorStudioConfig | null {

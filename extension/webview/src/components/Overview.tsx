@@ -3,12 +3,16 @@ import type {
   Locale,
   MentorStudioConfig,
 } from "@mentor-studio/shared";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useCopyFeedback } from "../hooks/useCopyFeedback";
 import { t } from "../i18n";
 import { postMessage } from "../vscodeApi";
-import { CheckIcon, CloseIcon, CopyIcon, EditIcon } from "./icons";
+import { CheckIcon, CloseIcon, CopyIcon, EditIcon, TrashIcon } from "./icons";
 import { TopicSelect } from "./TopicSelect";
+
+function stripKeyPrefix(label: string): string {
+  return label.replace(/^[a-z]-/, "");
+}
 
 interface OverviewProps {
   data: DashboardData | null;
@@ -17,6 +21,8 @@ interface OverviewProps {
   addTopicError: string | null;
   lastAddedTopicKey: string | null;
   onClearLastAddedKey: () => void;
+  deleteTopicErrors: Map<string, string>;
+  onClearDeleteTopicErrors: () => void;
 }
 
 export function Overview({
@@ -26,6 +32,8 @@ export function Overview({
   addTopicError,
   lastAddedTopicKey,
   onClearLastAddedKey,
+  deleteTopicErrors,
+  onClearDeleteTopicErrors,
 }: OverviewProps) {
   const [expandedTopics, setExpandedTopics] = useState<Record<string, boolean>>(
     {},
@@ -35,8 +43,43 @@ export function Overview({
     value: string;
   } | null>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
-  const [mergeTargets, setMergeTargets] = useState<Record<string, string>>({});
+  const [mergeSource, setMergeSource] = useState<string>("");
+  const [mergeTarget, setMergeTarget] = useState<string>("");
   const [copiedTopic, triggerCopy] = useCopyFeedback();
+  const [deleteSelected, setDeleteSelected] = useState<Set<string>>(new Set());
+  const [deleteDropdownOpen, setDeleteDropdownOpen] = useState(false);
+  const deleteDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Prune deleteSelected when topics or topicsWithHistory change
+  useEffect(() => {
+    if (deleteSelected.size === 0) return;
+    const allTopicKeys = new Set((config?.topics ?? []).map((tp) => tp.key));
+    const historySet = new Set(data?.topicsWithHistory ?? []);
+    setDeleteSelected((prev) => {
+      const next = new Set<string>();
+      for (const key of prev) {
+        if (allTopicKeys.has(key) && !historySet.has(key)) {
+          next.add(key);
+        }
+      }
+      if (next.size === prev.size) return prev;
+      return next;
+    });
+  }, [config?.topics, data?.topicsWithHistory]);
+
+  useEffect(() => {
+    if (!deleteDropdownOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (
+        deleteDropdownRef.current &&
+        !deleteDropdownRef.current.contains(e.target as Node)
+      ) {
+        setDeleteDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [deleteDropdownOpen]);
 
   if (!data) {
     return <div className="empty">{t("overview.noData", locale)}</div>;
@@ -73,11 +116,35 @@ export function Overview({
     setEditingTopic(null);
   }
 
-  function mergeTopic(fromKey: string) {
-    const toKey = mergeTargets[fromKey];
-    if (toKey) {
-      postMessage({ type: "mergeTopic", fromKey, toKey });
+  function executeMerge() {
+    if (mergeSource && mergeTarget) {
+      postMessage({
+        type: "mergeTopic",
+        fromKey: mergeSource,
+        toKey: mergeTarget,
+      });
+      setMergeSource("");
+      setMergeTarget("");
     }
+  }
+
+  function toggleDeleteSelection(key: string) {
+    setDeleteSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }
+
+  function executeDelete() {
+    if (deleteSelected.size === 0) return;
+    postMessage({ type: "deleteTopics", keys: [...deleteSelected] });
+    setDeleteSelected(new Set());
+    setDeleteDropdownOpen(false);
   }
 
   function copyReviewPrompt(key: string, label: string) {
@@ -161,12 +228,9 @@ export function Overview({
                 ? topic.label
                 : (config?.topics?.find((c) => c.key === topic.topic)?.label ??
                   topic.label);
-            const displayLabel = resolvedLabel.replace(/^[a-z]-/, "");
+            const displayLabel = stripKeyPrefix(resolvedLabel);
             const topicGaps = data.unresolvedGaps.filter(
               (g) => g.topic === topic.topic,
-            );
-            const mergeOptions = (config?.topics ?? []).filter(
-              (c) => c.key !== topic.topic,
             );
 
             return (
@@ -264,40 +328,6 @@ export function Overview({
 
                 {isExpanded && (
                   <div className="topic-detail">
-                    {mergeOptions.length > 0 && (
-                      <div>
-                        <div className="detail-lbl">
-                          {t("overview.topic.mergeTo", locale)}
-                        </div>
-                        <div className="form-row">
-                          <TopicSelect
-                            options={mergeOptions}
-                            value={mergeTargets[topic.topic] ?? ""}
-                            onChange={(key) =>
-                              setMergeTargets((prev) => ({
-                                ...prev,
-                                [topic.topic]: key,
-                              }))
-                            }
-                            onAddTopic={(label) =>
-                              postMessage({ type: "addTopic", label })
-                            }
-                            addTopicError={addTopicError}
-                            lastAddedKey={lastAddedTopicKey}
-                            onClearLastAddedKey={onClearLastAddedKey}
-                            locale={locale}
-                          />
-                          <button
-                            className="btn-primary"
-                            disabled={!mergeTargets[topic.topic]}
-                            onClick={() => mergeTopic(topic.topic)}
-                          >
-                            {t("overview.topic.merge", locale)}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
                     <button
                       className={`snippet-btn${copiedTopic === topic.topic ? " copied" : ""}`}
                       onClick={() =>
@@ -344,6 +374,178 @@ export function Overview({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {(config?.topics ?? []).length > 1 && (
+        <div className="merge-topics-section">
+          <div className="section-heading">
+            {t("overview.topic.mergeSection", locale)}
+          </div>
+          <div className="merge-topics-row">
+            <div className="merge-topics-field">
+              <div className="detail-lbl">
+                {t("overview.topic.mergeSource", locale)}
+              </div>
+              <select
+                className="form-select"
+                value={mergeSource}
+                onChange={(e) => {
+                  setMergeSource(e.target.value);
+                  if (e.target.value === mergeTarget) {
+                    setMergeTarget("");
+                  }
+                }}
+              >
+                <option value="">
+                  {t("overview.topic.mergeSelectSource", locale)}
+                </option>
+                {[...(config?.topics ?? [])]
+                  .sort((a, b) =>
+                    a.label.localeCompare(b.label, undefined, {
+                      numeric: true,
+                    }),
+                  )
+                  .map((tp) => (
+                    <option key={tp.key} value={tp.key}>
+                      {stripKeyPrefix(tp.label)}
+                    </option>
+                  ))}
+              </select>
+            </div>
+            <div className="merge-topics-field">
+              <div className="detail-lbl">
+                {t("overview.topic.mergeTo", locale)}
+              </div>
+              <div className="form-row">
+                <TopicSelect
+                  options={(config?.topics ?? []).filter(
+                    (c) => c.key !== mergeSource,
+                  )}
+                  value={mergeTarget}
+                  onChange={(key) => setMergeTarget(key)}
+                  onAddTopic={(label) =>
+                    postMessage({ type: "addTopic", label })
+                  }
+                  addTopicError={addTopicError}
+                  lastAddedKey={lastAddedTopicKey}
+                  onClearLastAddedKey={onClearLastAddedKey}
+                  locale={locale}
+                />
+                <button
+                  className="btn-primary"
+                  disabled={!mergeSource || !mergeTarget}
+                  onClick={executeMerge}
+                >
+                  {t("overview.topic.merge", locale)}
+                </button>
+              </div>
+            </div>
+          </div>
+          {!mergeSource && mergeTarget && (
+            <div className="merge-topics-hint">
+              {t("overview.topic.mergeSelectSourceHint", locale)}
+            </div>
+          )}
+        </div>
+      )}
+
+      {(config?.topics ?? []).length > 0 && (
+        <div className="delete-topics-section">
+          <div className="section-heading">
+            {t("overview.topic.deleteSection", locale)}
+          </div>
+          {(() => {
+            const allTopics = config?.topics ?? [];
+            const historySet = new Set(data.topicsWithHistory);
+            const hasDisabled = allTopics.some((tp) => historySet.has(tp.key));
+            const allDisabled = allTopics.every((tp) => historySet.has(tp.key));
+            if (allDisabled) {
+              return (
+                <div className="delete-topics-hint">
+                  {t("overview.topic.noTopics", locale)}
+                </div>
+              );
+            }
+            return (
+              <>
+                <div className="delete-topics-select" ref={deleteDropdownRef}>
+                  <button
+                    className="form-select"
+                    type="button"
+                    aria-expanded={deleteDropdownOpen}
+                    aria-haspopup="dialog"
+                    onClick={() => setDeleteDropdownOpen((prev) => !prev)}
+                  >
+                    {deleteSelected.size > 0
+                      ? t("overview.topic.selectedCount", locale).replace(
+                          "{count}",
+                          String(deleteSelected.size),
+                        )
+                      : t("overview.topic.selectTopics", locale)}
+                  </button>
+                  {deleteDropdownOpen && (
+                    <fieldset
+                      className="delete-topics-dropdown"
+                      aria-label={t("overview.topic.selectTopics", locale)}
+                    >
+                      {[...allTopics]
+                        .sort((a, b) =>
+                          a.label.localeCompare(b.label, undefined, {
+                            numeric: true,
+                          }),
+                        )
+                        .map((tp) => {
+                          const hasData = historySet.has(tp.key);
+                          const displayLabel = stripKeyPrefix(tp.label);
+                          return (
+                            <label
+                              key={tp.key}
+                              className={`delete-topics-item${hasData ? " disabled" : ""}`}
+                            >
+                              <input
+                                type="checkbox"
+                                disabled={hasData}
+                                checked={deleteSelected.has(tp.key)}
+                                onChange={() => toggleDeleteSelection(tp.key)}
+                              />
+                              <span>{displayLabel}</span>
+                            </label>
+                          );
+                        })}
+                    </fieldset>
+                  )}
+                </div>
+                <div className="delete-topics-actions">
+                  <button
+                    className="btn-delete"
+                    disabled={deleteSelected.size === 0}
+                    onClick={executeDelete}
+                  >
+                    <TrashIcon />
+                    {t("overview.topic.delete", locale)}
+                  </button>
+                </div>
+                {deleteTopicErrors.size > 0 && (
+                  <div className="delete-topics-error">
+                    {[...deleteTopicErrors.values()].join("; ")}
+                    <button
+                      className="delete-topics-error-dismiss"
+                      onClick={onClearDeleteTopicErrors}
+                      aria-label={t("overview.error.dismiss", locale)}
+                    >
+                      <CloseIcon />
+                    </button>
+                  </div>
+                )}
+                {hasDisabled && (
+                  <div className="delete-topics-hint">
+                    {t("overview.topic.deleteHint", locale)}
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
       )}
     </div>

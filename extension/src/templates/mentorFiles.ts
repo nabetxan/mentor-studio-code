@@ -4,6 +4,14 @@ Read \`.mentor/config.json\`.
 
 - NOT FOUND → reply only: "\`.mentor/config.json\` が見つかりません。コマンドパレットから \`Mentor Studio Code: Setup Mentor\` を実行してください。" and STOP.
 - Parse error → reply only: ".mentor/config.json のJSONの形式が不正です" and STOP.
+- \`extensionUninstalled: true\` → read \`locale\` from config, then:
+  1. Check both CLAUDE.md files for the line \`@.mentor/rules/MENTOR_RULES.md\`:
+     - Project: \`./CLAUDE.md\` (workspace root)
+     - Personal: \`~/.claude/projects/<dir>/CLAUDE.md\` (derive \`<dir>\` from the current workspace path by replacing \`/\`, \`\\\`, \`:\` with \`-\`)
+  2. For each file that contains the reference, show its path as a clickable link so the user can open and edit it.
+  3. Reply in the locale language and STOP:
+     - ja: 「Mentor Studio Code がアンインストールされています。以下の CLAUDE.md に \`@.mentor/rules/MENTOR_RULES.md\` の参照が残っています。各ファイルを開いて該当行を削除してください:」+ clickable file paths
+     - en: "Mentor Studio Code has been uninstalled. The following CLAUDE.md file(s) still contain the \`@.mentor/rules/MENTOR_RULES.md\` reference. Please open each file and remove the line:" + clickable file paths
 - \`enableMentor: false\` → ignore all rules below, behave normally.
 - \`enableMentor: true\` → proceed to Language Rule, then Session Start.
 

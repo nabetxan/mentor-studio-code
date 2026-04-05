@@ -3,18 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Mentor Studio Code — VSCode拡張で使えるAIメンター</title>
+    <title>Mentor Studio Code — AI Mentor for VSCode</title>
     <meta
       name="description"
-      content="あなた専用にカスタマイズされたAIメンターがプログラミング学習をサポート。VSCode拡張として動くAIメンターツール。"
+      content="An AI mentor that helps you learn programming at your own pace, right inside VSCode."
     />
     <meta
       property="og:title"
-      content="Mentor Studio Code — VSCode拡張で使えるAIメンター"
+      content="Mentor Studio Code — AI Mentor for VSCode"
     />
     <meta
       property="og:description"
-      content="あなた専用にカスタマイズされたAIメンターがプログラミング学習をサポート。"
+      content="Learn programming with your personalized AI mentor."
     />
     <meta
       property="og:image"
@@ -41,10 +41,26 @@
           <span class="logo-text">Mentor Studio Code</span>
         </a>
         <nav class="nav">
-          <a href="#features" data-ja="スクリーンショット" data-en="Screenshots"
-            >スクリーンショット</a
+          <a href="#features" data-ja="特徴" data-en="Features">特徴</a>
+          <a
+            href="#target"
+            data-ja="こんな人におすすめ"
+            data-en="Who is this for?"
+            >こんな人に</a
           >
-          <a href="#target" data-ja="特徴" data-en="Features">特徴</a>
+          <a
+            href="https://github.com/nabetxan/mentor-studio-code"
+            class="nav-github"
+            aria-label="GitHub"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor">
+              <path
+                d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"
+              />
+            </svg>
+          </a>
           <button
             class="lang-toggle"
             id="lang-toggle"
@@ -62,10 +78,10 @@
     <section class="hero">
       <span class="hero-label">VSCODE EXTENSION</span>
       <h1
-        data-ja="あなた専用のAIメンターがプログラミング学習をサポート"
+        data-ja="AIメンターがプログラミング学習をサポート"
         data-en="Your AI Mentor, Right Inside VSCode"
       >
-        あなた専用のAIメンターがプログラミング学習をサポート
+        AIメンターがプログラミング学習をサポート
       </h1>
       <p
         class="hero-sub"
@@ -75,27 +91,12 @@
         作りたいものを作りながらあなたのペースで学べる唯一無二のツール
       </p>
       <div class="cta-group">
-        <!-- <a
-          href="https://github.com/nabetxan/mentor-studio-code/releases"
+        <a
+          href="https://marketplace.visualstudio.com/items?itemName=nabetxan.mentor-studio-code"
           class="btn btn-primary"
           data-ja="Marketplaceからインストール"
           data-en="Install from Marketplace"
           >Marketplaceからインストール</a
-        > -->
-        <a
-          href="https://github.com/nabetxan/mentor-studio-code/releases"
-          class="btn btn-primary"
-          ><svg
-            class="icon-github"
-            width="20"
-            height="20"
-            viewBox="0 0 16 16"
-            fill="currentColor"
-          >
-            <path
-              d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"
-            /></svg
-          >GitHub →</a
         >
       </div>
       <p
@@ -112,10 +113,10 @@
     <!-- 3. Problem Statement -->
     <section class="section problem">
       <h2
-        data-ja="動けばいいってもんじゃない。"
+        data-ja="動けばいいってものではない。"
         data-en="Don't just make it work."
       >
-        動けばいいってもんじゃない。
+        動けばいいってものではない。
       </h2>
       <div class="problem-steps">
         <div class="problem-step">
@@ -191,6 +192,18 @@
       </div>
     </section>
 
+    <!-- 5. Demo Video -->
+    <section class="section demo">
+      <h2 data-ja="デモ動画 (Preview)" data-en="Demo Video (Preview)">
+        デモ動画 (Preview)
+      </h2>
+      <div class="demo-video">
+        <video controls playsinline preload="metadata">
+          <source src="images/DemoVideo.mp4" type="video/mp4" />
+        </video>
+      </div>
+    </section>
+
     <!-- 6. Target Users -->
     <section class="section target" id="target">
       <h2 data-ja="こんな人におすすめ" data-en="Who is this for?">
@@ -199,10 +212,10 @@
       <div class="target-cards">
         <div class="target-card">
           <h3
-            data-ja="自分のプロジェクトを作りながら学びたい"
-            data-en="I want to learn while building my own project"
+            data-ja="「 自分のプロジェクトを作りながら学びたい 」"
+            data-en='" I want to learn while building my own project "'
           >
-            自分のプロジェクトを作りながら学びたい
+            「 自分のプロジェクトを作りながら学びたい 」
           </h3>
           <p
             data-ja="用意された問題ではなく、作りたいものを作りながら学習できます。作りかけのプロジェクトがあれば、途中からでも使えます。メンター機能はON/OFFできるので、じっくり理解したい部分とAIに一気に進めてもらう部分を使い分けられます。"
@@ -213,10 +226,10 @@
         </div>
         <div class="target-card">
           <h3
-            data-ja="自分のレベルに合わせて教えてほしい"
-            data-en="I want teaching tailored to my level"
+            data-ja="「 自分のレベルに合わせて教えてほしい 」"
+            data-en='" I want teaching tailored to my level "'
           >
-            自分のレベルに合わせて教えてほしい
+            「 自分のレベルに合わせて教えてほしい 」
           </h3>
           <p
             data-ja="最初にあなたのレベルや、希望するメンターの振る舞いについて質問します。このプロフィールに基づき、毎回あなたに合わせた教え方をします。「ゆっくり丁寧に」「ヒントだけ出して」など、教え方のスタイルをリクエストできます。"
@@ -227,10 +240,10 @@
         </div>
         <div class="target-card">
           <h3
-            data-ja="自分の学習ログを記録してほしい"
-            data-en="I want my learning progress tracked automatically"
+            data-ja="「 自分の学習ログを記録してほしい 」"
+            data-en='" I want my learning progress tracked automatically "'
           >
-            自分の学習ログを記録してほしい
+            「 自分の学習ログを記録してほしい 」
           </h3>
           <p
             data-ja="VSCodeのサイドバーにダッシュボードを表示。現在のタスク、これまでの正答率や苦手な分野をいつでも確認できます。トピックごとの復習ボタンもあるので、以前つまづいた問題に再チャレンジできます。"
@@ -246,27 +259,12 @@
     <footer class="footer">
       <h2 data-ja="今すぐ始めよう" data-en="Get Started">今すぐ始めよう</h2>
       <div class="cta-group">
-        <!-- <a
-          href="https://github.com/nabetxan/mentor-studio-code/releases"
+        <a
+          href="https://marketplace.visualstudio.com/items?itemName=nabetxan.mentor-studio-code"
           class="btn btn-primary"
           data-ja="Marketplaceからインストール"
           data-en="Install from Marketplace"
           >Marketplaceからインストール</a
-        > -->
-        <a
-          href="https://github.com/nabetxan/mentor-studio-code/releases"
-          class="btn btn-primary"
-          ><svg
-            class="icon-github"
-            width="20"
-            height="20"
-            viewBox="0 0 16 16"
-            fill="currentColor"
-          >
-            <path
-              d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"
-            /></svg
-          >GitHub →</a
         >
       </div>
       <p

@@ -1,5 +1,6 @@
 import type {
   DashboardData,
+  LearnerProfile,
   MentorStudioConfig,
   ProgressData,
   QuestionHistory,
@@ -9,6 +10,37 @@ import type {
   TopicStats,
   UnresolvedGap,
 } from "@mentor-studio/shared";
+
+/**
+ * Validates an unknown value (e.g. from globalState or raw JSON) as a LearnerProfile.
+ * Returns null if the value is not a valid object or has no last_updated field.
+ */
+export function parseLearnerProfile(value: unknown): LearnerProfile | null {
+  if (typeof value !== "object" || value === null) {
+    return null;
+  }
+  const obj = value as Record<string, unknown>;
+  if (typeof obj.last_updated !== "string" && obj.last_updated !== null) {
+    return null;
+  }
+  return {
+    experience: typeof obj.experience === "string" ? obj.experience : "",
+    level: typeof obj.level === "string" ? obj.level : "",
+    interests: Array.isArray(obj.interests)
+      ? (obj.interests as unknown[]).filter(
+          (i): i is string => typeof i === "string",
+        )
+      : [],
+    weak_areas: Array.isArray(obj.weak_areas)
+      ? (obj.weak_areas as unknown[]).filter(
+          (i): i is string => typeof i === "string",
+        )
+      : [],
+    mentor_style: typeof obj.mentor_style === "string" ? obj.mentor_style : "",
+    last_updated:
+      typeof obj.last_updated === "string" ? obj.last_updated : null,
+  };
+}
 
 export function parseProgressData(raw: string): ProgressData | null {
   try {
@@ -34,14 +66,7 @@ export function parseProgressData(raw: string): ProgressData | null {
     );
     const learnerProfile =
       typeof obj.learner_profile === "object" && obj.learner_profile !== null
-        ? {
-            last_updated:
-              typeof (obj.learner_profile as Record<string, unknown>)
-                .last_updated === "string"
-                ? ((obj.learner_profile as Record<string, unknown>)
-                    .last_updated as string)
-                : null,
-          }
+        ? (parseLearnerProfile(obj.learner_profile) ?? undefined)
         : undefined;
     return {
       version: obj.version,
@@ -174,8 +199,15 @@ export function parseConfig(raw: string): MentorStudioConfig | null {
                 : null,
           }
         : undefined;
+    const workspacePath =
+      typeof obj.workspacePath === "string" ? obj.workspacePath : undefined;
+    const extensionUninstalled =
+      typeof obj.extensionUninstalled === "boolean"
+        ? obj.extensionUninstalled
+        : undefined;
     return {
       repositoryName: obj.repositoryName,
+      workspacePath,
       topics,
       mentorFiles,
       locale:
@@ -186,6 +218,7 @@ export function parseConfig(raw: string): MentorStudioConfig | null {
         typeof obj.extensionVersion === "string"
           ? obj.extensionVersion
           : undefined,
+      extensionUninstalled,
     };
   } catch {
     return null;
@@ -261,6 +294,15 @@ export function computeDashboardData(
   const filtered = byTopic.filter((t) => t.rate < 1);
   filtered.sort((a, b) => a.rate - b.rate);
 
+  // Collect all topic keys that have any history or unresolved gaps
+  const topicsWithHistorySet = new Set<string>();
+  for (const entry of entries) {
+    topicsWithHistorySet.add(entry.topic);
+  }
+  for (const gap of progress.unresolved_gaps) {
+    topicsWithHistorySet.add(gap.topic);
+  }
+
   return {
     totalQuestions,
     correctRate,
@@ -269,5 +311,6 @@ export function computeDashboardData(
     completedTasks: progress.completed_tasks,
     currentTask: progress.current_task,
     profileLastUpdated: progress.learner_profile?.last_updated ?? null,
+    topicsWithHistory: [...topicsWithHistorySet],
   };
 }

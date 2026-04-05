@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { runRemoveMentor } from "./commands/removeMentor";
 import { runSetup } from "./commands/setup";
 import { FileWatcherService } from "./services/fileWatcher";
 import { SidebarProvider } from "./views/sidebarProvider";
@@ -22,14 +23,14 @@ export function activate(context: vscode.ExtensionContext): void {
   );
   context.subscriptions.push(setupCommand);
 
-  // If no workspace, nothing more to do
-  if (!workspaceRoot) {
-    return;
-  }
+  const removeMentorCommand = vscode.commands.registerCommand(
+    "mentor-studio.removeMentor",
+    () => runRemoveMentor(getOutputChannel()),
+  );
+  context.subscriptions.push(removeMentorCommand);
 
-  const mentorPath = ".mentor";
-
-  // Sidebar provider
+  // Sidebar provider — package.json hides the view when workspaceFolderCount == 0,
+  // so this only runs when a folder is open.
   const sidebarProvider = new SidebarProvider(context.extensionUri);
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
@@ -37,6 +38,12 @@ export function activate(context: vscode.ExtensionContext): void {
       sidebarProvider,
     ),
   );
+
+  if (!workspaceRoot) {
+    return;
+  }
+
+  const mentorPath = ".mentor";
 
   // File watcher
   const watcher = new FileWatcherService(
@@ -51,6 +58,7 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     },
     (msg) => getOutputChannel().appendLine(msg),
+    context.globalState,
   );
 
   sidebarProvider.setTopicHandlers({
@@ -58,6 +66,7 @@ export function activate(context: vscode.ExtensionContext): void {
     updateTopicLabel: (key, newLabel) =>
       watcher.updateTopicLabel(key, newLabel),
     addTopic: (label) => watcher.addTopic(label),
+    deleteTopics: (keys) => watcher.deleteTopics(keys),
   });
 
   const currentPkg = context.extension.packageJSON as Record<string, unknown>;

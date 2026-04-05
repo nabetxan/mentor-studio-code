@@ -21,7 +21,12 @@ export interface SkippedTask {
 }
 
 export interface LearnerProfile {
-  last_updated?: string | null;
+  experience: string;
+  level: string;
+  interests: string[];
+  weak_areas: string[];
+  mentor_style: string;
+  last_updated: string | null;
 }
 
 export interface ProgressData {
@@ -69,11 +74,13 @@ export interface MentorFiles {
 
 export interface MentorStudioConfig {
   repositoryName: string;
+  workspacePath?: string;
   topics: TopicConfig[];
   mentorFiles?: MentorFiles;
   locale?: Locale;
   enableMentor?: boolean;
   extensionVersion?: string;
+  extensionUninstalled?: boolean;
 }
 
 // === Dashboard stats (computed by extension, sent to webview) ===
@@ -94,15 +101,23 @@ export interface DashboardData {
   completedTasks: CompletedTask[];
   currentTask: string | null;
   profileLastUpdated: string | null;
+  topicsWithHistory: string[];
 }
 
 // === Extension <-> Webview message protocol ===
+
+export type DeleteTopicResultEntry = {
+  key: string;
+  ok: boolean;
+  error?: string;
+};
 
 export type ExtensionMessage =
   | { type: "update"; data: DashboardData }
   | { type: "config"; data: MentorStudioConfig }
   | { type: "noConfig"; locale?: Locale }
-  | { type: "addTopicResult"; ok: boolean; key?: string; error?: string };
+  | { type: "addTopicResult"; ok: boolean; key?: string; error?: string }
+  | { type: "deleteTopicsResult"; results: DeleteTopicResultEntry[] };
 
 export type FileField = "spec" | "plan";
 
@@ -119,4 +134,6 @@ export type WebviewMessage =
   | { type: "mergeTopic"; fromKey: string; toKey: string }
   | { type: "updateTopicLabel"; key: string; newLabel: string }
   | { type: "addTopic"; label: string }
-  | { type: "openFile"; relativePath: string };
+  | { type: "deleteTopics"; keys: string[] }
+  | { type: "openFile"; relativePath: string }
+  | { type: "removeMentor" };

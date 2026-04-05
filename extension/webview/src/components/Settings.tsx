@@ -177,6 +177,12 @@ function ProfileSection({ profileLastUpdated, locale }: ProfileSectionProps) {
             )}
           </span>
         </button>
+        {profileLastUpdated && (
+          <span className="profile-last-updated">
+            {t("settings.profile.lastUpdated", locale)}{" "}
+            {new Date(profileLastUpdated).toLocaleDateString(locale)}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -241,6 +247,18 @@ export function Settings({
             日本語
           </span>
         </label>
+      </div>
+      <div className="setting-separator" />
+      <div className="setting-item setting-item--remove">
+        <p className="setting-remove-description">
+          {t("settings.removeMentor.description", locale)}
+        </p>
+        <button
+          className="btn-remove"
+          onClick={() => postMessage({ type: "removeMentor" })}
+        >
+          {t("settings.removeMentor", locale)}
+        </button>
       </div>
     </div>
   );

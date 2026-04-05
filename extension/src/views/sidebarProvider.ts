@@ -8,6 +8,7 @@ import type {
 } from "@mentor-studio/shared";
 import * as path from "node:path";
 import * as vscode from "vscode";
+import { findMentorRef, promptAndAddMentorRef } from "../services/claudeMd";
 import { parseConfig } from "../services/dataParser";
 import { getNonce } from "../utils/nonce";
 
@@ -21,6 +22,9 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
   private onAddTopic?: (
     label: string,
   ) => Promise<{ ok: boolean; key?: string; error?: string }>;
+  private onDeleteTopics?: (
+    keys: string[],
+  ) => Promise<{ key: string; ok: boolean; error?: string }[]>;
 
   constructor(private extensionUri: vscode.Uri) {}
 
@@ -30,10 +34,14 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     addTopic: (
       label: string,
     ) => Promise<{ ok: boolean; key?: string; error?: string }>;
+    deleteTopics: (
+      keys: string[],
+    ) => Promise<{ key: string; ok: boolean; error?: string }[]>;
   }): void {
     this.onMergeTopic = handlers.mergeTopic;
     this.onUpdateTopicLabel = handlers.updateTopicLabel;
     this.onAddTopic = handlers.addTopic;
+    this.onDeleteTopics = handlers.deleteTopics;
   }
 
   resolveWebviewView(webviewView: vscode.WebviewView): void {
@@ -59,7 +67,11 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
           try {
             await vscode.env.clipboard.writeText(message.text);
           } catch {
-            vscode.window.showErrorMessage("Failed to copy to clipboard");
+            vscode.window.showErrorMessage(
+              this.isJa
+                ? "クリップボードへのコピーに失敗しました"
+                : "Failed to copy to clipboard",
+            );
           }
         } else if (message.type === "selectFile") {
           const uris = await vscode.window.showOpenDialog({
@@ -80,7 +92,9 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
               relativePath.startsWith("..")
             ) {
               vscode.window.showErrorMessage(
-                "File must be inside the workspace.",
+                this.isJa
+                  ? "ワークスペース内のファイルを選択してください。"
+                  : "File must be inside the workspace.",
               );
               return;
             }
@@ -98,13 +112,21 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
           try {
             await this.onMergeTopic?.(message.fromKey, message.toKey);
           } catch {
-            vscode.window.showErrorMessage("Failed to merge topic");
+            vscode.window.showErrorMessage(
+              this.isJa
+                ? "トピックの統合に失敗しました"
+                : "Failed to merge topic",
+            );
           }
         } else if (message.type === "updateTopicLabel") {
           try {
             await this.onUpdateTopicLabel?.(message.key, message.newLabel);
           } catch {
-            vscode.window.showErrorMessage("Failed to update topic label");
+            vscode.window.showErrorMessage(
+              this.isJa
+                ? "トピック名の更新に失敗しました"
+                : "Failed to update topic label",
+            );
           }
         } else if (message.type === "openFile") {
           const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
@@ -114,7 +136,9 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
               await vscode.window.showTextDocument(fileUri, { preview: true });
             } catch {
               vscode.window.showErrorMessage(
-                `Failed to open file: ${message.relativePath}`,
+                this.isJa
+                  ? `ファイルを開けませんでした: ${message.relativePath}`
+                  : `Failed to open file: ${message.relativePath}`,
               );
             }
           }
@@ -132,6 +156,20 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
               error: "Failed to add topic",
             });
           }
+        } else if (message.type === "deleteTopics") {
+          try {
+            const results = (await this.onDeleteTopics?.(message.keys)) ?? [];
+            this.postMessage({ type: "deleteTopicsResult", results });
+          } catch {
+            const results = message.keys.map((key) => ({
+              key,
+              ok: false,
+              error: "delete_failed",
+            }));
+            this.postMessage({ type: "deleteTopicsResult", results });
+          }
+        } else if (message.type === "removeMentor") {
+          await vscode.commands.executeCommand("mentor-studio.removeMentor");
         }
       },
     );
@@ -161,6 +199,10 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     return vscode.env.language.startsWith("ja") ? "ja" : "en";
   }
 
+  private get isJa(): boolean {
+    return (this.latestConfig?.locale ?? this.detectLocale()) !== "en";
+  }
+
   private flushState(): void {
     if (!this.hasConfig) {
       this.postMessage({ type: "noConfig", locale: this.detectLocale() });
@@ -188,7 +230,9 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
       const parsed = parseConfig(rawText);
       if (!parsed) {
         vscode.window.showErrorMessage(
-          ".mentor/config.json has invalid format",
+          this.isJa
+            ? ".mentor/config.json の形式が不正です"
+            : ".mentor/config.json has invalid format",
         );
         return;
       }
@@ -203,7 +247,11 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
       this.latestConfig = parsed;
       this.postMessage({ type: "config", data: parsed });
     } catch {
-      vscode.window.showErrorMessage("Failed to update .mentor/config.json");
+      vscode.window.showErrorMessage(
+        this.isJa
+          ? ".mentor/config.json の更新に失敗しました"
+          : "Failed to update .mentor/config.json",
+      );
     }
   }
 
@@ -214,8 +262,50 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
   }
 
   private async updateEnableMentor(value: boolean): Promise<void> {
+    if (!value) {
+      // Toggling OFF — just update config
+      await this.updateConfig((config) => {
+        config.enableMentor = false;
+      });
+      return;
+    }
+
+    // Toggling ON — check if @ref exists in CLAUDE.md
+    const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
+    if (!wsRoot) {
+      return;
+    }
+
+    const status = await findMentorRef(wsRoot);
+
+    if (status.personal || status.project) {
+      // Ref exists — just toggle ON
+      await this.updateConfig((config) => {
+        config.enableMentor = true;
+      });
+      return;
+    }
+
+    // Ref missing — prompt user to add it
+    const result = await promptAndAddMentorRef(wsRoot, this.isJa);
+
+    if (result === undefined) {
+      // User cancelled — keep enableMentor false
+      vscode.window.showInformationMessage(
+        this.isJa
+          ? "メンター参照が CLAUDE.md にないため、有効化できません。"
+          : "Cannot enable: mentor reference is missing from CLAUDE.md.",
+      );
+      // Re-send config to reset the toggle in the webview
+      if (this.latestConfig) {
+        this.postMessage({ type: "config", data: this.latestConfig });
+      }
+      return;
+    }
+
+    // Ref added — now toggle ON
     await this.updateConfig((config) => {
-      config.enableMentor = value;
+      config.enableMentor = true;
     });
   }
 
