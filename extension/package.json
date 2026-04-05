@@ -36,7 +36,8 @@
           "type": "webview",
           "id": "mentor-studio.sidebar",
           "name": "",
-          "icon": "$(mortar-board)"
+          "icon": "$(mortar-board)",
+          "when": "workspaceFolderCount > 0"
         }
       ]
     },

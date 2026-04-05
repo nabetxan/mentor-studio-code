@@ -286,6 +286,19 @@ a {
   object-position: top;
 }
 
+/* === Demo Video === */
+.demo-video {
+  margin-top: 32px;
+  text-align: center;
+}
+
+.demo-video video {
+  width: 100%;
+  max-width: 720px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
 /* === Target Cards === */
 .target-cards {
   display: grid;
