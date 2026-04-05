@@ -78,8 +78,67 @@ const translations = {
   "overview.topic.editLabel": { ja: "ラベル編集", en: "Edit Label" },
   "overview.topic.save": { ja: "保存", en: "Save" },
   "overview.topic.cancel": { ja: "キャンセル", en: "Cancel" },
+  "overview.topic.mergeSection": {
+    ja: "トピックの統合",
+    en: "Merge Topics",
+  },
+  "overview.topic.mergeSource": { ja: "統合元", en: "Source" },
   "overview.topic.mergeTo": { ja: "統合先", en: "Merge into" },
   "overview.topic.merge": { ja: "統合", en: "Merge" },
+  "overview.topic.mergeSelectSource": {
+    ja: "トピックを選択",
+    en: "Select topic",
+  },
+  "overview.topic.mergeSelectSourceHint": {
+    ja: "統合元のトピックを選択してください",
+    en: "Select a source topic to merge from",
+  },
+  "overview.topic.deleteSection": {
+    ja: "トピックの削除",
+    en: "Delete Topics",
+  },
+  "overview.topic.delete": { ja: "削除", en: "Delete" },
+  "overview.topic.deleteHint": {
+    ja: "紐づく学習データがあるトピックは削除できません。既存の他のトピックまたは新しいトピックに統合すると削除できるようになります。",
+    en: "Topics with linked learning data cannot be deleted. Merge them into another topic (existing or new) to enable deletion.",
+  },
+  "overview.topic.selectTopics": {
+    ja: "削除するトピックを選択",
+    en: "Select topics to delete",
+  },
+  "overview.topic.selectedCount": {
+    ja: "{count}件 選択中",
+    en: "{count} selected",
+  },
+  "overview.topic.noTopics": {
+    ja: "すべてのトピックに学習データがあるため削除できません",
+    en: "All topics have learning data and cannot be deleted",
+  },
+  "overview.error.dismiss": { ja: "閉じる", en: "Dismiss" },
+  "app.deleteTopicError.has_related_data": {
+    ja: "紐づく学習データがあるため削除できません",
+    en: "Cannot delete: topic has linked learning data",
+  },
+  "app.deleteTopicError.topic_not_found": {
+    ja: "トピックが見つかりません",
+    en: "Topic not found",
+  },
+  "app.deleteTopicError.config_not_loaded": {
+    ja: "設定が読み込まれていません",
+    en: "Config not loaded",
+  },
+  "app.deleteTopicError.delete_failed": {
+    ja: "トピックの削除に失敗しました",
+    en: "Failed to delete topic",
+  },
+  "app.deleteTopicError.read_history_failed": {
+    ja: "学習履歴の読み込みに失敗しました",
+    en: "Failed to read question history",
+  },
+  "app.deleteTopicError.read_progress_failed": {
+    ja: "進捗データの読み込みに失敗しました",
+    en: "Failed to read progress data",
+  },
   "overview.topic.newTopic": { ja: "新しいトピック", en: "New topic" },
   "overview.topic.reviewPrompt": {
     ja: "@.mentor/rules/MENTOR_RULES.md [flow:review] {label} の復習を始めましょう。",
@@ -172,6 +231,10 @@ const translations = {
   "app.addTopicFailed": {
     ja: "トピックの追加に失敗しました",
     en: "Failed to add topic",
+  },
+  "app.deleteTopicFailed": {
+    ja: "トピックの削除に失敗しました",
+    en: "Failed to delete topic",
   },
   "app.tab.actions": { ja: "Actions", en: "Actions" },
   "app.tab.overview": { ja: "Overview", en: "Overview" },

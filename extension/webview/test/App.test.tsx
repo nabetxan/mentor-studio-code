@@ -54,6 +54,7 @@ const mockData: DashboardData = {
   completedTasks: [{ task: "1", name: "Setup", plan: "phase1.md" }],
   currentTask: "2",
   profileLastUpdated: null,
+  topicsWithHistory: [],
 };
 
 describe("App", () => {
@@ -153,5 +154,72 @@ describe("App", () => {
       type: "setEnableMentor",
       value: false,
     });
+  });
+
+  it("shows delete error when deleteTopicsResult has failures", () => {
+    render(<App />);
+    simulateMessage({ type: "config", data: mockConfig });
+    simulateMessage({ type: "update", data: mockData });
+    fireEvent.click(screen.getByText("Overview"));
+    simulateMessage({
+      type: "deleteTopicsResult",
+      results: [{ key: "ts", ok: false, error: "has_related_data" }],
+    });
+    expect(
+      screen.getByText("紐づく学習データがあるため削除できません"),
+    ).toBeTruthy();
+  });
+
+  it("shows error only for failed keys in partial failure deleteTopicsResult", () => {
+    render(<App />);
+    simulateMessage({
+      type: "config",
+      data: {
+        ...mockConfig,
+        topics: [
+          { key: "ts", label: "TypeScript" },
+          { key: "react", label: "React" },
+          { key: "css", label: "CSS" },
+        ],
+      },
+    });
+    simulateMessage({ type: "update", data: mockData });
+    fireEvent.click(screen.getByText("Overview"));
+    simulateMessage({
+      type: "deleteTopicsResult",
+      results: [
+        { key: "ts", ok: false, error: "has_related_data" },
+        { key: "react", ok: true },
+        { key: "css", ok: false, error: "topic_not_found" },
+      ],
+    });
+    // Should show errors for the failed keys
+    expect(
+      screen.getByText(/紐づく学習データがあるため削除できません/),
+    ).toBeTruthy();
+    expect(screen.getByText(/トピックが見つかりません/)).toBeTruthy();
+  });
+
+  it("clears delete error when deleteTopicsResult is all success", () => {
+    render(<App />);
+    simulateMessage({ type: "config", data: mockConfig });
+    simulateMessage({ type: "update", data: mockData });
+    fireEvent.click(screen.getByText("Overview"));
+    // First send a failure
+    simulateMessage({
+      type: "deleteTopicsResult",
+      results: [{ key: "ts", ok: false, error: "has_related_data" }],
+    });
+    expect(
+      screen.getByText("紐づく学習データがあるため削除できません"),
+    ).toBeTruthy();
+    // Then send a success
+    simulateMessage({
+      type: "deleteTopicsResult",
+      results: [{ key: "ts", ok: true }],
+    });
+    expect(
+      screen.queryByText("紐づく学習データがあるため削除できません"),
+    ).toBeNull();
   });
 });

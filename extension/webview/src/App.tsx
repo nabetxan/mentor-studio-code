@@ -9,7 +9,7 @@ import { Actions } from "./components/Actions";
 import { ActionsIcon, OverviewIcon, SettingsIcon } from "./components/icons";
 import { Overview } from "./components/Overview";
 import { Settings } from "./components/Settings";
-import { t } from "./i18n";
+import { deleteTopicErrorKeys, t, type TranslationKey } from "./i18n";
 import { onMessage, postMessage } from "./vscodeApi";
 
 type Tab = "actions" | "overview" | "settings";
@@ -27,6 +27,9 @@ export function App() {
   const [lastAddedTopicKey, setLastAddedTopicKey] = useState<string | null>(
     null,
   );
+  const [deleteTopicErrors, setDeleteTopicErrors] = useState<
+    Map<string, string>
+  >(new Map());
   const appRef = useRef<HTMLDivElement>(null);
   const localeRef = useRef(locale);
 
@@ -74,6 +77,23 @@ export function App() {
             setLastAddedTopicKey(null);
           }
           break;
+        case "deleteTopicsResult": {
+          const errors = new Map<string, string>();
+          for (const entry of message.results) {
+            if (!entry.ok) {
+              const errorCode = entry.error ?? "delete_failed";
+              const translated = deleteTopicErrorKeys.has(errorCode)
+                ? t(
+                    `app.deleteTopicError.${errorCode}` as TranslationKey,
+                    localeRef.current,
+                  )
+                : t("app.deleteTopicFailed", localeRef.current);
+              errors.set(entry.key, translated);
+            }
+          }
+          setDeleteTopicErrors(errors);
+          break;
+        }
       }
     });
 
@@ -257,6 +277,8 @@ export function App() {
             addTopicError={addTopicError}
             lastAddedTopicKey={lastAddedTopicKey}
             onClearLastAddedKey={() => setLastAddedTopicKey(null)}
+            deleteTopicErrors={deleteTopicErrors}
+            onClearDeleteTopicErrors={() => setDeleteTopicErrors(new Map())}
           />
         )}
         {tab === "settings" && (

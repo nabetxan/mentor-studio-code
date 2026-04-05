@@ -22,6 +22,9 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
   private onAddTopic?: (
     label: string,
   ) => Promise<{ ok: boolean; key?: string; error?: string }>;
+  private onDeleteTopics?: (
+    keys: string[],
+  ) => Promise<{ key: string; ok: boolean; error?: string }[]>;
 
   constructor(private extensionUri: vscode.Uri) {}
 
@@ -31,10 +34,14 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     addTopic: (
       label: string,
     ) => Promise<{ ok: boolean; key?: string; error?: string }>;
+    deleteTopics: (
+      keys: string[],
+    ) => Promise<{ key: string; ok: boolean; error?: string }[]>;
   }): void {
     this.onMergeTopic = handlers.mergeTopic;
     this.onUpdateTopicLabel = handlers.updateTopicLabel;
     this.onAddTopic = handlers.addTopic;
+    this.onDeleteTopics = handlers.deleteTopics;
   }
 
   resolveWebviewView(webviewView: vscode.WebviewView): void {
@@ -148,6 +155,18 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
               ok: false,
               error: "Failed to add topic",
             });
+          }
+        } else if (message.type === "deleteTopics") {
+          try {
+            const results = (await this.onDeleteTopics?.(message.keys)) ?? [];
+            this.postMessage({ type: "deleteTopicsResult", results });
+          } catch {
+            const results = message.keys.map((key) => ({
+              key,
+              ok: false,
+              error: "delete_failed",
+            }));
+            this.postMessage({ type: "deleteTopicsResult", results });
           }
         } else if (message.type === "removeMentor") {
           await vscode.commands.executeCommand("mentor-studio.removeMentor");

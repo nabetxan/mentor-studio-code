@@ -67,6 +67,7 @@ export function activate(context: vscode.ExtensionContext): void {
     updateTopicLabel: (key, newLabel) =>
       watcher.updateTopicLabel(key, newLabel),
     addTopic: (label) => watcher.addTopic(label),
+    deleteTopics: (keys) => watcher.deleteTopics(keys),
   });
 
   const currentPkg = context.extension.packageJSON as Record<string, unknown>;
