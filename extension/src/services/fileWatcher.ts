@@ -5,6 +5,7 @@ import * as vscode from "vscode";
 import {
   computeDashboardData,
   parseConfig,
+  parseLearnerProfile,
   parseProgressData,
   parseQuestionHistory,
 } from "./dataParser";
@@ -31,6 +32,7 @@ export class FileWatcherService implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
   private config: MentorStudioConfig | null = null;
   private rawConfig: Record<string, unknown> | null = null;
+  private syncing = false;
 
   constructor(
     private workspaceRoot: string,
@@ -38,6 +40,7 @@ export class FileWatcherService implements vscode.Disposable {
     private onDataChanged: (data: DashboardData) => void,
     private onConfigChanged?: (config: MentorStudioConfig | null) => void,
     private log?: (message: string) => void,
+    private globalState?: vscode.Memento,
   ) {}
 
   async start(): Promise<void> {
@@ -129,6 +132,7 @@ export class FileWatcherService implements vscode.Disposable {
     const topics = this.config?.topics ?? [];
     const data = computeDashboardData(progress, history, topics);
     this.onDataChanged(data);
+    await this.syncLearnerProfile(progressPath);
   }
 
   async mergeTopic(fromKey: string, toKey: string): Promise<void> {
@@ -326,6 +330,49 @@ export class FileWatcherService implements vscode.Disposable {
     this.rawConfig = merged;
     this.onConfigChanged?.(this.config);
     await this.refresh();
+  }
+
+  private async syncLearnerProfile(progressPath: string): Promise<void> {
+    if (this.syncing || !this.globalState) return;
+
+    try {
+      const rawText = await readFile(progressPath, "utf-8");
+      const rawObj = JSON.parse(rawText) as Record<string, unknown>;
+      const fileProfile = parseLearnerProfile(rawObj.learner_profile);
+      const globalProfile = parseLearnerProfile(
+        this.globalState.get<unknown>("learnerProfile"),
+      );
+
+      const fileTime = fileProfile?.last_updated
+        ? new Date(fileProfile.last_updated).getTime()
+        : 0;
+      const globalTime = globalProfile?.last_updated
+        ? new Date(globalProfile.last_updated).getTime()
+        : 0;
+
+      if (fileTime === 0 && globalTime === 0) return;
+
+      if (globalTime > fileTime) {
+        // globalState is newer → write to progress.json
+        this.syncing = true;
+        try {
+          rawObj.learner_profile = globalProfile;
+          await writeFile(progressPath, JSON.stringify(rawObj, null, 2) + "\n");
+          this.log?.(
+            "Synced learner_profile from globalState to progress.json",
+          );
+        } finally {
+          this.syncing = false;
+        }
+      } else if (fileTime > globalTime) {
+        // progress.json is newer → update globalState
+        await this.globalState.update("learnerProfile", fileProfile);
+        this.log?.("Synced learner_profile from progress.json to globalState");
+      }
+      // fileTime === globalTime → no-op
+    } catch (err) {
+      this.log?.(`syncLearnerProfile failed: ${String(err)}`);
+    }
   }
 
   getConfig(): MentorStudioConfig | null {

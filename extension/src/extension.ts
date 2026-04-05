@@ -60,6 +60,7 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     },
     (msg) => getOutputChannel().appendLine(msg),
+    context.globalState,
   );
 
   sidebarProvider.setTopicHandlers({
