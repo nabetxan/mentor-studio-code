@@ -33,11 +33,17 @@ function findWorkspacePaths() {
 
     if (!claudeContent.includes(MENTOR_REF)) continue;
 
-    // Derive workspace path candidate from directory name
-    // e.g., -Users-kaori-workspace-my-app → /Users/kaori/workspace/my-app
+    // Derive workspace path candidate from directory name.
+    // Encoding replaces [:\\/] with '-', so we reverse that here.
+    // On Windows, restore drive letter pattern: e.g., C-Users-... → C:\Users\...
+    // On Unix, leading '-' becomes the root '/'.
     // Note: this is lossy for paths containing hyphens; workspacePath field
     // in config.json is the authoritative source when available.
-    const candidate = dirent.name.replace(/-/g, path.sep);
+    let candidate = dirent.name.replace(/-/g, path.sep);
+    if (process.platform === "win32") {
+      // Restore drive prefix: C\Users\... → C:\Users\...
+      candidate = candidate.replace(/^([A-Za-z])\\/, "$1:\\");
+    }
 
     // Try to read config.json and get the authoritative workspacePath
     const candidateConfigPath = path.join(candidate, ".mentor", "config.json");

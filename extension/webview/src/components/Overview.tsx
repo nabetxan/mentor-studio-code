@@ -65,7 +65,7 @@ export function Overview({
       if (next.size === prev.size) return prev;
       return next;
     });
-  }, [config?.topics, data?.topicsWithHistory, deleteSelected]);
+  }, [config?.topics, data?.topicsWithHistory]);
 
   useEffect(() => {
     if (!deleteDropdownOpen) return;
@@ -474,7 +474,7 @@ export function Overview({
                     className="form-select"
                     type="button"
                     aria-expanded={deleteDropdownOpen}
-                    aria-haspopup="listbox"
+                    aria-haspopup="dialog"
                     onClick={() => setDeleteDropdownOpen((prev) => !prev)}
                   >
                     {deleteSelected.size > 0

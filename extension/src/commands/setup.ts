@@ -102,9 +102,7 @@ export async function runSetup(
   if (existingConfig) {
     // Update extensionVersion in existing config
     existingConfig.extensionVersion = extensionVersion;
-    if (!existingConfig.workspacePath) {
-      existingConfig.workspacePath = wsRoot.fsPath;
-    }
+    existingConfig.workspacePath = wsRoot.fsPath;
     delete (existingConfig as Record<string, unknown>).extensionUninstalled;
     await vscode.workspace.fs.writeFile(
       configUri,
