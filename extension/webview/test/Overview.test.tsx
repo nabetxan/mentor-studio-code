@@ -1,5 +1,11 @@
 import type { DashboardData } from "@mentor-studio/shared";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Overview } from "../src/components/Overview";
 
@@ -25,8 +31,8 @@ const defaultProps = {
   addTopicError: null,
   lastAddedTopicKey: null,
   onClearLastAddedKey: () => {},
-  deleteTopicError: null,
-  onClearDeleteTopicError: () => {},
+  deleteTopicErrors: new Map<string, string>(),
+  onClearDeleteTopicErrors: vi.fn(),
 };
 
 describe("Overview", () => {
@@ -147,5 +153,158 @@ describe("Overview", () => {
     expect(screen.getByText("React")).toBeTruthy();
     expect(screen.getByText("1/2問")).toBeTruthy();
     expect(screen.getByText("50%")).toBeTruthy();
+  });
+
+  describe("Delete Topics section", () => {
+    const configWithTopics = {
+      repositoryName: "test",
+      topics: [
+        { key: "ts", label: "TypeScript" },
+        { key: "react", label: "React" },
+        { key: "css", label: "CSS" },
+      ],
+    };
+
+    it("renders delete section when topics exist", () => {
+      render(<Overview {...defaultProps} config={configWithTopics} />);
+      expect(screen.getByText("トピックの削除")).toBeTruthy();
+    });
+
+    it("does not render delete section when no topics", () => {
+      render(
+        <Overview
+          {...defaultProps}
+          config={{ repositoryName: "test", topics: [] }}
+        />,
+      );
+      expect(screen.queryByText("トピックの削除")).toBeNull();
+    });
+
+    it("disables topics that have history", () => {
+      const data = {
+        ...mockData,
+        topicsWithHistory: ["ts"],
+      };
+      render(
+        <Overview {...defaultProps} data={data} config={configWithTopics} />,
+      );
+      fireEvent.click(screen.getByText("削除するトピックを選択"));
+      const checkboxes = screen.getAllByRole("checkbox");
+      const tsCheckbox = checkboxes.find((cb) =>
+        cb.closest("label")?.textContent?.includes("TypeScript"),
+      ) as HTMLInputElement;
+      expect(tsCheckbox.disabled).toBe(true);
+    });
+
+    it("shows 'no topics available' when all topics have history", () => {
+      const data = {
+        ...mockData,
+        topicsWithHistory: ["ts", "react", "css"],
+      };
+      render(
+        <Overview {...defaultProps} data={data} config={configWithTopics} />,
+      );
+      expect(
+        screen.getByText(
+          "すべてのトピックに学習データがあるため削除できません",
+        ),
+      ).toBeTruthy();
+    });
+
+    it("posts deleteTopics message with selected keys", async () => {
+      const { postMessage } = await import("../src/vscodeApi");
+      (postMessage as ReturnType<typeof vi.fn>).mockClear();
+      render(<Overview {...defaultProps} config={configWithTopics} />);
+      fireEvent.click(screen.getByText("削除するトピックを選択"));
+      const checkboxes = screen.getAllByRole("checkbox");
+      const reactCheckbox = checkboxes.find((cb) =>
+        cb.closest("label")?.textContent?.includes("React"),
+      ) as HTMLInputElement;
+      const cssCheckbox = checkboxes.find((cb) =>
+        cb.closest("label")?.textContent?.includes("CSS"),
+      ) as HTMLInputElement;
+      fireEvent.click(reactCheckbox);
+      fireEvent.click(cssCheckbox);
+      fireEvent.click(screen.getByText("削除"));
+      expect(postMessage).toHaveBeenCalledWith({
+        type: "deleteTopics",
+        keys: expect.arrayContaining(["react", "css"]),
+      });
+    });
+
+    it("displays delete error text and dismiss button", () => {
+      const errors = new Map([["ts", "削除できません"]]);
+      const onClear = vi.fn();
+      render(
+        <Overview
+          {...defaultProps}
+          config={configWithTopics}
+          deleteTopicErrors={errors}
+          onClearDeleteTopicErrors={onClear}
+        />,
+      );
+      expect(screen.getByText("削除できません")).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "閉じる" }));
+      expect(onClear).toHaveBeenCalled();
+    });
+  });
+
+  describe("Merge Topics section", () => {
+    const configWithTopics = {
+      repositoryName: "test",
+      topics: [
+        { key: "ts", label: "TypeScript" },
+        { key: "react", label: "React" },
+      ],
+    };
+
+    it("renders merge section when 2+ topics exist", () => {
+      render(<Overview {...defaultProps} config={configWithTopics} />);
+      expect(screen.getByText("トピックの統合")).toBeTruthy();
+    });
+
+    it("does not render merge section with only 1 topic", () => {
+      render(
+        <Overview
+          {...defaultProps}
+          config={{
+            repositoryName: "test",
+            topics: [{ key: "ts", label: "TypeScript" }],
+          }}
+        />,
+      );
+      expect(screen.queryByText("トピックの統合")).toBeNull();
+    });
+
+    it("posts mergeTopic message when merge is executed", async () => {
+      const { postMessage } = await import("../src/vscodeApi");
+      (postMessage as ReturnType<typeof vi.fn>).mockClear();
+      const { container } = render(
+        <Overview {...defaultProps} config={configWithTopics} />,
+      );
+      // Select source via the native <select> inside the merge section
+      const mergeSection = container.querySelector(
+        ".merge-topics-section",
+      ) as HTMLElement;
+      const sourceSelect = within(mergeSection).getByRole("combobox");
+      fireEvent.change(sourceSelect, { target: { value: "ts" } });
+      // Target uses TopicSelect (custom dropdown) — click the button then the option
+      const targetButton = within(mergeSection).getByText("—");
+      fireEvent.click(targetButton);
+      const reactOptions = within(mergeSection).getAllByRole("option", {
+        name: "React",
+      });
+      const reactButton = reactOptions.find(
+        (el) => el.tagName === "BUTTON",
+      ) as HTMLElement;
+      fireEvent.click(reactButton);
+      // Click merge
+      fireEvent.click(within(mergeSection).getByText("統合"));
+      expect(postMessage).toHaveBeenCalledWith({
+        type: "mergeTopic",
+        fromKey: "ts",
+        toKey: "react",
+      });
+    });
   });
 });

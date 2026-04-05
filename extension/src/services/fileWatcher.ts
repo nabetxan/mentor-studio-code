@@ -185,69 +185,98 @@ export class FileWatcherService implements vscode.Disposable {
     await this.saveConfig();
   }
 
-  async deleteTopic(key: string): Promise<{ ok: boolean; error?: string }> {
+  async deleteTopics(
+    keys: string[],
+  ): Promise<{ key: string; ok: boolean; error?: string }[]> {
     if (!this.config) {
-      return { ok: false, error: "Config not loaded" };
-    }
-    if (!this.config.topics.some((t) => t.key === key)) {
-      return { ok: false, error: "Topic not found" };
+      return keys.map((key) => ({
+        key,
+        ok: false,
+        error: "config_not_loaded",
+      }));
     }
 
-    // Block deletion if the topic has related data
+    // Read history and progress files once for all keys
     const historyPath = join(
       this.workspaceRoot,
       this.mentorPath,
       "question-history.json",
     );
-    try {
-      const raw = await readFile(historyPath, "utf-8");
-      const history = parseQuestionHistory(raw);
-      if (history.history.some((entry) => entry.topic === key)) {
-        return {
-          ok: false,
-          error: "has_related_data",
-        };
-      }
-    } catch (err: unknown) {
-      if (!isFileNotFound(err)) {
-        return { ok: false, error: "Failed to read question-history.json" };
-      }
-      // question-history.json does not exist — no related data
-    }
-
     const progressPath = join(
       this.workspaceRoot,
       this.mentorPath,
       "progress.json",
     );
+
+    let historyTopics: Set<string> | null = null;
+    try {
+      const raw = await readFile(historyPath, "utf-8");
+      const history = parseQuestionHistory(raw);
+      historyTopics = new Set(history.history.map((entry) => entry.topic));
+    } catch (err: unknown) {
+      if (!isFileNotFound(err)) {
+        return keys.map((key) => ({
+          key,
+          ok: false,
+          error: "read_history_failed",
+        }));
+      }
+      historyTopics = new Set();
+    }
+
+    let progressTopics: Set<string> | null = null;
     try {
       const progressRaw = await readFile(progressPath, "utf-8");
       const rawObj = JSON.parse(progressRaw) as Record<string, unknown>;
       if (Array.isArray(rawObj.unresolved_gaps)) {
-        const hasGaps = (rawObj.unresolved_gaps as unknown[]).some((gap) => {
-          if (typeof gap !== "object" || gap === null) return false;
-          return (gap as Record<string, unknown>).topic === key;
-        });
-        if (hasGaps) {
-          return {
-            ok: false,
-            error: "has_related_data",
-          };
-        }
+        progressTopics = new Set(
+          (rawObj.unresolved_gaps as unknown[])
+            .filter(
+              (gap): gap is Record<string, unknown> =>
+                typeof gap === "object" && gap !== null,
+            )
+            .map((gap) => gap.topic as string),
+        );
+      } else {
+        progressTopics = new Set();
       }
     } catch (err: unknown) {
       if (!isFileNotFound(err)) {
-        return { ok: false, error: "Failed to read progress.json" };
+        return keys.map((key) => ({
+          key,
+          ok: false,
+          error: "read_progress_failed",
+        }));
       }
-      // progress.json does not exist — no related data
+      progressTopics = new Set();
     }
 
-    this.config = {
-      ...this.config,
-      topics: this.config.topics.filter((t) => t.key !== key),
-    };
-    await this.saveConfig();
-    return { ok: true };
+    // Validate each key and collect results
+    const results: { key: string; ok: boolean; error?: string }[] = [];
+    const keysToDelete: string[] = [];
+
+    for (const key of keys) {
+      if (!this.config.topics.some((t) => t.key === key)) {
+        results.push({ key, ok: false, error: "topic_not_found" });
+      } else if (historyTopics.has(key) || progressTopics.has(key)) {
+        results.push({ key, ok: false, error: "has_related_data" });
+      } else {
+        keysToDelete.push(key);
+        results.push({ key, ok: true });
+      }
+    }
+
+    // Apply all deletions and save once
+    if (keysToDelete.length > 0) {
+      const deleteSet = new Set(keysToDelete);
+      this.config = {
+        ...this.config,
+        topics: this.config.topics.filter((t) => !deleteSet.has(t.key)),
+      };
+      await this.saveConfig();
+    }
+
+    return results;
   }
 
   async addTopic(

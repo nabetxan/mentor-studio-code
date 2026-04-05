@@ -101,12 +101,18 @@ export interface DashboardData {
 
 // === Extension <-> Webview message protocol ===
 
+export type DeleteTopicResultEntry = {
+  key: string;
+  ok: boolean;
+  error?: string;
+};
+
 export type ExtensionMessage =
   | { type: "update"; data: DashboardData }
   | { type: "config"; data: MentorStudioConfig }
   | { type: "noConfig"; locale?: Locale }
   | { type: "addTopicResult"; ok: boolean; key?: string; error?: string }
-  | { type: "deleteTopicResult"; ok: boolean; error?: string };
+  | { type: "deleteTopicsResult"; results: DeleteTopicResultEntry[] };
 
 export type FileField = "spec" | "plan";
 
@@ -123,6 +129,6 @@ export type WebviewMessage =
   | { type: "mergeTopic"; fromKey: string; toKey: string }
   | { type: "updateTopicLabel"; key: string; newLabel: string }
   | { type: "addTopic"; label: string }
-  | { type: "deleteTopic"; key: string }
+  | { type: "deleteTopics"; keys: string[] }
   | { type: "openFile"; relativePath: string }
   | { type: "removeMentor" };

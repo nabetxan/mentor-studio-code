@@ -111,8 +111,33 @@ const translations = {
     en: "{count} selected",
   },
   "overview.topic.noTopics": {
-    ja: "削除可能なトピックがありません",
-    en: "No topics available to delete",
+    ja: "すべてのトピックに学習データがあるため削除できません",
+    en: "All topics have learning data and cannot be deleted",
+  },
+  "overview.error.dismiss": { ja: "閉じる", en: "Dismiss" },
+  "app.deleteTopicError.has_related_data": {
+    ja: "紐づく学習データがあるため削除できません",
+    en: "Cannot delete: topic has linked learning data",
+  },
+  "app.deleteTopicError.topic_not_found": {
+    ja: "トピックが見つかりません",
+    en: "Topic not found",
+  },
+  "app.deleteTopicError.config_not_loaded": {
+    ja: "設定が読み込まれていません",
+    en: "Config not loaded",
+  },
+  "app.deleteTopicError.delete_failed": {
+    ja: "トピックの削除に失敗しました",
+    en: "Failed to delete topic",
+  },
+  "app.deleteTopicError.read_history_failed": {
+    ja: "学習履歴の読み込みに失敗しました",
+    en: "Failed to read question history",
+  },
+  "app.deleteTopicError.read_progress_failed": {
+    ja: "進捗データの読み込みに失敗しました",
+    en: "Failed to read progress data",
   },
   "overview.topic.newTopic": { ja: "新しいトピック", en: "New topic" },
   "overview.topic.reviewPrompt": {

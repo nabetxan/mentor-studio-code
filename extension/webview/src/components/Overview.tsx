@@ -10,6 +10,10 @@ import { postMessage } from "../vscodeApi";
 import { CheckIcon, CloseIcon, CopyIcon, EditIcon, TrashIcon } from "./icons";
 import { TopicSelect } from "./TopicSelect";
 
+function stripKeyPrefix(label: string): string {
+  return label.replace(/^[a-z]-/, "");
+}
+
 interface OverviewProps {
   data: DashboardData | null;
   locale: Locale;
@@ -17,8 +21,8 @@ interface OverviewProps {
   addTopicError: string | null;
   lastAddedTopicKey: string | null;
   onClearLastAddedKey: () => void;
-  deleteTopicError: string | null;
-  onClearDeleteTopicError: () => void;
+  deleteTopicErrors: Map<string, string>;
+  onClearDeleteTopicErrors: () => void;
 }
 
 export function Overview({
@@ -28,8 +32,8 @@ export function Overview({
   addTopicError,
   lastAddedTopicKey,
   onClearLastAddedKey,
-  deleteTopicError,
-  onClearDeleteTopicError,
+  deleteTopicErrors,
+  onClearDeleteTopicErrors,
 }: OverviewProps) {
   const [expandedTopics, setExpandedTopics] = useState<Record<string, boolean>>(
     {},
@@ -61,7 +65,7 @@ export function Overview({
       if (next.size === prev.size) return prev;
       return next;
     });
-  }, [config?.topics, data?.topicsWithHistory]);
+  }, [config?.topics, data?.topicsWithHistory, deleteSelected]);
 
   useEffect(() => {
     if (!deleteDropdownOpen) return;
@@ -137,9 +141,8 @@ export function Overview({
   }
 
   function executeDelete() {
-    for (const key of deleteSelected) {
-      postMessage({ type: "deleteTopic", key });
-    }
+    if (deleteSelected.size === 0) return;
+    postMessage({ type: "deleteTopics", keys: [...deleteSelected] });
     setDeleteSelected(new Set());
     setDeleteDropdownOpen(false);
   }
@@ -225,7 +228,7 @@ export function Overview({
                 ? topic.label
                 : (config?.topics?.find((c) => c.key === topic.topic)?.label ??
                   topic.label);
-            const displayLabel = resolvedLabel.replace(/^[a-z]-/, "");
+            const displayLabel = stripKeyPrefix(resolvedLabel);
             const topicGaps = data.unresolvedGaps.filter(
               (g) => g.topic === topic.topic,
             );
@@ -405,7 +408,7 @@ export function Overview({
                   )
                   .map((tp) => (
                     <option key={tp.key} value={tp.key}>
-                      {tp.label.replace(/^[a-z]-/, "")}
+                      {stripKeyPrefix(tp.label)}
                     </option>
                   ))}
               </select>
@@ -496,7 +499,7 @@ export function Overview({
                         )
                         .map((tp) => {
                           const hasData = historySet.has(tp.key);
-                          const displayLabel = tp.label.replace(/^[a-z]-/, "");
+                          const displayLabel = stripKeyPrefix(tp.label);
                           return (
                             <label
                               key={tp.key}
@@ -528,13 +531,13 @@ export function Overview({
                     {t("overview.topic.delete", locale)}
                   </button>
                 </div>
-                {deleteTopicError && (
+                {deleteTopicErrors.size > 0 && (
                   <div className="delete-topics-error">
-                    {deleteTopicError}
+                    {[...deleteTopicErrors.values()].join("; ")}
                     <button
                       className="delete-topics-error-dismiss"
-                      onClick={onClearDeleteTopicError}
-                      aria-label={t("overview.topic.cancel", locale)}
+                      onClick={onClearDeleteTopicErrors}
+                      aria-label={t("overview.error.dismiss", locale)}
                     >
                       <CloseIcon />
                     </button>
