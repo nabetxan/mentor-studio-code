@@ -182,6 +182,10 @@ const translations = {
     en: "Register Profile",
   },
   "settings.profile.update": { ja: "プロフィール更新", en: "Update Profile" },
+  "settings.profile.lastUpdated": {
+    ja: "最終更新:",
+    en: "Last updated:",
+  },
   "settings.copyCreatePrompt.plan": {
     ja: "クリックでプロンプトをコピー → AIチャットに貼り付けて実装プランを作成",
     en: "Click to copy prompt → paste in AI chat to create an implementation plan",

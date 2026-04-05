@@ -13,6 +13,7 @@ All notable changes to "Mentor Studio Code" will be documented in this file.
 - Uninstall hook to disable mentor (`enableMentor: false`, `extensionUninstalled: true`) in `.mentor/config.json` when extension is uninstalled
 - CLAUDE.md management service for adding/removing mentor rule references
 - Settings UI with Remove Mentor button in sidebar
+- Profile last updated date display in Settings tab
 
 ### Fixed
 

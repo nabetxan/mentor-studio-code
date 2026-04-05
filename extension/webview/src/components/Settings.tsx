@@ -177,6 +177,12 @@ function ProfileSection({ profileLastUpdated, locale }: ProfileSectionProps) {
             )}
           </span>
         </button>
+        {profileLastUpdated && (
+          <span className="profile-last-updated">
+            {t("settings.profile.lastUpdated", locale)}{" "}
+            {new Date(profileLastUpdated).toLocaleDateString(locale)}
+          </span>
+        )}
       </div>
     </div>
   );

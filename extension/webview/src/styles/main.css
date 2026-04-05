@@ -853,6 +853,11 @@ body {
   max-width: 200px;
 }
 
+.profile-last-updated {
+  font-size: 0.7rem;
+  color: var(--vscode-descriptionForeground);
+}
+
 .setting-value,
 .setting-unset {
   display: flex;
