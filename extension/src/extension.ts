@@ -29,8 +29,8 @@ export function activate(context: vscode.ExtensionContext): void {
   );
   context.subscriptions.push(removeMentorCommand);
 
-  // Sidebar provider — register before workspace check so the panel is
-  // visible even when no folder is open.
+  // Sidebar provider — package.json hides the view when workspaceFolderCount == 0,
+  // so this only runs when a folder is open.
   const sidebarProvider = new SidebarProvider(context.extensionUri);
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
@@ -39,9 +39,7 @@ export function activate(context: vscode.ExtensionContext): void {
     ),
   );
 
-  // If no workspace, show the "no config" state and stop
   if (!workspaceRoot) {
-    sidebarProvider.sendNoConfig();
     return;
   }
 
@@ -60,6 +58,7 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     },
     (msg) => getOutputChannel().appendLine(msg),
+    context.globalState,
   );
 
   sidebarProvider.setTopicHandlers({

@@ -21,7 +21,12 @@ export interface SkippedTask {
 }
 
 export interface LearnerProfile {
-  last_updated?: string | null;
+  experience: string;
+  level: string;
+  interests: string[];
+  weak_areas: string[];
+  mentor_style: string;
+  last_updated: string | null;
 }
 
 export interface ProgressData {

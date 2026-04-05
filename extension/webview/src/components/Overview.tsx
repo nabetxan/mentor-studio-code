@@ -485,11 +485,9 @@ export function Overview({
                       : t("overview.topic.selectTopics", locale)}
                   </button>
                   {deleteDropdownOpen && (
-                    <div
+                    <fieldset
                       className="delete-topics-dropdown"
-                      role="listbox"
                       aria-label={t("overview.topic.selectTopics", locale)}
-                      aria-multiselectable="true"
                     >
                       {[...allTopics]
                         .sort((a, b) =>
@@ -503,9 +501,6 @@ export function Overview({
                           return (
                             <label
                               key={tp.key}
-                              role="option"
-                              aria-selected={deleteSelected.has(tp.key)}
-                              aria-disabled={hasData}
                               className={`delete-topics-item${hasData ? " disabled" : ""}`}
                             >
                               <input
@@ -518,7 +513,7 @@ export function Overview({
                             </label>
                           );
                         })}
-                    </div>
+                    </fieldset>
                   )}
                 </div>
                 <div className="delete-topics-actions">
