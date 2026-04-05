@@ -476,6 +476,8 @@ body {
 }
 
 .delete-topics-dropdown {
+  margin: 0;
+  padding: 0;
   position: absolute;
   top: 100%;
   left: 0;

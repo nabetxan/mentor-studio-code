@@ -344,10 +344,10 @@ export class FileWatcherService implements vscode.Disposable {
       );
 
       const fileTime = fileProfile?.last_updated
-        ? new Date(fileProfile.last_updated).getTime()
+        ? new Date(fileProfile.last_updated).getTime() || 0
         : 0;
       const globalTime = globalProfile?.last_updated
-        ? new Date(globalProfile.last_updated).getTime()
+        ? new Date(globalProfile.last_updated).getTime() || 0
         : 0;
 
       if (fileTime === 0 && globalTime === 0) return;
