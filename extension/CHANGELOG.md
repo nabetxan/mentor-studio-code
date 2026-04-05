@@ -6,6 +6,8 @@ All notable changes to "Mentor Studio Code" will be documented in this file.
 
 ### Added
 
+- Merge Topics section in Overview tab — merge any topic into another (including new topics) independent of review status
+- Delete Topics section in Overview tab with multi-select checkbox dropdown (topics with related data are disabled; hint guides user to merge first)
 - Remove Mentor command to uninstall mentor configuration from a project
 - Uninstall hook to disable mentor (`enableMentor: false`, `extensionUninstalled: true`) in `.mentor/config.json` when extension is uninstalled
 - CLAUDE.md management service for adding/removing mentor rule references

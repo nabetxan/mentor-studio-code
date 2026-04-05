@@ -78,8 +78,34 @@ const translations = {
   "overview.topic.editLabel": { ja: "ラベル編集", en: "Edit Label" },
   "overview.topic.save": { ja: "保存", en: "Save" },
   "overview.topic.cancel": { ja: "キャンセル", en: "Cancel" },
+  "overview.topic.mergeSection": {
+    ja: "トピックの統合",
+    en: "Merge Topics",
+  },
+  "overview.topic.mergeSource": { ja: "統合元", en: "Source" },
   "overview.topic.mergeTo": { ja: "統合先", en: "Merge into" },
   "overview.topic.merge": { ja: "統合", en: "Merge" },
+  "overview.topic.mergeSelectSource": {
+    ja: "トピックを選択",
+    en: "Select topic",
+  },
+  "overview.topic.deleteSection": {
+    ja: "トピックの削除",
+    en: "Delete Topics",
+  },
+  "overview.topic.delete": { ja: "削除", en: "Delete" },
+  "overview.topic.deleteHint": {
+    ja: "紐づく学習データがあるトピックは削除できません。既存の他のトピックまたは新しいトピックに統合すると削除できるようになります。",
+    en: "Topics with linked learning data cannot be deleted. Merge them into another topic (existing or new) to enable deletion.",
+  },
+  "overview.topic.selectTopics": {
+    ja: "削除するトピックを選択",
+    en: "Select topics to delete",
+  },
+  "overview.topic.noTopics": {
+    ja: "削除可能なトピックがありません",
+    en: "No topics available to delete",
+  },
   "overview.topic.newTopic": { ja: "新しいトピック", en: "New topic" },
   "overview.topic.reviewPrompt": {
     ja: "@.mentor/rules/MENTOR_RULES.md [flow:review] {label} の復習を始めましょう。",

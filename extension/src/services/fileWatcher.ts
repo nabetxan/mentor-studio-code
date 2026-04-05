@@ -176,6 +176,65 @@ export class FileWatcherService implements vscode.Disposable {
     await this.saveConfig();
   }
 
+  async deleteTopic(key: string): Promise<{ ok: boolean; error?: string }> {
+    if (!this.config) {
+      return { ok: false, error: "Config not loaded" };
+    }
+    if (!this.config.topics.some((t) => t.key === key)) {
+      return { ok: false, error: "Topic not found" };
+    }
+
+    // Block deletion if the topic has related data
+    const historyPath = join(
+      this.workspaceRoot,
+      this.mentorPath,
+      "question-history.json",
+    );
+    try {
+      const raw = await readFile(historyPath, "utf-8");
+      const history = parseQuestionHistory(raw);
+      if (history.history.some((entry) => entry.topic === key)) {
+        return {
+          ok: false,
+          error: "has_related_data",
+        };
+      }
+    } catch {
+      // question-history.json may not exist — no related data
+    }
+
+    const progressPath = join(
+      this.workspaceRoot,
+      this.mentorPath,
+      "progress.json",
+    );
+    try {
+      const progressRaw = await readFile(progressPath, "utf-8");
+      const rawObj = JSON.parse(progressRaw) as Record<string, unknown>;
+      if (Array.isArray(rawObj.unresolved_gaps)) {
+        const hasGaps = (rawObj.unresolved_gaps as unknown[]).some((gap) => {
+          if (typeof gap !== "object" || gap === null) return false;
+          return (gap as Record<string, unknown>).topic === key;
+        });
+        if (hasGaps) {
+          return {
+            ok: false,
+            error: "has_related_data",
+          };
+        }
+      }
+    } catch {
+      // progress.json may not exist — no related data
+    }
+
+    this.config = {
+      ...this.config,
+      topics: this.config.topics.filter((t) => t.key !== key),
+    };
+    await this.saveConfig();
+    return { ok: true };
+  }
+
   async addTopic(
     label: string,
   ): Promise<{ ok: boolean; key?: string; error?: string }> {

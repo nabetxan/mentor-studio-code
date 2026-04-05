@@ -269,6 +269,15 @@ export function computeDashboardData(
   const filtered = byTopic.filter((t) => t.rate < 1);
   filtered.sort((a, b) => a.rate - b.rate);
 
+  // Collect all topic keys that have any history or unresolved gaps
+  const topicsWithHistorySet = new Set<string>();
+  for (const entry of entries) {
+    topicsWithHistorySet.add(entry.topic);
+  }
+  for (const gap of progress.unresolved_gaps) {
+    topicsWithHistorySet.add(gap.topic);
+  }
+
   return {
     totalQuestions,
     correctRate,
@@ -277,5 +286,6 @@ export function computeDashboardData(
     completedTasks: progress.completed_tasks,
     currentTask: progress.current_task,
     profileLastUpdated: progress.learner_profile?.last_updated ?? null,
+    topicsWithHistory: [...topicsWithHistorySet],
   };
 }
