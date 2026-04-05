@@ -17,6 +17,8 @@ interface OverviewProps {
   addTopicError: string | null;
   lastAddedTopicKey: string | null;
   onClearLastAddedKey: () => void;
+  deleteTopicError: string | null;
+  onClearDeleteTopicError: () => void;
 }
 
 export function Overview({
@@ -26,6 +28,8 @@ export function Overview({
   addTopicError,
   lastAddedTopicKey,
   onClearLastAddedKey,
+  deleteTopicError,
+  onClearDeleteTopicError,
 }: OverviewProps) {
   const [expandedTopics, setExpandedTopics] = useState<Record<string, boolean>>(
     {},
@@ -41,6 +45,23 @@ export function Overview({
   const [deleteSelected, setDeleteSelected] = useState<Set<string>>(new Set());
   const [deleteDropdownOpen, setDeleteDropdownOpen] = useState(false);
   const deleteDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Prune deleteSelected when topics or topicsWithHistory change
+  useEffect(() => {
+    if (deleteSelected.size === 0) return;
+    const allTopicKeys = new Set((config?.topics ?? []).map((tp) => tp.key));
+    const historySet = new Set(data?.topicsWithHistory ?? []);
+    setDeleteSelected((prev) => {
+      const next = new Set<string>();
+      for (const key of prev) {
+        if (allTopicKeys.has(key) && !historySet.has(key)) {
+          next.add(key);
+        }
+      }
+      if (next.size === prev.size) return prev;
+      return next;
+    });
+  }, [config?.topics, data?.topicsWithHistory]);
 
   useEffect(() => {
     if (!deleteDropdownOpen) return;
@@ -418,6 +439,11 @@ export function Overview({
               </div>
             </div>
           </div>
+          {!mergeSource && mergeTarget && (
+            <div className="merge-topics-hint">
+              {t("overview.topic.mergeSelectSourceHint", locale)}
+            </div>
+          )}
         </div>
       )}
 
@@ -430,6 +456,14 @@ export function Overview({
             const allTopics = config?.topics ?? [];
             const historySet = new Set(data.topicsWithHistory);
             const hasDisabled = allTopics.some((tp) => historySet.has(tp.key));
+            const allDisabled = allTopics.every((tp) => historySet.has(tp.key));
+            if (allDisabled) {
+              return (
+                <div className="delete-topics-hint">
+                  {t("overview.topic.noTopics", locale)}
+                </div>
+              );
+            }
             return (
               <>
                 <div className="delete-topics-select" ref={deleteDropdownRef}>
@@ -441,11 +475,19 @@ export function Overview({
                     onClick={() => setDeleteDropdownOpen((prev) => !prev)}
                   >
                     {deleteSelected.size > 0
-                      ? `${deleteSelected.size} ${t("overview.topic.selectTopics", locale)}`
+                      ? t("overview.topic.selectedCount", locale).replace(
+                          "{count}",
+                          String(deleteSelected.size),
+                        )
                       : t("overview.topic.selectTopics", locale)}
                   </button>
                   {deleteDropdownOpen && (
-                    <div className="delete-topics-dropdown">
+                    <div
+                      className="delete-topics-dropdown"
+                      role="listbox"
+                      aria-label={t("overview.topic.selectTopics", locale)}
+                      aria-multiselectable="true"
+                    >
                       {[...allTopics]
                         .sort((a, b) =>
                           a.label.localeCompare(b.label, undefined, {
@@ -458,6 +500,9 @@ export function Overview({
                           return (
                             <label
                               key={tp.key}
+                              role="option"
+                              aria-selected={deleteSelected.has(tp.key)}
+                              aria-disabled={hasData}
                               className={`delete-topics-item${hasData ? " disabled" : ""}`}
                             >
                               <input
@@ -483,6 +528,18 @@ export function Overview({
                     {t("overview.topic.delete", locale)}
                   </button>
                 </div>
+                {deleteTopicError && (
+                  <div className="delete-topics-error">
+                    {deleteTopicError}
+                    <button
+                      className="delete-topics-error-dismiss"
+                      onClick={onClearDeleteTopicError}
+                      aria-label={t("overview.topic.cancel", locale)}
+                    >
+                      <CloseIcon />
+                    </button>
+                  </div>
+                )}
                 {hasDisabled && (
                   <div className="delete-topics-hint">
                     {t("overview.topic.deleteHint", locale)}

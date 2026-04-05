@@ -9,6 +9,15 @@ import {
   parseQuestionHistory,
 } from "./dataParser";
 
+function isFileNotFound(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "code" in err &&
+    (err as { code: unknown }).code === "ENOENT"
+  );
+}
+
 export function generateTopicKey(label: string): string {
   const sanitized = label
     .toLowerCase()
@@ -199,8 +208,11 @@ export class FileWatcherService implements vscode.Disposable {
           error: "has_related_data",
         };
       }
-    } catch {
-      // question-history.json may not exist — no related data
+    } catch (err: unknown) {
+      if (!isFileNotFound(err)) {
+        return { ok: false, error: "Failed to read question-history.json" };
+      }
+      // question-history.json does not exist — no related data
     }
 
     const progressPath = join(
@@ -223,8 +235,11 @@ export class FileWatcherService implements vscode.Disposable {
           };
         }
       }
-    } catch {
-      // progress.json may not exist — no related data
+    } catch (err: unknown) {
+      if (!isFileNotFound(err)) {
+        return { ok: false, error: "Failed to read progress.json" };
+      }
+      // progress.json does not exist — no related data
     }
 
     this.config = {

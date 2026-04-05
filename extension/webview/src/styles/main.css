@@ -455,6 +455,13 @@ body {
   width: 100%;
 }
 
+.merge-topics-hint {
+  margin-top: 6px;
+  font-size: 0.75rem;
+  color: var(--vscode-editorWarning-foreground, #cca700);
+  line-height: 1.4;
+}
+
 .delete-topics-section {
   margin-top: 16px;
 }
@@ -540,6 +547,33 @@ body {
   cursor: not-allowed;
 }
 
+.delete-topics-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 0.75rem;
+  color: var(--vscode-errorForeground);
+  line-height: 1.4;
+}
+
+.delete-topics-error-dismiss {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  color: var(--vscode-errorForeground);
+  flex-shrink: 0;
+}
+
+.delete-topics-error-dismiss:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
 .delete-topics-hint {
   margin-top: 8px;
   font-size: 0.75rem;
@@ -554,7 +588,7 @@ body {
 }
 
 .form-row > button {
-  width: 48px;
+  min-width: 48px;
   flex-shrink: 0;
 }
 
@@ -644,6 +678,11 @@ body {
 .btn-primary {
   background: var(--vscode-button-background);
   color: var(--vscode-button-foreground);
+}
+
+.btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .btn-secondary {

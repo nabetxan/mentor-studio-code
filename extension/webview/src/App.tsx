@@ -27,6 +27,7 @@ export function App() {
   const [lastAddedTopicKey, setLastAddedTopicKey] = useState<string | null>(
     null,
   );
+  const [deleteTopicError, setDeleteTopicError] = useState<string | null>(null);
   const appRef = useRef<HTMLDivElement>(null);
   const localeRef = useRef(locale);
 
@@ -72,6 +73,15 @@ export function App() {
           } else {
             setAddTopicError(message.error ?? t("app.addTopicFailed", locale));
             setLastAddedTopicKey(null);
+          }
+          break;
+        case "deleteTopicResult":
+          if (!message.ok) {
+            setDeleteTopicError(
+              message.error ?? t("app.deleteTopicFailed", locale),
+            );
+          } else {
+            setDeleteTopicError(null);
           }
           break;
       }
@@ -257,6 +267,8 @@ export function App() {
             addTopicError={addTopicError}
             lastAddedTopicKey={lastAddedTopicKey}
             onClearLastAddedKey={() => setLastAddedTopicKey(null)}
+            deleteTopicError={deleteTopicError}
+            onClearDeleteTopicError={() => setDeleteTopicError(null)}
           />
         )}
         {tab === "settings" && (

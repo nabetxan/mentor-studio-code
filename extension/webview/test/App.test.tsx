@@ -54,6 +54,7 @@ const mockData: DashboardData = {
   completedTasks: [{ task: "1", name: "Setup", plan: "phase1.md" }],
   currentTask: "2",
   profileLastUpdated: null,
+  topicsWithHistory: [],
 };
 
 describe("App", () => {

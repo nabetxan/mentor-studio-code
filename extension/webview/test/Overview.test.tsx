@@ -15,6 +15,7 @@ const mockData: DashboardData = {
   completedTasks: [],
   currentTask: "3",
   profileLastUpdated: null,
+  topicsWithHistory: [],
 };
 
 const defaultProps = {
@@ -24,6 +25,8 @@ const defaultProps = {
   addTopicError: null,
   lastAddedTopicKey: null,
   onClearLastAddedKey: () => {},
+  deleteTopicError: null,
+  onClearDeleteTopicError: () => {},
 };
 
 describe("Overview", () => {
@@ -106,6 +109,7 @@ describe("Overview", () => {
       completedTasks: [],
       currentTask: "1",
       profileLastUpdated: null,
+      topicsWithHistory: ["javascript"],
     };
     render(
       <Overview
@@ -134,6 +138,7 @@ describe("Overview", () => {
       completedTasks: [],
       currentTask: "2",
       profileLastUpdated: null,
+      topicsWithHistory: [],
     };
     render(<Overview {...defaultProps} data={data} />);
     expect(screen.getByText("TypeScript")).toBeTruthy();

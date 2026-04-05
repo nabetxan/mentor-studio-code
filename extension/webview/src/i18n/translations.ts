@@ -89,6 +89,10 @@ const translations = {
     ja: "トピックを選択",
     en: "Select topic",
   },
+  "overview.topic.mergeSelectSourceHint": {
+    ja: "統合元のトピックを選択してください",
+    en: "Select a source topic to merge from",
+  },
   "overview.topic.deleteSection": {
     ja: "トピックの削除",
     en: "Delete Topics",
@@ -101,6 +105,10 @@ const translations = {
   "overview.topic.selectTopics": {
     ja: "削除するトピックを選択",
     en: "Select topics to delete",
+  },
+  "overview.topic.selectedCount": {
+    ja: "{count}件 選択中",
+    en: "{count} selected",
   },
   "overview.topic.noTopics": {
     ja: "削除可能なトピックがありません",
@@ -198,6 +206,10 @@ const translations = {
   "app.addTopicFailed": {
     ja: "トピックの追加に失敗しました",
     en: "Failed to add topic",
+  },
+  "app.deleteTopicFailed": {
+    ja: "トピックの削除に失敗しました",
+    en: "Failed to delete topic",
   },
   "app.tab.actions": { ja: "Actions", en: "Actions" },
   "app.tab.overview": { ja: "Overview", en: "Overview" },

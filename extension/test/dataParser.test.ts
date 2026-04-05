@@ -469,6 +469,45 @@ describe("computeDashboardData", () => {
     expect(ts).toBeUndefined();
   });
 
+  it("populates topicsWithHistory from history entries and unresolved_gaps", () => {
+    const progress = {
+      ...baseProgress,
+      unresolved_gaps: [
+        {
+          questionId: "q_abc00010",
+          concept: "race condition",
+          topic: "concurrency",
+          last_missed: "2026-03-05",
+          task: "task-2",
+          note: "mutex needed",
+        },
+      ],
+    };
+    const history = {
+      history: [
+        {
+          id: "q_abc00001",
+          reviewOf: null,
+          answeredAt: "2026-03-01T10:00:00Z",
+          taskId: "task-1",
+          topic: "typescript",
+          concept: "generics",
+          question: "What are generics?",
+          userAnswer: "Type params",
+          isCorrect: true,
+        },
+      ],
+    };
+    const result = computeDashboardData(progress, history, topics);
+    const sorted = [...result.topicsWithHistory].sort();
+    expect(sorted).toEqual(["concurrency", "typescript"]);
+  });
+
+  it("returns empty topicsWithHistory when no entries or gaps exist", () => {
+    const result = computeDashboardData(baseProgress, { history: [] }, topics);
+    expect(result.topicsWithHistory).toEqual([]);
+  });
+
   it("picks last in array order when answeredAt values are identical", () => {
     const history = {
       history: [
