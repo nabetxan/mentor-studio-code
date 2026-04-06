@@ -1,9 +1,21 @@
-.superpowers
+# Dependencies
 node_modules/
+
+# Build outputs
 dist/
 *.vsix
-.DS_Store
-settings.local.json
+
+# Documentation (generated)
 docs/
 docsBackup/
+
+# OS
+.DS_Store
+
+# IDE / Tools
+.superpowers
+.claude
+
+# Project local config
+settings.local.json
 .mentor/

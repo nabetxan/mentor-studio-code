@@ -1,12 +1,14 @@
-![version](https://img.shields.io/badge/version-0.2.0-blue)
+![version](https://img.shields.io/badge/version-0.3.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 [![website](https://img.shields.io/badge/%F0%9F%8C%90_Website-Landing_Page-7ec8e3)](https://nabetxan.github.io/mentor-studio-code/)
 
 # Mentor Studio Code
 
-Learn to code with an AI mentor powered by Claude Code. Track your understanding, spot your weak points, and keep learning in your own projects — all inside VS Code.
+An AI-mentor extension for VS Code, optimized for use with Claude Code. Track your understanding, spot your weak points, and keep learning in your own projects.
 
-> **Note:** This extension uses [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) (Anthropic's official CLI tool) to power the AI mentor. Claude Code installation and a subscription (Claude Pro / Max) are required.
+> **Note:** This extension is designed to work with [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview). Please refer to [Anthropic's official documentation](https://docs.anthropic.com/en/docs/claude-code/overview) for Claude Code's installation, requirements, and available plans.
+>
+> **Disclaimer:** This extension is an independent open-source project and is not affiliated with, endorsed by, or sponsored by Anthropic, PBC. "Claude" and "Claude Code" are trademarks of Anthropic.
 
 <img src="https://raw.githubusercontent.com/nabetxan/mentor-studio-code/main/extension/images/overview_mentor-studio-code.png" alt="Dashboard" width="350">
 
@@ -32,9 +34,11 @@ For detailed usage, see [extension/README.md](extension/README.md).
 
 # Mentor Studio Code（日本語）
 
-AIメンターと一緒にコーディングを学ぶためのVSCode拡張。Claude Codeをメンターとして、理解度の確認・正答率の可視化・弱点トピックの追跡ができます。
+Claude Codeと組み合わせて使う、AIメンター付きのVSCode拡張。自分のプロジェクトの中で、理解度の確認・正答率の可視化・弱点トピックの追跡ができます。
 
-> **注:** この拡張機能はAIメンターの動作に [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview)（Anthropic公式CLIツール）を使用します。事前に Claude Code のインストールとサブスクリプション（Claude Pro / Max）が必要です。
+> **注:** この拡張機能は [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) と合わせて使用することを前提としています。Claude Code のインストール・動作要件・利用可能なプランについては [Anthropic公式ドキュメント](https://docs.anthropic.com/en/docs/claude-code/overview) をご確認ください。
+>
+> **免責事項:** この拡張機能は独立したオープンソースプロジェクトであり、Anthropic, PBC との提携・推薦・後援関係はありません。「Claude」「Claude Code」は Anthropic の商標です。
 
 ## Quick Start
 
