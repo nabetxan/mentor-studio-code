@@ -2,6 +2,25 @@
 
 All notable changes to "Mentor Studio Code" will be documented in this file.
 
+## [0.3.0] - 2026-04-06
+
+### Added
+
+- Uninstall Guide in Settings — selective cleanup (`.mentor` folder, profile data, CLAUDE.md reference) with confirmation dialog before destructive actions, followed by optional one-click extension uninstall
+
+### Changed
+
+- Clarify that this extension is an independent project optimized for use with Claude Code, not affiliated with Anthropic — updated README, landing page, and app-specification
+- Remove hardcoded subscription plan names (Claude Pro / Max); link to Anthropic's official documentation for current requirements and plans
+- Add disclaimer and trademark attribution to README, landing page, and app-specification
+- Replace "Remove Mentor" button with the new Uninstall Guide flow
+
+### Fixed
+
+- Clear `learnerProfile` from `globalState` when Remove Mentor is executed
+- Read locale from `.mentor/config.json` instead of relying solely on system locale for Remove Mentor / Cleanup dialogs
+- Add safety check with `parseConfig` before modifying `config.json` to avoid corrupting invalid JSON
+
 ## [0.2.0] - 2026-04-05
 
 ### Added

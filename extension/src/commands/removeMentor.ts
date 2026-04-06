@@ -1,11 +1,30 @@
+import type { CleanupOptions } from "@mentor-studio/shared";
 import * as vscode from "vscode";
 import { findMentorRef, removeMentorRef } from "../services/claudeMd";
+import { parseConfig } from "../services/dataParser";
+
+async function readIsJaFromConfig(wsRoot: vscode.Uri): Promise<boolean> {
+  try {
+    const configUri = vscode.Uri.joinPath(wsRoot, ".mentor", "config.json");
+    const raw = await vscode.workspace.fs.readFile(configUri);
+    const parsed = parseConfig(Buffer.from(raw).toString());
+    if (parsed?.locale) {
+      return parsed.locale !== "en";
+    }
+  } catch {
+    // config not readable — use system locale
+  }
+  return vscode.env.language.startsWith("ja");
+}
 
 export async function runRemoveMentor(
   outputChannel: vscode.OutputChannel,
 ): Promise<void> {
   const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
-  const isJa = vscode.env.language.startsWith("ja");
+
+  const isJa = wsRoot
+    ? await readIsJaFromConfig(wsRoot)
+    : vscode.env.language.startsWith("ja");
 
   if (!wsRoot) {
     vscode.window.showErrorMessage(
@@ -41,13 +60,20 @@ export async function runRemoveMentor(
     try {
       const raw = await vscode.workspace.fs.readFile(configUri);
       const rawText = Buffer.from(raw).toString();
-      const rawObj = JSON.parse(rawText) as Record<string, unknown>;
-      rawObj.enableMentor = false;
-      delete rawObj.extensionUninstalled;
-      await vscode.workspace.fs.writeFile(
-        configUri,
-        Buffer.from(JSON.stringify(rawObj, null, 2) + "\n"),
-      );
+      const parsed = parseConfig(rawText);
+      if (parsed) {
+        const rawObj = JSON.parse(rawText) as Record<string, unknown>;
+        rawObj.enableMentor = false;
+        delete rawObj.extensionUninstalled;
+        await vscode.workspace.fs.writeFile(
+          configUri,
+          Buffer.from(JSON.stringify(rawObj, null, 2) + "\n"),
+        );
+      } else {
+        outputChannel.appendLine(
+          "Remove Mentor: config.json has invalid format, skipping config update",
+        );
+      }
     } catch {
       // config.json doesn't exist — skip config update
       outputChannel.appendLine(
@@ -78,4 +104,105 @@ export async function runRemoveMentor(
       : "No mentor reference found in CLAUDE.md",
   );
   outputChannel.appendLine("Set enableMentor: false");
+}
+
+export async function runCleanupMentor(
+  options: CleanupOptions,
+  outputChannel: vscode.OutputChannel,
+  globalState: vscode.Memento,
+  postResult: (deleted: CleanupOptions) => void,
+): Promise<void> {
+  const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
+
+  if (!wsRoot) {
+    return;
+  }
+
+  const isJa = await readIsJaFromConfig(wsRoot);
+
+  // Confirm before destructive .mentor folder deletion
+  if (options.mentorFolder) {
+    const confirmLabel = isJa ? "削除する" : "Delete";
+    const choice = await vscode.window.showWarningMessage(
+      isJa
+        ? ".mentor フォルダを削除すると学習履歴を含むすべてのデータが消去されます。よろしいですか？"
+        : "Deleting the .mentor folder will erase all data including learning history. Continue?",
+      { modal: true },
+      confirmLabel,
+    );
+    if (choice !== confirmLabel) {
+      postResult({ mentorFolder: false, profile: false, claudeMdRef: false });
+      return;
+    }
+  }
+
+  const deleted: CleanupOptions = {
+    mentorFolder: false,
+    profile: false,
+    claudeMdRef: false,
+  };
+
+  outputChannel.appendLine("=== Cleanup Mentor ===");
+
+  // 1. Delete .mentor folder
+  if (options.mentorFolder) {
+    const mentorUri = vscode.Uri.joinPath(wsRoot, ".mentor");
+    try {
+      await vscode.workspace.fs.delete(mentorUri, { recursive: true });
+      deleted.mentorFolder = true;
+      outputChannel.appendLine("Deleted .mentor folder");
+    } catch {
+      outputChannel.appendLine(
+        ".mentor folder not found or could not be deleted",
+      );
+    }
+  }
+
+  // 2. Clear profile from globalState
+  if (options.profile) {
+    await globalState.update("learnerProfile", undefined);
+    deleted.profile = true;
+    outputChannel.appendLine("Cleared learnerProfile from globalState");
+  }
+
+  // 3. Remove CLAUDE.md reference
+  if (options.claudeMdRef) {
+    const refStatus = await findMentorRef(wsRoot);
+    const hadRef = refStatus.personal || refStatus.project;
+    await removeMentorRef(wsRoot);
+    deleted.claudeMdRef = hadRef;
+    outputChannel.appendLine(
+      hadRef
+        ? "Removed mentor reference from CLAUDE.md"
+        : "No mentor reference found in CLAUDE.md",
+    );
+  }
+
+  // Update config.json if it still exists (mentor folder not deleted)
+  if (!options.mentorFolder) {
+    const configUri = vscode.Uri.joinPath(wsRoot, ".mentor", "config.json");
+    try {
+      const raw = await vscode.workspace.fs.readFile(configUri);
+      const rawText = Buffer.from(raw).toString();
+      const parsed = parseConfig(rawText);
+      if (parsed) {
+        const rawObj = JSON.parse(rawText) as Record<string, unknown>;
+        rawObj.enableMentor = false;
+        delete rawObj.extensionUninstalled;
+        await vscode.workspace.fs.writeFile(
+          configUri,
+          Buffer.from(JSON.stringify(rawObj, null, 2) + "\n"),
+        );
+        outputChannel.appendLine("Set enableMentor: false in config.json");
+      } else {
+        outputChannel.appendLine(
+          "Cleanup: config.json has invalid format, skipping config update",
+        );
+      }
+    } catch {
+      // config.json doesn't exist — skip
+    }
+  }
+
+  postResult(deleted);
 }

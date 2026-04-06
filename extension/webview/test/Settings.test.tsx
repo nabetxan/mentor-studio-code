@@ -102,25 +102,43 @@ describe("Settings", () => {
     expect(warnings).toHaveLength(2);
   });
 
-  it("renders Remove Mentor button", () => {
+  it("renders Uninstall Guide section", () => {
     render(<Settings {...defaultProps} />);
-    expect(screen.getByText("メンター参照をCLAUDE.mdから削除")).toBeTruthy();
+    expect(screen.getByText("アンインストール手順")).toBeTruthy();
   });
 
-  it("sends removeMentor message when button clicked", async () => {
+  it("expands details and sends cleanupMentor message", async () => {
     const { postMessage } = await import("../src/vscodeApi");
     render(<Settings {...defaultProps} />);
 
-    const removeButton = screen.getByText("メンター参照をCLAUDE.mdから削除");
-    fireEvent.click(removeButton);
+    // Expand details
+    fireEvent.click(screen.getByText("詳しく見る"));
 
-    expect(postMessage).toHaveBeenCalledWith({ type: "removeMentor" });
+    // Click cleanup button (profile and claudeMdRef are checked by default)
+    fireEvent.click(screen.getByText("データ消去"));
+
+    expect(postMessage).toHaveBeenCalledWith({
+      type: "cleanupMentor",
+      options: { mentorFolder: false, profile: true, claudeMdRef: true },
+    });
   });
 
-  it("renders Remove Mentor button in English", () => {
+  it("renders Uninstall Guide in English", () => {
     render(<Settings {...defaultProps} locale="en" />);
-    expect(
-      screen.getByText("Remove Mentor reference from CLAUDE.md"),
-    ).toBeTruthy();
+    expect(screen.getByText("Uninstall Guide")).toBeTruthy();
+  });
+
+  it("disables cleanup button when nothing is selected", () => {
+    render(<Settings {...defaultProps} />);
+    fireEvent.click(screen.getByText("詳しく見る"));
+
+    // Uncheck the two defaults (profile, claudeMdRef)
+    const checkboxes = screen.getAllByRole("checkbox");
+    // checkboxes[0] = locale toggle, [1] = mentorFolder, [2] = profile, [3] = claudeMdRef
+    fireEvent.click(checkboxes[2]); // uncheck profile
+    fireEvent.click(checkboxes[3]); // uncheck claudeMdRef
+
+    const cleanupButton = screen.getByText("データ消去");
+    expect(cleanupButton.hasAttribute("disabled")).toBe(true);
   });
 });

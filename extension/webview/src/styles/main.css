@@ -1085,7 +1085,7 @@ body {
   margin-top: 3px;
 }
 
-/* Remove Mentor section */
+/* Uninstall section */
 .setting-separator {
   border-top: 1px solid var(--vscode-panel-border);
   margin: 12px 0;
@@ -1095,10 +1095,57 @@ body {
   border-color: var(--vscode-panel-border);
 }
 
+.uninstall-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
 .setting-remove-description {
   font-size: 0.8rem;
   color: var(--vscode-descriptionForeground);
-  margin: 0 0 8px 0;
+  margin: 0 0 4px 0;
+  line-height: 1.4;
+}
+
+.btn-text-toggle {
+  background: none;
+  border: none;
+  color: var(--vscode-textLink-foreground, #3794ff);
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 0;
+  margin-bottom: 8px;
+}
+
+.btn-text-toggle:hover {
+  text-decoration: underline;
+}
+
+.uninstall-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.uninstall-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.uninstall-check input[type="checkbox"] {
+  accent-color: var(--vscode-focusBorder, #007fd4);
+  cursor: pointer;
+}
+
+.uninstall-warning {
+  font-size: 0.75rem;
+  color: var(--vscode-inputValidation-warningBorder, #cca700);
+  margin: 4px 0 8px 0;
   line-height: 1.4;
 }
 
@@ -1118,4 +1165,9 @@ body {
     --vscode-inputValidation-warningBackground,
     rgba(204, 167, 0, 0.1)
   );
+}
+
+.btn-remove:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
