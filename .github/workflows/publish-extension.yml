@@ -12,7 +12,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 22
 
       - name: Install dependencies
         run: npm ci
@@ -21,7 +21,7 @@ jobs:
         run: npm run build --workspace=extension
 
       - name: Publish to VS Code Marketplace
-        run: npx vsce publish --no-dependencies
+        run: npx @vscode/vsce publish --no-dependencies
         working-directory: extension
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
