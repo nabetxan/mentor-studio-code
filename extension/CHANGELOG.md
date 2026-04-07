@@ -2,6 +2,16 @@
 
 All notable changes to "Mentor Studio Code" will be documented in this file.
 
+## [0.3.1] - 2026-04-07
+
+### Added
+
+- GitHub Actions workflow for automated VS Code Marketplace publishing on release
+
+### Security
+
+- Update vite to fix high-severity vulnerabilities (path traversal, `server.fs.deny` bypass, arbitrary file read)
+
 ## [0.3.0] - 2026-04-07
 
 ### Added
