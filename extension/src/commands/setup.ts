@@ -28,6 +28,33 @@ async function writeIfMissing(
   }
 }
 
+/**
+ * Returns `true` if the folder is ours, `false` if it exists but is not ours,
+ * or `null` if the folder does not exist.
+ */
+async function isMentorStudioFolder(
+  mentorDirUri: vscode.Uri,
+): Promise<boolean | null> {
+  try {
+    await vscode.workspace.fs.stat(mentorDirUri);
+  } catch {
+    return null; // folder doesn't exist — safe to create
+  }
+
+  // Folder exists — check if config.json has our signature field
+  const configUri = vscode.Uri.joinPath(mentorDirUri, "config.json");
+  try {
+    const raw = await vscode.workspace.fs.readFile(configUri);
+    const parsed = JSON.parse(Buffer.from(raw).toString()) as Record<
+      string,
+      unknown
+    >;
+    return "enableMentor" in parsed;
+  } catch {
+    return false; // no config.json or unparseable — not ours
+  }
+}
+
 export async function runSetup(
   context: vscode.ExtensionContext,
   outputChannel: vscode.OutputChannel,
@@ -47,12 +74,31 @@ export async function runSetup(
   }
 
   const mentorFilesPath = ".mentor";
+  const mentorDirUri = vscode.Uri.joinPath(wsRoot, mentorFilesPath);
+
+  // Check if .mentor folder already exists but is NOT ours
+  const isOurFolder = await isMentorStudioFolder(mentorDirUri);
+  if (isOurFolder === false) {
+    const isJa = vscode.env.language.startsWith("ja");
+    const overwrite = isJa
+      ? "上書きする（この操作は元に戻せません）"
+      : "Overwrite (this cannot be undone)";
+    const answer = await vscode.window.showWarningMessage(
+      isJa
+        ? ".mentor フォルダが既に存在しますが、Mentor Studio Code のものではないようです。上書きしてもよいですか？"
+        : "A .mentor folder already exists but does not appear to belong to Mentor Studio Code. Overwrite it?",
+      { modal: true },
+      overwrite,
+    );
+    if (answer !== overwrite) {
+      return;
+    }
+  }
 
   const folderName =
     vscode.workspace.workspaceFolders?.[0]?.name ?? "my-project";
 
   // Ensure directories exist
-  const mentorDirUri = vscode.Uri.joinPath(wsRoot, mentorFilesPath);
   const rulesDirUri = vscode.Uri.joinPath(mentorDirUri, "rules");
   await vscode.workspace.fs.createDirectory(mentorDirUri);
   await vscode.workspace.fs.createDirectory(rulesDirUri);

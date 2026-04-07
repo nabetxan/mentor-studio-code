@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useCopyFeedback } from "../hooks/useCopyFeedback";
 import { t } from "../i18n";
 import { postMessage } from "../vscodeApi";
-import { CheckIcon, CloseIcon, CopyIcon, EditIcon, TrashIcon } from "./icons";
+import { CheckIcon, CloseIcon, CopyIcon, EditIcon } from "./icons";
 import { TopicSelect } from "./TopicSelect";
 
 function stripKeyPrefix(label: string): string {
@@ -469,60 +469,59 @@ export function Overview({
             }
             return (
               <>
-                <div className="delete-topics-select" ref={deleteDropdownRef}>
-                  <button
-                    className="form-select"
-                    type="button"
-                    aria-expanded={deleteDropdownOpen}
-                    aria-haspopup="dialog"
-                    onClick={() => setDeleteDropdownOpen((prev) => !prev)}
-                  >
-                    {deleteSelected.size > 0
-                      ? t("overview.topic.selectedCount", locale).replace(
-                          "{count}",
-                          String(deleteSelected.size),
-                        )
-                      : t("overview.topic.selectTopics", locale)}
-                  </button>
-                  {deleteDropdownOpen && (
-                    <fieldset
-                      className="delete-topics-dropdown"
-                      aria-label={t("overview.topic.selectTopics", locale)}
+                <div className="form-row">
+                  <div className="delete-topics-select" ref={deleteDropdownRef}>
+                    <button
+                      className="form-select"
+                      type="button"
+                      aria-expanded={deleteDropdownOpen}
+                      aria-haspopup="dialog"
+                      onClick={() => setDeleteDropdownOpen((prev) => !prev)}
                     >
-                      {[...allTopics]
-                        .sort((a, b) =>
-                          a.label.localeCompare(b.label, undefined, {
-                            numeric: true,
-                          }),
-                        )
-                        .map((tp) => {
-                          const hasData = historySet.has(tp.key);
-                          const displayLabel = stripKeyPrefix(tp.label);
-                          return (
-                            <label
-                              key={tp.key}
-                              className={`delete-topics-item${hasData ? " disabled" : ""}`}
-                            >
-                              <input
-                                type="checkbox"
-                                disabled={hasData}
-                                checked={deleteSelected.has(tp.key)}
-                                onChange={() => toggleDeleteSelection(tp.key)}
-                              />
-                              <span>{displayLabel}</span>
-                            </label>
-                          );
-                        })}
-                    </fieldset>
-                  )}
-                </div>
-                <div className="delete-topics-actions">
+                      {deleteSelected.size > 0
+                        ? t("overview.topic.selectedCount", locale).replace(
+                            "{count}",
+                            String(deleteSelected.size),
+                          )
+                        : t("overview.topic.selectTopics", locale)}
+                    </button>
+                    {deleteDropdownOpen && (
+                      <fieldset
+                        className="delete-topics-dropdown"
+                        aria-label={t("overview.topic.selectTopics", locale)}
+                      >
+                        {[...allTopics]
+                          .sort((a, b) =>
+                            a.label.localeCompare(b.label, undefined, {
+                              numeric: true,
+                            }),
+                          )
+                          .map((tp) => {
+                            const hasData = historySet.has(tp.key);
+                            const displayLabel = stripKeyPrefix(tp.label);
+                            return (
+                              <label
+                                key={tp.key}
+                                className={`delete-topics-item${hasData ? " disabled" : ""}`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  disabled={hasData}
+                                  checked={deleteSelected.has(tp.key)}
+                                  onChange={() => toggleDeleteSelection(tp.key)}
+                                />
+                                <span>{displayLabel}</span>
+                              </label>
+                            );
+                          })}
+                      </fieldset>
+                    )}
+                  </div>
                   <button
                     className="btn-delete"
                     disabled={deleteSelected.size === 0}
                     onClick={executeDelete}
                   >
-                    <TrashIcon />
                     {t("overview.topic.delete", locale)}
                   </button>
                 </div>

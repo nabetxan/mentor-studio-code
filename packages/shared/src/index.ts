@@ -1,4 +1,5 @@
 export type {
+  CleanupOptions,
   CompletedTask,
   DashboardData,
   ExtensionMessage,

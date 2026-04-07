@@ -1,4 +1,5 @@
 import type {
+  CleanupOptions,
   DashboardData,
   ExtensionMessage,
   FileField,
@@ -168,8 +169,21 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             }));
             this.postMessage({ type: "deleteTopicsResult", results });
           }
-        } else if (message.type === "removeMentor") {
-          await vscode.commands.executeCommand("mentor-studio.removeMentor");
+        } else if (message.type === "cleanupMentor") {
+          const opts = message.options;
+          if (
+            typeof opts !== "object" ||
+            opts === null ||
+            typeof opts.mentorFolder !== "boolean" ||
+            typeof opts.profile !== "boolean" ||
+            typeof opts.claudeMdRef !== "boolean"
+          ) {
+            return;
+          }
+          await vscode.commands.executeCommand(
+            "mentor-studio.cleanupMentor",
+            opts,
+          );
         }
       },
     );
@@ -193,6 +207,50 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
   sendNoConfig(): void {
     this.hasConfig = false;
     this.postMessage({ type: "noConfig", locale: this.detectLocale() });
+  }
+
+  async showCleanupResultDialog(
+    deleted: CleanupOptions,
+    isJa: boolean,
+  ): Promise<void> {
+    const items: string[] = [];
+    if (deleted.mentorFolder) {
+      items.push(isJa ? ".mentor フォルダ" : ".mentor folder");
+    }
+    if (deleted.profile) {
+      items.push(
+        isJa
+          ? "プロフィールデータ（拡張機能ストレージ）"
+          : "Profile data (extension storage)",
+      );
+    }
+    if (deleted.claudeMdRef) {
+      items.push(
+        isJa
+          ? "CLAUDE.md 内のメンター参照コード"
+          : "Mentor reference in CLAUDE.md",
+      );
+    }
+
+    if (items.length === 0) {
+      return;
+    }
+
+    const itemsText = items.join(isJa ? "、" : ", ");
+    const message = isJa
+      ? `${itemsText}が消去されました。Mentor Studio Code をアンインストールしますか？`
+      : `Deleted: ${itemsText}. Uninstall Mentor Studio Code?`;
+    const uninstallLabel = isJa ? "アンインストール" : "Uninstall";
+    const choice = await vscode.window.showInformationMessage(
+      message,
+      uninstallLabel,
+    );
+    if (choice === uninstallLabel) {
+      await vscode.commands.executeCommand(
+        "workbench.extensions.uninstallExtension",
+        "nabetxan.mentor-studio-code",
+      );
+    }
   }
 
   private detectLocale(): Locale {

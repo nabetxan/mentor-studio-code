@@ -1,5 +1,6 @@
+import type { CleanupOptions } from "@mentor-studio/shared";
 import * as vscode from "vscode";
-import { runRemoveMentor } from "./commands/removeMentor";
+import { runCleanupMentor, runRemoveMentor } from "./commands/removeMentor";
 import { runSetup } from "./commands/setup";
 import { FileWatcherService } from "./services/fileWatcher";
 import { SidebarProvider } from "./views/sidebarProvider";
@@ -32,6 +33,19 @@ export function activate(context: vscode.ExtensionContext): void {
   // Sidebar provider — package.json hides the view when workspaceFolderCount == 0,
   // so this only runs when a folder is open.
   const sidebarProvider = new SidebarProvider(context.extensionUri);
+
+  const cleanupMentorCommand = vscode.commands.registerCommand(
+    "mentor-studio.cleanupMentor",
+    (options: CleanupOptions) =>
+      runCleanupMentor(
+        options,
+        getOutputChannel(),
+        context.globalState,
+        (deleted, isJa) =>
+          sidebarProvider.showCleanupResultDialog(deleted, isJa),
+      ),
+  );
+  context.subscriptions.push(cleanupMentorCommand);
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
       "mentor-studio.sidebar",

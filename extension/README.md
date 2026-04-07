@@ -1,12 +1,14 @@
-![version](https://img.shields.io/badge/version-0.2.0-blue)
+![version](https://img.shields.io/badge/version-0.3.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 [![website](https://img.shields.io/badge/%F0%9F%8C%90_Website-Landing_Page-7ec8e3)](https://nabetxan.github.io/mentor-studio-code/)
 
 # Mentor Studio Code
 
-Learn to code with an AI mentor powered by Claude Code. Track your understanding, spot your weak points, and keep learning in your own projects — all inside VS Code.
+An AI-mentor extension for VS Code, optimized for use with Claude Code. Track your understanding, spot your weak points, and keep learning in your own projects.
 
-> **Note:** This extension uses [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) (Anthropic's official CLI tool) to power the AI mentor. Claude Code installation and a subscription (Claude Pro / Max) are required.
+> **Note:** This extension is designed to work with [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview). Please refer to [Anthropic's official documentation](https://docs.anthropic.com/en/docs/claude-code/overview) for Claude Code's installation, requirements, and available plans.
+>
+> **Disclaimer:** This extension is an independent open-source project and is not affiliated with, endorsed by, or sponsored by Anthropic, PBC. "Claude" and "Claude Code" are trademarks of Anthropic.
 
 ## Screenshot
 
@@ -62,6 +64,25 @@ Shows your current task, correct answer rate, per-topic progress, and unresolved
 | Plan / Spec files | Link the files your mentor session references |
 | Language          | Switch between Japanese and English           |
 
+## Uninstall
+
+This extension creates files and references outside the extension itself (`.mentor/` folder, `CLAUDE.md` references, learner profile in VS Code storage). Simply uninstalling from the Extensions tab will leave these behind. Follow the steps below to clean up before uninstalling.
+
+### Steps
+
+1. Open the **Settings** tab in the Mentor Studio Code sidebar
+2. Scroll down to the **Uninstall Guide** section and expand it
+3. Select what to delete:
+   - **Learner Profile** — your profile stored in VS Code (checked by default)
+   - **CLAUDE.md Reference** — the `@.mentor/rules/MENTOR_RULES.md` line added to your CLAUDE.md (checked by default)
+   - **.mentor Folder** — all config, rules, skills, and learning history (unchecked by default — check this if you want a full removal)
+4. Click the **Delete Data** button and confirm
+5. Now uninstall the extension from VS Code as usual
+
+<img src="https://raw.githubusercontent.com/nabetxan/mentor-studio-code/main/extension/images/uninstall_settings_en.png" alt="Uninstall Guide in Settings" width="350">
+
+> **Tip:** If you already uninstalled without cleaning up, reinstall the extension, run the cleanup above, then uninstall again.
+
 ## License
 
 [MIT](LICENSE)
@@ -70,9 +91,11 @@ Shows your current task, correct answer rate, per-topic progress, and unresolved
 
 # Mentor Studio Code（日本語）
 
-AIメンターと一緒にコーディングを学ぶためのVSCode拡張。自分のプロジェクトの中で、理解度の確認・弱点の可視化・復習ができます。
+Claude Codeと組み合わせて使う、AIメンター付きのVSCode拡張。自分のプロジェクトの中で、理解度の確認・弱点の可視化・復習ができます。
 
-> **注:** この拡張機能はAIメンターの動作に [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview)（Anthropic公式CLIツール）を使用します。事前に Claude Code のインストールとサブスクリプション（Claude Pro / Max）が必要です。
+> **注:** この拡張機能は [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) と合わせて使用することを前提としています。Claude Code のインストール・動作要件・利用可能なプランについては [Anthropic公式ドキュメント](https://docs.anthropic.com/en/docs/claude-code/overview) をご確認ください。
+>
+> **免責事項:** この拡張機能は独立したオープンソースプロジェクトであり、Anthropic, PBC との提携・推薦・後援関係はありません。「Claude」「Claude Code」は Anthropic の商標です。
 
 ## 前提条件
 
@@ -121,6 +144,25 @@ AIメンターと一緒にコーディングを学ぶためのVSCode拡張。自
 | Profile           | 学習者プロフィールの登録・更新                 |
 | Plan / Spec files | メンターセッションで参照するファイルを紐付ける |
 | Language          | 日本語・英語を切り替える                       |
+
+## アンインストール
+
+この拡張機能は、拡張機能本体の外にもファイルや参照を作成します（`.mentor/` フォルダ、`CLAUDE.md` への参照、VS Code ストレージ内の学習者プロフィール）。拡張機能タブから通常のアンインストールを行うだけでは、これらが残ったままになります。以下の手順でクリーンアップしてからアンインストールしてください。
+
+### 手順
+
+1. サイドバーの Mentor Studio Code から **Settings** タブを開く
+2. 下部の **Uninstall Guide** セクションを展開する
+3. 削除対象を選択する：
+   - **Learner Profile** — VS Code に保存された学習者プロフィール（デフォルトでチェック済み）
+   - **CLAUDE.md Reference** — CLAUDE.md に追加された `@.mentor/rules/MENTOR_RULES.md` の行（デフォルトでチェック済み）
+   - **.mentor Folder** — 設定・ルール・スキル・学習履歴のすべて（デフォルトではチェックなし — 完全削除したい場合はチェック）
+4. **データ消去** ボタンをクリックして確認する
+5. 通常どおり VS Code から拡張機能をアンインストールする
+
+<img src="https://raw.githubusercontent.com/nabetxan/mentor-studio-code/main/extension/images/uninstall_settings_ja.png" alt="Settings 内の Uninstall Guide" width="350">
+
+> **ヒント:** クリーンアップせずにアンインストールしてしまった場合は、再インストールしてから上記の手順を実行し、その後もう一度アンインストールしてください。
 
 ## ライセンス
 
