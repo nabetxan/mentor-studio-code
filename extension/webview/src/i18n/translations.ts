@@ -202,13 +202,41 @@ const translations = {
     ja: "@.mentor/skills/intake/SKILL.md プロフィールを更新してください。",
     en: "@.mentor/skills/intake/SKILL.md Update my profile.",
   },
-  "settings.removeMentor": {
-    ja: "メンター参照をCLAUDE.mdから削除",
-    en: "Remove Mentor reference from CLAUDE.md",
+  "settings.uninstall.title": {
+    ja: "アンインストール手順",
+    en: "Uninstall Guide",
   },
-  "settings.removeMentor.description": {
-    ja: "Extensionをアンインストール・無効化する前に実行してください。.mentor フォルダ（学習履歴含む）は削除されません。再度 Setup を実行すればいつでも再開できます。",
-    en: "Run this before uninstalling or disabling the extension. The .mentor folder (including learning history) will not be deleted. You can resume anytime by running Setup again.",
+  "settings.uninstall.description": {
+    ja: "アンインストール前に以下を実行してデータを消去してください。",
+    en: "Run the following cleanup before uninstalling.",
+  },
+  "settings.uninstall.showDetails": {
+    ja: "詳しく見る",
+    en: "Show details",
+  },
+  "settings.uninstall.hideDetails": {
+    ja: "閉じる",
+    en: "Hide details",
+  },
+  "settings.uninstall.check.mentorFolder": {
+    ja: ".mentor フォルダ",
+    en: ".mentor folder",
+  },
+  "settings.uninstall.check.profile": {
+    ja: "プロフィールデータ（拡張機能ストレージ）",
+    en: "Profile data (extension storage)",
+  },
+  "settings.uninstall.check.claudeMdRef": {
+    ja: "CLAUDE.md 内のメンター参照コード",
+    en: "Mentor reference in CLAUDE.md",
+  },
+  "settings.uninstall.warning": {
+    ja: "⚠ .mentor フォルダを削除すると学習履歴を含むすべてのデータが消去されます。フォルダを残しておけばいつでも再開できます。",
+    en: "⚠ Deleting the .mentor folder will erase all data including learning history. Keep the folder to resume anytime.",
+  },
+  "settings.uninstall.cleanup": {
+    ja: "データ消去",
+    en: "Delete Data",
   },
 
   // No-config screen

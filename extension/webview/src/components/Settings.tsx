@@ -1,8 +1,10 @@
 import type {
+  CleanupOptions,
   FileField,
   Locale,
   MentorStudioConfig,
 } from "@mentor-studio/shared";
+import { useState } from "react";
 import { useCopyFeedback } from "../hooks/useCopyFeedback";
 import type { TranslationKey } from "../i18n";
 import { t } from "../i18n";
@@ -188,6 +190,83 @@ function ProfileSection({ profileLastUpdated, locale }: ProfileSectionProps) {
   );
 }
 
+function UninstallSection({ locale }: { locale: Locale }) {
+  const [expanded, setExpanded] = useState(false);
+  const [checks, setChecks] = useState<CleanupOptions>({
+    mentorFolder: false,
+    profile: true,
+    claudeMdRef: true,
+  });
+
+  const toggle = (key: keyof CleanupOptions) =>
+    setChecks((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  const hasSelection =
+    checks.mentorFolder || checks.profile || checks.claudeMdRef;
+
+  const handleCleanup = () => {
+    postMessage({ type: "cleanupMentor", options: checks });
+  };
+
+  return (
+    <div className="setting-item setting-item--remove">
+      <div className="uninstall-title">
+        {t("settings.uninstall.title", locale)}
+      </div>
+      <p className="setting-remove-description">
+        {t("settings.uninstall.description", locale)}
+      </p>
+      <button
+        className="btn-text-toggle"
+        aria-expanded={expanded}
+        onClick={() => setExpanded((v) => !v)}
+      >
+        {expanded
+          ? t("settings.uninstall.hideDetails", locale)
+          : t("settings.uninstall.showDetails", locale)}
+      </button>
+      {expanded && (
+        <div className="uninstall-details">
+          <label className="uninstall-check">
+            <input
+              type="checkbox"
+              checked={checks.mentorFolder}
+              onChange={() => toggle("mentorFolder")}
+            />
+            {t("settings.uninstall.check.mentorFolder", locale)}
+          </label>
+          <label className="uninstall-check">
+            <input
+              type="checkbox"
+              checked={checks.profile}
+              onChange={() => toggle("profile")}
+            />
+            {t("settings.uninstall.check.profile", locale)}
+          </label>
+          <label className="uninstall-check">
+            <input
+              type="checkbox"
+              checked={checks.claudeMdRef}
+              onChange={() => toggle("claudeMdRef")}
+            />
+            {t("settings.uninstall.check.claudeMdRef", locale)}
+          </label>
+          <p className="uninstall-warning">
+            {t("settings.uninstall.warning", locale)}
+          </p>
+          <button
+            className="btn-remove"
+            disabled={!hasSelection}
+            onClick={handleCleanup}
+          >
+            {t("settings.uninstall.cleanup", locale)}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Settings({
   config,
   locale,
@@ -249,17 +328,7 @@ export function Settings({
         </label>
       </div>
       <div className="setting-separator" />
-      <div className="setting-item setting-item--remove">
-        <p className="setting-remove-description">
-          {t("settings.removeMentor.description", locale)}
-        </p>
-        <button
-          className="btn-remove"
-          onClick={() => postMessage({ type: "removeMentor" })}
-        >
-          {t("settings.removeMentor", locale)}
-        </button>
-      </div>
+      <UninstallSection locale={locale} />
     </div>
   );
 }

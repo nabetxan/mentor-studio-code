@@ -112,6 +112,12 @@ export type DeleteTopicResultEntry = {
   error?: string;
 };
 
+export interface CleanupOptions {
+  mentorFolder: boolean;
+  profile: boolean;
+  claudeMdRef: boolean;
+}
+
 export type ExtensionMessage =
   | { type: "update"; data: DashboardData }
   | { type: "config"; data: MentorStudioConfig }
@@ -136,4 +142,4 @@ export type WebviewMessage =
   | { type: "addTopic"; label: string }
   | { type: "deleteTopics"; keys: string[] }
   | { type: "openFile"; relativePath: string }
-  | { type: "removeMentor" };
+  | { type: "cleanupMentor"; options: CleanupOptions };
