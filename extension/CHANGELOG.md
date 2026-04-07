@@ -2,11 +2,12 @@
 
 All notable changes to "Mentor Studio Code" will be documented in this file.
 
-## [0.3.0] - 2026-04-06
+## [0.3.0] - 2026-04-07
 
 ### Added
 
 - Uninstall Guide in Settings — selective cleanup (`.mentor` folder, profile data, CLAUDE.md reference) with confirmation dialog before destructive actions, followed by optional one-click extension uninstall
+- Safety check during Setup — detect pre-existing `.mentor` folder not created by this extension and warn before overwriting (irreversible)
 
 ### Changed
 
