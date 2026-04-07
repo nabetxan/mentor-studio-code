@@ -41,7 +41,8 @@ export function activate(context: vscode.ExtensionContext): void {
         options,
         getOutputChannel(),
         context.globalState,
-        (deleted) => sidebarProvider.showCleanupResultDialog(deleted),
+        (deleted, isJa) =>
+          sidebarProvider.showCleanupResultDialog(deleted, isJa),
       ),
   );
   context.subscriptions.push(cleanupMentorCommand);

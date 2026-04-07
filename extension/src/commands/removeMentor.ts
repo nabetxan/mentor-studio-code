@@ -110,7 +110,7 @@ export async function runCleanupMentor(
   options: CleanupOptions,
   outputChannel: vscode.OutputChannel,
   globalState: vscode.Memento,
-  postResult: (deleted: CleanupOptions) => void,
+  postResult: (deleted: CleanupOptions, isJa: boolean) => void,
 ): Promise<void> {
   const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
 
@@ -131,7 +131,10 @@ export async function runCleanupMentor(
       confirmLabel,
     );
     if (choice !== confirmLabel) {
-      postResult({ mentorFolder: false, profile: false, claudeMdRef: false });
+      postResult(
+        { mentorFolder: false, profile: false, claudeMdRef: false },
+        isJa,
+      );
       return;
     }
   }
@@ -204,5 +207,5 @@ export async function runCleanupMentor(
     }
   }
 
-  postResult(deleted);
+  postResult(deleted, isJa);
 }

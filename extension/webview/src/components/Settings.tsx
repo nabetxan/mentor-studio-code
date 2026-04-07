@@ -251,9 +251,11 @@ function UninstallSection({ locale }: { locale: Locale }) {
             />
             {t("settings.uninstall.check.claudeMdRef", locale)}
           </label>
-          <p className="uninstall-warning">
-            {t("settings.uninstall.warning", locale)}
-          </p>
+          {checks.mentorFolder && (
+            <p className="uninstall-warning">
+              {t("settings.uninstall.warning", locale)}
+            </p>
+          )}
           <button
             className="btn-remove"
             disabled={!hasSelection}
