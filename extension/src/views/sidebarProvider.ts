@@ -236,7 +236,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     const itemsText = items.join(this.isJa ? "、" : ", ");
     const message = this.isJa
       ? `${itemsText}が消去されました。Mentor Studio Code をアンインストールしますか？`
-      : `${itemsText} deleted. Uninstall Mentor Studio Code?`;
+      : `Deleted: ${itemsText}. Uninstall Mentor Studio Code?`;
     const uninstallLabel = this.isJa ? "アンインストール" : "Uninstall";
     const choice = await vscode.window.showInformationMessage(
       message,

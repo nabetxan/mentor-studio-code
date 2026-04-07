@@ -133,10 +133,10 @@ describe("Settings", () => {
     fireEvent.click(screen.getByText("詳しく見る"));
 
     // Uncheck the two defaults (profile, claudeMdRef)
-    const checkboxes = screen.getAllByRole("checkbox");
-    // checkboxes[0] = locale toggle, [1] = mentorFolder, [2] = profile, [3] = claudeMdRef
-    fireEvent.click(checkboxes[2]); // uncheck profile
-    fireEvent.click(checkboxes[3]); // uncheck claudeMdRef
+    fireEvent.click(
+      screen.getByLabelText("プロフィールデータ（拡張機能ストレージ）"),
+    );
+    fireEvent.click(screen.getByLabelText("CLAUDE.md 内のメンター参照コード"));
 
     const cleanupButton = screen.getByText("データ消去");
     expect(cleanupButton.hasAttribute("disabled")).toBe(true);

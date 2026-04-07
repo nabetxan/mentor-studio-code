@@ -218,6 +218,7 @@ function UninstallSection({ locale }: { locale: Locale }) {
       </p>
       <button
         className="btn-text-toggle"
+        aria-expanded={expanded}
         onClick={() => setExpanded((v) => !v)}
       >
         {expanded

@@ -18,7 +18,7 @@ All notable changes to "Mentor Studio Code" will be documented in this file.
 
 ### Fixed
 
-- Clear `learnerProfile` from `globalState` when Remove Mentor is executed
+- Clear `learnerProfile` from `globalState` when cleanup is executed with profile option selected
 - Read locale from `.mentor/config.json` instead of relying solely on system locale for Remove Mentor / Cleanup dialogs
 - Add safety check with `parseConfig` before modifying `config.json` to avoid corrupting invalid JSON
 

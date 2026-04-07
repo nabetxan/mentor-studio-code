@@ -69,6 +69,7 @@ export async function runRemoveMentor(
           configUri,
           Buffer.from(JSON.stringify(rawObj, null, 2) + "\n"),
         );
+        outputChannel.appendLine("Set enableMentor: false");
       } else {
         outputChannel.appendLine(
           "Remove Mentor: config.json has invalid format, skipping config update",
@@ -103,7 +104,6 @@ export async function runRemoveMentor(
       ? "Removed mentor reference from CLAUDE.md"
       : "No mentor reference found in CLAUDE.md",
   );
-  outputChannel.appendLine("Set enableMentor: false");
 }
 
 export async function runCleanupMentor(
