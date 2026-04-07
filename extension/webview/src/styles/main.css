@@ -468,6 +468,7 @@ body {
 
 .delete-topics-select {
   position: relative;
+  flex: 1;
 }
 
 .delete-topics-select .form-select {
@@ -522,15 +523,11 @@ body {
   flex-shrink: 0;
 }
 
-.delete-topics-actions {
-  margin-top: 8px;
-}
-
 .btn-delete {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  border: none;
+  border: 1px solid var(--vscode-errorForeground);
   border-radius: 4px;
   padding: 4px 10px;
   font-size: 0.783rem;
