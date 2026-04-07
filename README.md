@@ -4,7 +4,9 @@
 
 # Mentor Studio Code
 
-An AI-mentor extension for VS Code, optimized for use with Claude Code. Track your understanding, spot your weak points, and keep learning in your own projects.
+🌐 [Website](https://nabetxan.github.io/mentor-studio-code/)
+
+Learn to code with an AI mentor powered by Claude Code. Track your understanding, spot your weak points, and keep learning in your own projects — all inside VS Code.
 
 > **Note:** This extension is designed to work with [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview). Please refer to [Anthropic's official documentation](https://docs.anthropic.com/en/docs/claude-code/overview) for Claude Code's installation, requirements, and available plans.
 >
@@ -34,7 +36,9 @@ For detailed usage, see [extension/README.md](extension/README.md).
 
 # Mentor Studio Code（日本語）
 
-Claude Codeと組み合わせて使う、AIメンター付きのVSCode拡張。自分のプロジェクトの中で、理解度の確認・正答率の可視化・弱点トピックの追跡ができます。
+🌐 [Website](https://nabetxan.github.io/mentor-studio-code/)
+
+Claude Code を活用した AI メンター付きの VS Code 拡張。自分のプロジェクトの中で、理解度の確認・正答率の可視化・弱点トピックの追跡ができます。
 
 > **注:** この拡張機能は [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) と合わせて使用することを前提としています。Claude Code のインストール・動作要件・利用可能なプランについては [Anthropic公式ドキュメント](https://docs.anthropic.com/en/docs/claude-code/overview) をご確認ください。
 >
