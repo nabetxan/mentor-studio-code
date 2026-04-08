@@ -202,6 +202,18 @@ const translations = {
     ja: "@.mentor/skills/intake/SKILL.md プロフィールを更新してください。",
     en: "@.mentor/skills/intake/SKILL.md Update my profile.",
   },
+  "settings.setup.title": {
+    ja: "セットアップ（手動実行）",
+    en: "Setup (Manual)",
+  },
+  "settings.setup.description": {
+    ja: "ルールやスキルなどのテンプレートファイルを最新バージョンに更新します。学習データ（進捗・履歴）はそのまま保持されます。",
+    en: "Updates template files (rules, skills) to the latest version. Your learning data (progress, history) is preserved.",
+  },
+  "settings.setup.button": {
+    ja: "セットアップを実行する",
+    en: "Run Setup",
+  },
   "settings.uninstall.title": {
     ja: "アンインストール手順",
     en: "Uninstall Guide",
