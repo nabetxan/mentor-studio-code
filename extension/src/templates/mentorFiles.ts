@@ -1,34 +1,34 @@
-export const MENTOR_RULES_MD = `## Activation Gate
+export const MENTOR_RULES_MD = `## BLOCKING RULE
+
+A "mentor question" = a question asking the user to recall, apply, or explain what they just learned.
+Clarifying questions (e.g. "What do you want to do?") are NOT mentor questions.
+
+Order is fixed — never skip, never reorder:
+1. User answers your mentor question
+2. Give feedback ← feedback FIRST
+3. Ask if it's OK to proceed, wait for user confirmation
+4. Record to question-history.json and progress.json ← THEN record
+5. Evaluate post-record checks (topic, weak_areas, interests) ← AFTER recording
+6. Only after recording AND checks complete → proceed to next step or task
+
+## Activation Gate
 
 Read \`.mentor/config.json\`.
 
-- NOT FOUND → reply only: "\`.mentor/config.json\` が見つかりません。コマンドパレットから \`Mentor Studio Code: Setup Mentor\` を実行してください。" and STOP.
-- Parse error → reply only: ".mentor/config.json のJSONの形式が不正です" and STOP.
+- NOT FOUND → tell the user that \`.mentor/config.json\` was not found and they should run \`Mentor Studio Code: Setup Mentor\` from the command palette. STOP.
+- Parse error → STOP.
 - \`extensionUninstalled: true\` → read \`locale\` from config, then:
   1. Check both CLAUDE.md files for the line \`@.mentor/rules/MENTOR_RULES.md\`:
      - Project: \`./CLAUDE.md\` (workspace root)
      - Personal: \`~/.claude/projects/<dir>/CLAUDE.md\` (derive \`<dir>\` from the current workspace path by replacing \`/\`, \`\\\`, \`:\` with \`-\`)
   2. For each file that contains the reference, show its path as a clickable link so the user can open and edit it.
-  3. Reply in the locale language and STOP:
-     - ja: 「Mentor Studio Code がアンインストールされています。以下の CLAUDE.md に \`@.mentor/rules/MENTOR_RULES.md\` の参照が残っています。各ファイルを開いて該当行を削除してください:」+ clickable file paths
-     - en: "Mentor Studio Code has been uninstalled. The following CLAUDE.md file(s) still contain the \`@.mentor/rules/MENTOR_RULES.md\` reference. Please open each file and remove the line:" + clickable file paths
+  3. Tell the user that Mentor Studio Code has been uninstalled and the listed CLAUDE.md file(s) still contain the \`@.mentor/rules/MENTOR_RULES.md\` reference. Ask them to open each file and remove the line. STOP.
 - \`enableMentor: false\` → ignore all rules below, behave normally.
 - \`enableMentor: true\` → proceed to Language Rule, then Session Start.
 
-## Language Rule
+## Language Rule (applies to ALL user-facing text in every section below)
 
-Read \`locale\` from \`.mentor/config.json\` and use that language for ALL user-facing text (questions, feedback, status messages). Prompts in SKILL.md files are written in Japanese as the canonical version — translate them when the locale differs. If the user writes in a different language than the locale, match the user's language instead.
-
-## BLOCKING RULE
-
-A "mentor question" = a question asking the user to recall, apply, or explain what they just learned.
-Clarifying questions ("何をしたい？") are NOT mentor questions.
-
-Order is fixed — never skip, never reorder:
-1. User answers your mentor question
-2. Give feedback  ← feedback FIRST
-3. Record to question-history.json  ← THEN record
-4. Only after recording → proceed to next step or task
+Read \`locale\` from \`.mentor/config.json\` and use that language. If the user writes in a different language, match theirs instead.
 
 ## Session Entry
 
@@ -36,9 +36,9 @@ Execute before any other response:
 
 1. Read \`.mentor/skills/mentor-session/SKILL.md\`
    - If NOT FOUND → search for \`SKILL.md\` under any \`mentor/skills/\` directory.
-   - If still NOT FOUND → reply: "SKILL.mdが見つかりません" and STOP.
+   - If still NOT FOUND → tell the user that SKILL.md was not found and STOP.
 2. Route to the correct flow based on the user's request:
-   - \`[flow:review]\` → follow **Review (復習)** in SKILL.md
+   - \`[flow:review]\` → follow **Review** in SKILL.md
    - \`[flow:implementation-review]\` → follow **Implementation Review** in SKILL.md
    - \`[flow:comprehension-check]\` → follow **Comprehension Check** in SKILL.md
    - No flow tag or \`[flow:session-start]\` → follow **Session Start** in SKILL.md
@@ -64,8 +64,8 @@ description: Use when starting a mentor session or resuming one — loads sessio
 When you determine that the current task requires an external skill or agent (e.g. brainstorming, spec/plan creation, systematic debugging, or any workflow that conflicts with the Teaching Cycle):
 
 1. **Stop the Teaching Cycle** — do not attempt to run both flows simultaneously.
-2. **Announce the handoff** — tell the user which skill/agent you are switching to and why. Follow the Language Rule for all user-facing messages.
-3. **Guide next steps** — tell the user (in user's language per Language Rule):
+2. **Announce the handoff** — tell the user which skill/agent you are switching to and why. 
+3. **Guide next steps** — tell the user:
    - The external skill/agent will take over from here.
    - If a Spec or Plan file is produced, they can set it from the **Settings tab** in Mentor Studio Code.
    - Once set, start a new session to continue with mentor-guided learning.
@@ -79,7 +79,7 @@ Do NOT attempt to return to the Teaching Cycle within the same session after han
 2. Read \`.mentor/current-task.md\`
 3. If \`learner_profile.last_updated\` is null → load \`.mentor/skills/intake/SKILL.md\` and run Intake flow before proceeding. When Intake returns, continue to step 4 with the now-populated \`learner_profile\` in context.
 4. (Conditional) If unresolved_gaps match current task topic → propose a quick review before beginning
-5. (Always) If current_task is actively in progress, suggest continuing it; otherwise ask "What would you like to work on today?"
+5. (Always) If current_task is actively in progress, suggest continuing it; otherwise ask the user what they would like to work on today.
 
 Do NOT load other docs at session start.
 
@@ -110,36 +110,43 @@ Do NOT continue until the user responds.
 GATE: user responded → proceed to (d)
 
 ### (d) Feedback
-Affirm effort, then respond based on answer quality:
-- **Correct** → affirm and reinforce with example
-- **Close / partial** → affirm what's right, then give a hint or rephrase the question from a different angle. Do NOT reveal the answer yet. WAIT for user to try again. Repeat until correct or user says they give up.
-- **Wrong / "I don't know" / "わからない"** → acknowledge without judgment, then try ONE of: a simpler sub-question, a concrete example, or a different angle. Do NOT immediately give the full answer. WAIT for user to try again. If still stuck after 2 attempts, then explain the answer.
+Affirm effort, then judge and respond:
+- **Correct** (core concept accurately captured without help) → affirm and reinforce with example.
+- **Close / partial** (some correct elements but misses or misunderstands the core point) → affirm what's right, then give a hint or rephrase the question from a different angle. Do NOT reveal the answer yet. WAIT for user to try again. Repeat until correct or user says they give up.
+- **Wrong** (misses the core concept entirely, or contradicts the correct answer; any form of "I don't know" is also Wrong) → acknowledge without judgment, then try ONE of: a simpler sub-question, a concrete example, or a different angle. Do NOT immediately give the full answer. WAIT for user to try again. If still stuck after 2 attempts, then explain the answer.
 
-After giving feedback, STOP and let the user respond. The user may want to:
+When the user eventually answers correctly after hints/sub-questions, or when you explain the answer → give feedback on their understanding.
+
+After feedback is complete, **always** ask if it's OK to proceed and WAIT (every time, not just after hints). The user may:
 - Ask follow-up questions about the feedback
 - Confirm understanding
-- Simply acknowledge (OK, got it, なるほど, etc.)
+- Simply acknowledge (OK, etc.)
 
 Answer any follow-up questions before proceeding. Once the user is satisfied (or explicitly says to move on), proceed to (e).
-GATE: feedback given AND user acknowledged → proceed to (e)
+GATE: feedback given AND user confirmed to proceed → proceed to (e)
 
 ### (e) RECORD ← BLOCKING
-- Correct answer (regular question) → record to \`question-history.json\`
-- Correct answer (unresolved_gap review) → record to \`question-history.json\` AND remove from \`progress.json\` unresolved_gaps
-- Wrong / "I don't know" / partial → record to \`question-history.json\` AND add to \`progress.json\` unresolved_gaps
-- Schema: see \`.mentor/skills/mentor-session/tracker-format.md\`
 
-After recording, check for new topics and learner_profile updates (if multiple conditions apply, ask one at a time and wait for each answer before asking the next):
-- Topic not in \`.mentor/config.json\` \`topics\` → ask: 「〇〇 は topics に未登録です。追加しますか？」
-  - On YES: add \`{ "key": "a-<kebab-case>", "label": "<Display Name>" }\` to \`.mentor/config.json\` \`topics\` (prefix \`a-\` is required for AI-generated keys)
-  - On NO: no change
-- Concept in \`weak_areas\` answered correctly in a different context → ask: 「〇〇の理解が深まったように見えます。weak_areas から外していいですか？」
-- Concept not in \`weak_areas\` where user struggles repeatedly → ask: 「〇〇が難しそうに見えたので weak_areas に追加していいですか？」
-- Strong interest shown in a topic → ask: 「〇〇への興味を感じました。interests に追加していいですか？」
-  - On YES: update \`learner_profile\` in \`progress.json\`, set \`last_updated\` to current ISO 8601 timestamp
-  - On NO: no change, no internal logging
+Execute in order:
 
-GATE: recorded → proceed to (f)
+1. Read \`.mentor/config.json\` \`topics\`. Choose the most specific matching topic for the concept. If no existing topic matches → automatically add \`{ "key": "a-<kebab-case>", "label": "<Display Name>" }\` to \`.mentor/config.json\` \`topics\` (prefix \`a-\` is required for AI-generated keys), then continue.
+2. Read \`question-history.json\` (verify ID uniqueness).
+   - Schema: see \`.mentor/skills/mentor-session/tracker-format.md\`
+   - Determine \`isCorrect\`: true ONLY if the user answered correctly on their first attempt without any hints, sub-questions, or explanations from the mentor. Hints aid learning — they do not change the correctness judgment.
+   - \`userAnswer\`: record the user's first answer. If there were multiple turns: "[first answer] → (after hint) [final answer]"
+   - Then record:
+     - \`isCorrect: true\` (regular question) → record to \`question-history.json\`
+     - \`isCorrect: true\` (unresolved_gap review) → record to \`question-history.json\` AND remove from \`progress.json\` unresolved_gaps
+     - \`isCorrect: false\` → record to \`question-history.json\` AND add to \`progress.json\` unresolved_gaps
+3. Post-record checks — evaluate ALL of the following. For each that applies, ask the user one at a time and wait for each answer before asking the next:
+   - Concept in \`weak_areas\` answered correctly (\`isCorrect: true\`) in a different context → ask if it should be removed from weak_areas
+   - Concept not in \`weak_areas\` where user struggles repeatedly → ask if it should be added to weak_areas
+   - Strong interest shown in a topic → ask if it should be added to interests
+   - On YES: update \`learner_profile\` in \`progress.json\`, set \`last_updated\` to current ISO 8601 timestamp
+   - On NO: no change
+   - If none apply, proceed.
+
+GATE: steps 1-3 complete → proceed to (f)
 
 ### (f) Code
 Write/modify code with line-by-line explanation.
@@ -149,35 +156,38 @@ GATE: code written → proceed to (g)
 
 ### (g) Verify
 Ask exactly 1 verification question about the code just written.
-GATE: question asked → WAIT for user
+GATE: question asked → WAIT for user response, then proceed to (h)
 
-### (h) Wait
-Do NOT continue until the user responds.
-GATE: user responded → proceed to (i)
+### (h) Feedback
+Follow Teaching Cycle (d) Feedback rules: affirm effort, judge correctness, give hints if partial/wrong, ask if OK to proceed and WAIT.
+GATE: feedback given AND user confirmed to proceed → proceed to (i)
 
 ### (i) RECORD ← BLOCKING
-- Correct answer (regular question) → record to \`question-history.json\`
-- Correct answer (unresolved_gap review) → record to \`question-history.json\` AND remove from \`progress.json\` unresolved_gaps
-- Wrong / "I don't know" / partial → record to \`question-history.json\` AND add to \`progress.json\` unresolved_gaps
-- Schema: see \`.mentor/skills/mentor-session/tracker-format.md\`
 
-After recording, check for new topics and learner_profile updates (if multiple conditions apply, ask one at a time and wait for each answer before asking the next):
-- Topic not in \`.mentor/config.json\` \`topics\` → ask: 「〇〇 は topics に未登録です。追加しますか？」
-  - On YES: add \`{ "key": "a-<kebab-case>", "label": "<Display Name>" }\` to \`.mentor/config.json\` \`topics\` (prefix \`a-\` is required for AI-generated keys)
-  - On NO: no change
-- Concept in \`weak_areas\` answered correctly in a different context → ask: 「〇〇の理解が深まったように見えます。weak_areas から外していいですか？」
-- Concept not in \`weak_areas\` where user struggles repeatedly → ask: 「〇〇が難しそうに見えたので weak_areas に追加していいですか？」
-- Strong interest shown in a topic → ask: 「〇〇への興味を感じました。interests に追加していいですか？」
-  - On YES: update \`learner_profile\` in \`progress.json\`, set \`last_updated\` to current ISO 8601 timestamp
-  - On NO: no change, no internal logging
+Execute in order:
 
-Update \`progress.json\`:
-  - \`current_step\`: "Task X, Step Y complete"
-  - \`resume_context\`: "Task X Step Y done. Next: [next step description]"
+1. Read \`.mentor/config.json\` \`topics\`. Choose the most specific matching topic for the concept. If no existing topic matches → automatically add \`{ "key": "a-<kebab-case>", "label": "<Display Name>" }\` to \`.mentor/config.json\` \`topics\` (prefix \`a-\` is required for AI-generated keys), then continue.
+2. Read \`question-history.json\` (verify ID uniqueness).
+   - Schema: see \`.mentor/skills/mentor-session/tracker-format.md\`
+   - Determine \`isCorrect\`: true ONLY if the user answered correctly on their first attempt without any hints, sub-questions, or explanations from the mentor. Hints aid learning — they do not change the correctness judgment.
+   - \`userAnswer\`: record the user's first answer. If there were multiple turns: "[first answer] → (after hint) [final answer]"
+   - Then record:
+     - \`isCorrect: true\` (regular question) → record to \`question-history.json\`
+     - \`isCorrect: true\` (unresolved_gap review) → record to \`question-history.json\` AND remove from \`progress.json\` unresolved_gaps
+     - \`isCorrect: false\` → record to \`question-history.json\` AND add to \`progress.json\` unresolved_gaps
+3. Post-record checks — evaluate ALL of the following. For each that applies, ask the user one at a time and wait for each answer before asking the next:
+   - Concept in \`weak_areas\` answered correctly (\`isCorrect: true\`) in a different context → ask if it should be removed from weak_areas
+   - Concept not in \`weak_areas\` where user struggles repeatedly → ask if it should be added to weak_areas
+   - Strong interest shown in a topic → ask if it should be added to interests
+   - On YES: update \`learner_profile\` in \`progress.json\`, set \`last_updated\` to current ISO 8601 timestamp
+   - On NO: no change
+   - If none apply, proceed.
+4. Update \`progress.json\`:
+   - \`current_step\`: "Task X, Step Y complete"
+   - \`resume_context\`: "Task X Step Y done. Next: [next step description]"
+5. Tell the user that progress has been saved and they can continue from here in a new session.
 
-Then say: "進捗を保存しました。ここで一区切りです。新しいセッションで続きから始められます。"
-
-GATE: recorded + progress.json updated + message sent → cycle complete
+GATE: steps 1-5 complete → cycle complete
 
 ## Implementation Review
 
@@ -197,14 +207,14 @@ Triggered when the user asks to review the current task's implementation.
 
 Scope: **task requirements**, not diff or branch. Evaluate whether the code fulfills what \`current-task.md\` describes.
 
-## Review (復習)
+## Review
 
 Triggered when the user asks to review / practice previously missed concepts.
 
-**Scope**: If a specific topic is specified (e.g. "TypeScript の復習"), filter \`unresolved_gaps\` to that topic only. Otherwise, use all \`unresolved_gaps\`.
+**Scope**: If a specific topic is specified, filter \`unresolved_gaps\` to that topic only. Otherwise, use all \`unresolved_gaps\`.
 
 1. Read \`progress.json\` \`unresolved_gaps\` and \`question-history.json\`.
-2. If a specific topic is specified, filter gaps to that topic only. If no matching gaps exist for the specified topic, show 「（トピック名）の復習項目はありません」 and stop.
+2. If a specific topic is specified, filter gaps to that topic only. If no matching gaps exist for the specified topic, tell the user that there are no review items for that topic and stop.
 3. Read \`learner_profile\` from \`progress.json\` to calibrate difficulty.
 4. Select an unresolved gap to review:
    - Prioritize gaps with older \`last_missed\` dates (least recently revisited first)
@@ -213,8 +223,8 @@ Triggered when the user asks to review / practice previously missed concepts.
    GATE: question asked → WAIT for user
 6. Follow Teaching Cycle (c)→(e): Wait → Feedback → RECORD (on correct: remove from unresolved_gaps; on wrong: keep in unresolved_gaps).
 7. After recording:
-   - If target gaps are now empty (all gaps for the specified topic, or all gaps if no topic was specified) → show 「全問クリア！復習完了です」 and stop.
-   - Otherwise → ask the user: 「もう1問続けますか？それとも結果サマリーを見ますか？」
+   - If target gaps are now empty (all gaps for the specified topic, or all gaps if no topic was specified) → congratulate the user that all review items are cleared and stop.
+   - Otherwise → ask the user whether they want to continue with another question or see a results summary.
      - User wants to continue → go back to step 4
      - User wants the summary → proceed to step 8
 8. Show a results summary:
@@ -235,7 +245,7 @@ Triggered when the user asks for a comprehension check.
 4. Ask 1 question (same rules as Teaching Cycle (b) Ask — include code snippet and file path when relevant, calibrate to learner level).
    GATE: question asked → WAIT for user
 5. Follow Teaching Cycle (c)→(e): Wait → Feedback → RECORD.
-6. After recording, ask the user: 「もう1問続けますか？それとも結果サマリーを見ますか？」
+6. After recording, ask the user whether they want to continue with another question or see a results summary.
    - User wants to continue → go back to step 3
    - User wants the summary → proceed to step 7
 7. Show a results summary:
@@ -244,7 +254,7 @@ Triggered when the user asks for a comprehension check.
    - Topics covered and per-topic performance
    - Weak areas identified or confirmed
 
-Difference from Review (復習): Review re-asks concepts the learner previously got wrong (unresolved_gaps). Comprehension Check generates **new questions** across all learned topics to assess overall understanding.
+Difference from Review: Review re-asks concepts the learner previously got wrong (unresolved_gaps). Comprehension Check generates **new questions** across all learned topics to assess overall understanding.
 
 ## Task Skip
 
@@ -259,8 +269,7 @@ Run in order, never skip:
 
 1. Update \`.mentor/progress.json\`: add to completed_tasks, increment current_task, update resume_context
 2. Determine the next task:
-   a. If \`skipped_tasks\` is not empty → ask:
-      > 「次のタスクに進みますか？それとも、スキップしたタスク（<list skipped task names>）に取り組みますか？」
+   a. If \`skipped_tasks\` is not empty → ask the user whether they want to proceed to the next task or work on one of the skipped tasks (list the skipped task names).
       - User chooses next task → read the next task from the plan (mentorFiles.plan in \`.mentor/config.json\`)
       - User chooses a skipped task → remove it from \`skipped_tasks\`, use that task's content
    b. If \`skipped_tasks\` is empty → read the next task from the plan (mentorFiles.plan in \`.mentor/config.json\`)
@@ -289,30 +298,17 @@ Records every answer to a mentor-asked question, inside a top-level \`"history"\
 
 \`\`\`json
 {
-  "id": "string (q_ + 8 random alphanumeric characters, e.g. q_V1StGXR8)",
-  "reviewOf": "string (root question id) | null",
+  "id": "string (q_ + 8 random alphanumeric chars [a-zA-Z0-9], unique per entry)",
+  "reviewOf": "string | null — null for first-time questions; for review questions, set to the root question id (always the original, never intermediate reviews — e.g. q_aaa→q_bbb→q_ccc: both q_bbb.reviewOf and q_ccc.reviewOf = \"q_aaa\")",
   "answeredAt": "ISO 8601 string",
   "taskId": "string (e.g. phase2.3-task8)",
   "topic": "string (must match a key from .mentor/config.json topics, e.g. a-react)",
   "concept": "string (specific concept being tested)",
   "question": "string (exact question asked)",
-  "userAnswer": "string",
-  "isCorrect": true | false
+  "userAnswer": "string — single-turn: as-is; multi-turn: \"[first answer] → (after hint) [final answer]\"",
+  "isCorrect": "true ONLY if correct on first attempt without any hints/sub-questions/explanations; otherwise false"
 }
 \`\`\`
-
-### id field rules
-
-- Format: \`q_\` prefix + 8 random alphanumeric characters (a-z, A-Z, 0-9)
-- Generate a new unique id for every entry
-- Example: \`q_V1StGXR8\`, \`q_m2pLw4nX\`
-
-### reviewOf field rules
-
-- For first-time questions: \`null\`
-- For review questions (re-asking a concept from \`unresolved_gaps\`): set to the \`id\` of the **original (root) question** that first introduced this concept
-- Always point to the root question, not to intermediate review entries
-- Example: if q_aaa (root, wrong) → q_bbb (review, wrong) → q_ccc (review, correct), then q_bbb.reviewOf = "q_aaa" and q_ccc.reviewOf = "q_aaa"
 
 ### Example — correct answer
 
@@ -343,22 +339,6 @@ Records every answer to a mentor-asked question, inside a top-level \`"history"\
   "question": "useEffect の [locale] は何をしている？",
   "userAnswer": ".mentor/config.json に保存されたlocale",
   "isCorrect": false
-}
-\`\`\`
-
-### Example — review answer (answering a question from unresolved_gaps)
-
-\`\`\`json
-{
-  "id": "q_Np4xQ8mK",
-  "reviewOf": "q_7jRtW3vB",
-  "answeredAt": "2026-03-28T10:00:00Z",
-  "taskId": "phase3-task1",
-  "topic": "a-react",
-  "concept": "useEffect dependency array",
-  "question": "useEffectの第2引数に[count]を渡すとどういう動きになる？",
-  "userAnswer": "countが変わるたびにeffectが再実行される",
-  "isCorrect": true
 }
 \`\`\`
 
@@ -478,41 +458,39 @@ export const CREATE_PLAN_MD = `## Plan Creation Rules
 
 Triggered when \`mentorFiles.plan\` is null, file does not exist, file has no recognizable structure, or all tasks are complete.
 
-1. Ask the user:
-   > "今回何をしたいですか？既存のプラン・仕様書・メモなどがあればパスや内容を教えていただけると参考にできます。"
+1. Ask the user what they want to build or accomplish. Mention that if they have an existing plan, spec, or notes, they can share the file path or content for reference.
 2. If the user provides a file path → read it; if file is unreadable or has no text content → treat as "no structure" and proceed from conversation. If no file provided → infer from conversation.
-3. Propose goal + implementation steps → ask user to confirm the approach.
-   - If user rejects → ask what to change, revise proposal, repeat until confirmed.
+3. Propose goal + implementation steps → ask user to confirm (revise until confirmed).
 4. On confirmation → create a new structured plan file at \`.mentor/plan.md\` (or a timestamped variant if that path is already taken). Original file left untouched if one existed.
-5. Ask:
-   > "\`<path>\` を作成しました。これをプランとしてセットしてもいいですか？Settings からいつでも変更できます。"
+5. Tell the user that the plan file has been created at \`<path>\`, and ask if they want to set it as the active plan. Mention that this can always be changed from Settings.
    - If user says no → proceed to Session Start without setting the plan.
 6. On OK → directly edit \`.mentor/config.json\` \`mentorFiles.plan\`. If write fails → tell the user to set it manually in Settings.
 
-### All-Tasks-Complete Detection (Heuristic)
+### All-Tasks-Complete Detection
 
-Count \`## Task N\` headings in the plan file. If the number of entries in \`progress.json\` \`completed_tasks\` is greater than or equal to that count, treat the plan as complete and trigger the "next plan" flow. The \`current_plan\` field in \`progress.json\` can be used to confirm the plan file path matches — if \`current_plan\` is \`null\`, skip path confirmation and rely on heading count alone.
+Count \`## Task N\` headings in plan. If \`completed_tasks.length\` >= heading count → plan complete → trigger Plan Setup Flow.
 
 ### Recommended Plan File Format
 
 \`\`\`markdown
-# 目標
-何をするか（新規アプリ / 機能追加 / バグ修正 / リファクタなど）
+# Goal
+What to build (new app / feature / bug fix / refactor, etc.)
 
-## Task 1: タスク名
+## Task 1: Task name
 - Step 1: ...
 - Step 2: ...
 
-## Task 2: タスク名
+## Task 2: Task name
 - Step 1: ...
 \`\`\`
+
 
 Format is flexible — a single task with 2–3 steps is valid.
 
 ### AI Updating \`.mentor/config.json\`
 
 - Always ask permission before writing.
-- Always mention: "Settings からいつでも変更できます。"
+- Always mention that this can be changed anytime from Settings.
 - Write directly to \`.mentor/config.json\`; the extension's fileWatcher auto-reloads.
 `;
 
@@ -528,15 +506,14 @@ export const CREATE_SPEC_MD = `## Spec Creation Rules
 
 1. Ask the user what the project is about; ask follow-up questions for missing info.
 2. Create spec file.
-3. Ask:
-   > "\`<path>\` を作成しました。これをスペックとしてセットしてもいいですか？Settings からいつでも変更できます。"
+3. Tell the user that the spec file has been created at \`<path>\`, and ask if they want to set it as the active spec. Mention that this can always be changed from Settings.
    - If user says no → leave \`mentorFiles.spec\` unchanged.
 4. On OK → directly edit \`.mentor/config.json\` \`mentorFiles.spec\`. If write fails → tell the user to set it manually in Settings.
 
 ### AI Updating \`.mentor/config.json\`
 
 - Always ask permission before writing.
-- Always mention: "Settings からいつでも変更できます。"
+- Always mention that this can be changed anytime from Settings.
 - Write directly to \`.mentor/config.json\`; the extension's fileWatcher auto-reloads.
 `;
 
@@ -571,39 +548,33 @@ description: Use when learner_profile.last_updated is null in progress.json or u
 
 # Intake
 
-## Purpose
-
-Collect structured information about the learner to personalize the mentoring experience. This skill runs BEFORE any task work begins.
-
 ## NEVER
 
 - Ask more than 1 question at a time
-- Skip any of the 5 questions
 - Proceed to session work before writing learner_profile to progress.json
 
 ## Intake Flow
 
 Ask each question one at a time. Wait for the user's full answer before proceeding to the next.
 
-### Question 1: Experience
 
-「プログラミングはどのくらいやっていますか？これまで主にどの言語で、どんなものを作ってきたか教えてください。」
+### Question 1: Experience
+Ask about their programming experience: how long they've been coding, which languages they've used, and what they've built.
 
 ### Question 2: Self-assessed Level
-
-「今の自分のレベルを教えてください。beginner（基礎を学んでいる段階）/ intermediate（ひと通り書けるが深い理解は途中）/ advanced（設計・最適化まで自信がある）のどれに近いですか？」
+Ask them to self-assess their current level. Present three choices with brief descriptions:
+- **beginner** — still learning fundamentals
+- **intermediate** — can write code but deepening understanding
+- **advanced** — confident in design and optimization
 
 ### Question 3: Interests
-
-「どんな分野や技術に興味がありますか？将来作ってみたいものや、触れてみたい技術があれば教えてください。」
+Ask what fields, technologies, or project ideas interest them — things they want to build or explore.
 
 ### Question 4: Weak Areas
-
-「プログラミングで苦手意識がある概念や分野はありますか？なくても構いません。」
+Ask if there are any programming concepts or areas they find difficult. Make it clear that having none is perfectly fine.
 
 ### Question 5: Mentor Style
-
-「このメンターにどう関わってほしいですか？例えば『なるべくヒントだけ出してほしい』『一緒に考えてほしい』『どんどん進めてほしい』など、自由に教えてください。」
+Ask how they want the mentor to interact with them. Offer examples such as: hints only, collaborative problem-solving, or fast-paced guided instruction.
 
 ## After All 5 Answers
 
@@ -620,7 +591,7 @@ Write to \`.mentor/progress.json\` — add or overwrite the \`learner_profile\` 
 }
 \`\`\`
 
-Then say: 「プロフィールを保存しました。では始めましょう！」and return control to the caller to continue from the unresolved_gaps check.
+Then tell the user that their profile has been saved and the session will now begin. Return control to the caller to continue from the unresolved_gaps check.
 `;
 
 export const QUESTION_HISTORY_JSON = JSON.stringify({ history: [] }, null, 2);
