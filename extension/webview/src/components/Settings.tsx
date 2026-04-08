@@ -330,6 +330,21 @@ export function Settings({
         </label>
       </div>
       <div className="setting-separator" />
+      <div className="setting-item">
+        <div className="uninstall-title">
+          {t("settings.setup.title", locale)}
+        </div>
+        <p className="setting-remove-description">
+          {t("settings.setup.description", locale)}
+        </p>
+        <button
+          className="btn-primary"
+          onClick={() => postMessage({ type: "runSetup" })}
+        >
+          {t("settings.setup.button", locale)}
+        </button>
+      </div>
+      <div className="setting-separator" />
       <UninstallSection locale={locale} />
     </div>
   );
