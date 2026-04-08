@@ -15,8 +15,8 @@ Order is fixed — never skip, never reorder:
 
 Read \`.mentor/config.json\`.
 
-- NOT FOUND → tell the user that \`.mentor/config.json\` was not found and they should run \`Mentor Studio Code: Setup Mentor\` from the command palette. STOP.
-- Parse error → STOP.
+- NOT FOUND → tell the user that \`.mentor/config.json\` was not found and they should click the "Run Setup" button in the Mentor Studio Code sidebar, or run \`Mentor Studio Code: Setup Mentor\` from the command palette. STOP.
+- Parse error → tell the user that \`.mentor/config.json\` has invalid JSON. Suggest fixing the JSON manually, or clicking the "Run Setup" button in the sidebar (or running \`Mentor Studio Code: Setup Mentor\` from the command palette) to regenerate it. STOP.
 - \`extensionUninstalled: true\` → read \`locale\` from config, then:
   1. Check both CLAUDE.md files for the line \`@.mentor/rules/MENTOR_RULES.md\`:
      - Project: \`./CLAUDE.md\` (workspace root)
@@ -306,7 +306,7 @@ Records every answer to a mentor-asked question, inside a top-level \`"history"\
   "concept": "string (specific concept being tested)",
   "question": "string (exact question asked)",
   "userAnswer": "string — single-turn: as-is; multi-turn: \"[first answer] → (after hint) [final answer]\"",
-  "isCorrect": "true ONLY if correct on first attempt without any hints/sub-questions/explanations; otherwise false"
+  "isCorrect": "boolean (true ONLY if correct on first attempt without any hints/sub-questions/explanations; otherwise false)"
 }
 \`\`\`
 
