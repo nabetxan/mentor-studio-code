@@ -120,7 +120,7 @@ export class FileWatcherService implements vscode.Disposable {
     if (!progress) {
       this.log?.("Invalid JSON in progress.json — skipping dashboard update");
       void vscode.window.showWarningMessage(
-        "Mentor Studio Code: progress.json has invalid JSON. Please fix it manually or ask the AI to correct it.",
+        "Mentor Studio Code: progress.json has invalid JSON. Restore from progress.json.bak or re-run Setup.",
       );
       return;
     }
@@ -143,7 +143,7 @@ export class FileWatcherService implements vscode.Disposable {
             "Invalid JSON in question-history.json — using empty history",
           );
           void vscode.window.showWarningMessage(
-            "Mentor Studio Code: question-history.json has invalid JSON. Please fix it manually or ask the AI to correct it.",
+            "Mentor Studio Code: question-history.json has invalid JSON. Restore from question-history.json.bak or re-run Setup.",
           );
         }
       }
