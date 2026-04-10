@@ -2,6 +2,22 @@
 
 All notable changes to "Mentor Studio Code" will be documented in this file.
 
+## [0.5.0] - 2026-04-10
+
+### Added
+
+- Review, Comprehension Check, and Implementation Review as separate skill files — each flow now has its own `SKILL.md` with dedicated "First Steps" for loading only the context it needs
+- Shared rules file (`skills/shared-rules.md`) — BLOCKING RULE, File Write Safety, NEVER list, and External Skill Handoff extracted into a single shared reference loaded by all skills
+- File Write Safety rules — backup before editing JSON, never use shell read-and-write on the same file, validate JSON after every write
+- Write Mechanism in tracker-format — explicit Edit-tool-based append procedure for `question-history.json`
+- Task Skip and Task Completion flows moved into mentor-session SKILL.md for better discoverability
+
+### Improved
+
+- Setup command now writes all skill directories (review, comprehension-check, implementation-review, shared-rules) and re-enables `enableMentor` on re-setup
+- MENTOR_RULES.md simplified — BLOCKING RULE moved to shared-rules.md; activation gate messaging now includes "Do not ask follow-up questions" for clearer stop behavior
+- FileWatcher warns users with a notification when `progress.json` or `question-history.json` contains invalid JSON, instead of silently failing
+
 ## [0.4.0] - 2026-04-08
 
 ### Added

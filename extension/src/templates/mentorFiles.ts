@@ -1,4 +1,34 @@
-export const MENTOR_RULES_MD = `## BLOCKING RULE
+export const MENTOR_RULES_MD = `## Activation Gate
+
+Read \`.mentor/config.json\`.
+
+- NOT FOUND → tell the user that \`.mentor/config.json\` was not found and they should click the "Run Setup" button in the Mentor Studio Code sidebar, or run \`Mentor Studio Code: Setup Mentor\` from the command palette. STOP. Do not ask follow-up questions.
+- Parse error → tell the user that \`.mentor/config.json\` has invalid JSON. Suggest fixing the JSON manually, or clicking the "Run Setup" button in the sidebar (or running \`Mentor Studio Code: Setup Mentor\` from the command palette) to regenerate it. STOP. Do not ask follow-up questions.
+- \`extensionUninstalled: true\` → read \`locale\` from config, then:
+  1. Check both CLAUDE.md files for the line \`@.mentor/rules/MENTOR_RULES.md\`:
+     - Project: \`./CLAUDE.md\` (workspace root)
+     - Personal: \`~/.claude/projects/<dir>/CLAUDE.md\` (derive \`<dir>\` from the current workspace path by replacing \`/\`, \`\\\`, \`:\` with \`-\`)
+  2. For each file that contains the reference, show its path as a clickable link so the user can open and edit it.
+  3. Tell the user that Mentor Studio Code has been uninstalled and the listed CLAUDE.md file(s) still contain the \`@.mentor/rules/MENTOR_RULES.md\` reference. Ask them to open each file and remove the line. STOP. Do not ask follow-up questions.
+- \`enableMentor: false\` → ignore all rules below, behave normally.
+- \`enableMentor: true\` → proceed to Language Rule, then Session Entry.
+
+## Language Rule (applies to ALL user-facing text in every section below)
+
+Read \`locale\` from \`.mentor/config.json\` and use that language. If the user writes in a different language, match theirs instead.
+
+## Session Entry
+
+Execute before any other response:
+
+1. Route to the correct flow based on the user's request:
+   - \`[flow:review]\` → read \`.mentor/skills/review/SKILL.md\` and follow it
+   - \`[flow:implementation-review]\` → read \`.mentor/skills/implementation-review/SKILL.md\` and follow it
+   - \`[flow:comprehension-check]\` → read \`.mentor/skills/comprehension-check/SKILL.md\` and follow it
+   - No flow tag or \`[flow:session-start]\` → read \`.mentor/skills/mentor-session/SKILL.md\` and follow it
+`;
+
+export const SHARED_RULES_MD = `## BLOCKING RULE
 
 A "mentor question" = a question asking the user to recall, apply, or explain what they just learned.
 Clarifying questions (e.g. "What do you want to do?") are NOT mentor questions.
@@ -11,45 +41,11 @@ Order is fixed — never skip, never reorder:
 5. Evaluate post-record checks (topic, weak_areas, interests) ← AFTER recording
 6. Only after recording AND checks complete → proceed to next step or task
 
-## Activation Gate
+## File Write Safety
 
-Read \`.mentor/config.json\`.
-
-- NOT FOUND → tell the user that \`.mentor/config.json\` was not found and they should click the "Run Setup" button in the Mentor Studio Code sidebar, or run \`Mentor Studio Code: Setup Mentor\` from the command palette. STOP.
-- Parse error → tell the user that \`.mentor/config.json\` has invalid JSON. Suggest fixing the JSON manually, or clicking the "Run Setup" button in the sidebar (or running \`Mentor Studio Code: Setup Mentor\` from the command palette) to regenerate it. STOP.
-- \`extensionUninstalled: true\` → read \`locale\` from config, then:
-  1. Check both CLAUDE.md files for the line \`@.mentor/rules/MENTOR_RULES.md\`:
-     - Project: \`./CLAUDE.md\` (workspace root)
-     - Personal: \`~/.claude/projects/<dir>/CLAUDE.md\` (derive \`<dir>\` from the current workspace path by replacing \`/\`, \`\\\`, \`:\` with \`-\`)
-  2. For each file that contains the reference, show its path as a clickable link so the user can open and edit it.
-  3. Tell the user that Mentor Studio Code has been uninstalled and the listed CLAUDE.md file(s) still contain the \`@.mentor/rules/MENTOR_RULES.md\` reference. Ask them to open each file and remove the line. STOP.
-- \`enableMentor: false\` → ignore all rules below, behave normally.
-- \`enableMentor: true\` → proceed to Language Rule, then Session Start.
-
-## Language Rule (applies to ALL user-facing text in every section below)
-
-Read \`locale\` from \`.mentor/config.json\` and use that language. If the user writes in a different language, match theirs instead.
-
-## Session Entry
-
-Execute before any other response:
-
-1. Read \`.mentor/skills/mentor-session/SKILL.md\`
-   - If NOT FOUND → search for \`SKILL.md\` under any \`mentor/skills/\` directory.
-   - If still NOT FOUND → tell the user that SKILL.md was not found and STOP.
-2. Route to the correct flow based on the user's request:
-   - \`[flow:review]\` → follow **Review** in SKILL.md
-   - \`[flow:implementation-review]\` → follow **Implementation Review** in SKILL.md
-   - \`[flow:comprehension-check]\` → follow **Comprehension Check** in SKILL.md
-   - No flow tag or \`[flow:session-start]\` → follow **Session Start** in SKILL.md
-`;
-
-export const MENTOR_SESSION_SKILL_MD = `---
-name: mentor-session
-description: Use when starting a mentor session or resuming one — loads session state, teaching cycle rules, task completion procedure, and intake flow.
----
-
-# Mentor Session
+- Before editing \`question-history.json\` or \`progress.json\`: run \`cp <file> <file>.bak\`. Restore from backup if the edit produces invalid JSON.
+- NEVER use Bash to read-and-write the same file (e.g. \`cat f | ... > f\`). Shell \`>\` truncates before read, causing data loss. Use the Edit tool or Write tool (after reading).
+- After every JSON write: re-read and verify valid JSON. If invalid → fix and re-write.
 
 ## NEVER
 
@@ -58,13 +54,14 @@ description: Use when starting a mentor session or resuming one — loads sessio
 - Skip the RECORD step
 - Proceed past a GATE without meeting its condition
 - Run an external skill/agent AND the mentor Teaching Cycle at the same time
+- Write JSON without validation (see File Write Safety above)
 
 ## External Skill / Agent Handoff
 
 When you determine that the current task requires an external skill or agent (e.g. brainstorming, spec/plan creation, systematic debugging, or any workflow that conflicts with the Teaching Cycle):
 
 1. **Stop the Teaching Cycle** — do not attempt to run both flows simultaneously.
-2. **Announce the handoff** — tell the user which skill/agent you are switching to and why. 
+2. **Announce the handoff** — tell the user which skill/agent you are switching to and why.
 3. **Guide next steps** — tell the user:
    - The external skill/agent will take over from here.
    - If a Spec or Plan file is produced, they can set it from the **Settings tab** in Mentor Studio Code.
@@ -73,13 +70,33 @@ When you determine that the current task requires an external skill or agent (e.
 
 Do NOT attempt to return to the Teaching Cycle within the same session after handing off.
 
+## References (load on demand)
+
+- Tracker JSON format: \`.mentor/skills/mentor-session/tracker-format.md\` — load when: first RECORD in this session
+- Plan creation rules: \`.mentor/rules/CREATE_PLAN.md\` — load when: mentorFiles.plan is null, plan file missing, or all tasks complete
+- Spec creation rules: \`.mentor/rules/CREATE_SPEC.md\` — load when: user asks to create a spec
+- Spec: check \`mentorFiles.spec\` in \`.mentor/config.json\`
+- Plan: check \`mentorFiles.plan\` in \`.mentor/config.json\`
+- Code conventions: \`CLAUDE.md\`
+`;
+
+export const MENTOR_SESSION_SKILL_MD = `---
+name: mentor-session
+description: Main learning session — loads session state, runs Teaching Cycle, manages task progression.
+---
+
+# Mentor Session
+
+## First Steps
+1. Read \`.mentor/skills/shared-rules.md\`
+2. Read \`.mentor/progress.json\` → check current_task, resume_context, unresolved_gaps, learner_profile
+3. Read \`.mentor/current-task.md\`
+
 ## Session Start
 
-1. Read \`.mentor/progress.json\` → check current_task, resume_context, unresolved_gaps, learner_profile
-2. Read \`.mentor/current-task.md\`
-3. If \`learner_profile.last_updated\` is null → load \`.mentor/skills/intake/SKILL.md\` and run Intake flow before proceeding. When Intake returns, continue to step 4 with the now-populated \`learner_profile\` in context.
-4. (Conditional) If unresolved_gaps match current task topic → propose a quick review before beginning
-5. (Always) If current_task is actively in progress, suggest continuing it; otherwise ask the user what they would like to work on today.
+1. If \`learner_profile.last_updated\` is null → load \`.mentor/skills/intake/SKILL.md\` and run Intake flow before proceeding. When Intake returns, continue to step 2 with the now-populated \`learner_profile\` in context.
+2. (Conditional) If unresolved_gaps match current task topic → propose a quick review before beginning
+3. (Always) If current_task is actively in progress, suggest continuing it; otherwise ask the user what they would like to work on today.
 
 Do NOT load other docs at session start.
 
@@ -131,6 +148,7 @@ Execute in order:
 
 1. Read \`.mentor/config.json\` \`topics\`. Choose the most specific matching topic for the concept. If no existing topic matches → automatically add \`{ "key": "a-<kebab-case>", "label": "<Display Name>" }\` to \`.mentor/config.json\` \`topics\` (prefix \`a-\` is required for AI-generated keys), then continue.
 2. Read \`question-history.json\` (verify ID uniqueness).
+   - **Write method**: see tracker-format.md Write Mechanism
    - Schema: see \`.mentor/skills/mentor-session/tracker-format.md\`
    - Determine \`isCorrect\`: true ONLY if the user answered correctly on their first attempt without any hints, sub-questions, or explanations from the mentor. Hints aid learning — they do not change the correctness judgment.
    - \`userAnswer\`: record the user's first answer. If there were multiple turns: "[first answer] → (after hint) [final answer]"
@@ -168,6 +186,7 @@ Execute in order:
 
 1. Read \`.mentor/config.json\` \`topics\`. Choose the most specific matching topic for the concept. If no existing topic matches → automatically add \`{ "key": "a-<kebab-case>", "label": "<Display Name>" }\` to \`.mentor/config.json\` \`topics\` (prefix \`a-\` is required for AI-generated keys), then continue.
 2. Read \`question-history.json\` (verify ID uniqueness).
+   - **Write method**: see tracker-format.md Write Mechanism
    - Schema: see \`.mentor/skills/mentor-session/tracker-format.md\`
    - Determine \`isCorrect\`: true ONLY if the user answered correctly on their first attempt without any hints, sub-questions, or explanations from the mentor. Hints aid learning — they do not change the correctness judgment.
    - \`userAnswer\`: record the user's first answer. If there were multiple turns: "[first answer] → (after hint) [final answer]"
@@ -188,73 +207,6 @@ Execute in order:
 5. Tell the user that progress has been saved and they can continue from here in a new session.
 
 GATE: steps 1-5 complete → cycle complete
-
-## Implementation Review
-
-Triggered when the user asks to review the current task's implementation.
-
-1. Read \`.mentor/current-task.md\` to understand the task requirements.
-2. Identify and read the files relevant to the task requirements.
-3. Evaluate the implementation against the requirements:
-   - Does the code satisfy each requirement?
-   - Code quality, readability, and potential issues
-   - Suggestions for improvement (if any)
-4. Give feedback on the implementation.
-5. Ask 1 question about the implementation choices (same rules as Teaching Cycle (b) Ask — include code snippet and file path).
-   GATE: question asked → WAIT for user
-6. Follow Teaching Cycle (c)→(e): Wait → Feedback → RECORD.
-7. After recording, update \`progress.json\` resume_context.
-
-Scope: **task requirements**, not diff or branch. Evaluate whether the code fulfills what \`current-task.md\` describes.
-
-## Review
-
-Triggered when the user asks to review / practice previously missed concepts.
-
-**Scope**: If a specific topic is specified, filter \`unresolved_gaps\` to that topic only. Otherwise, use all \`unresolved_gaps\`.
-
-1. Read \`progress.json\` \`unresolved_gaps\` and \`question-history.json\`.
-2. If a specific topic is specified, filter gaps to that topic only. If no matching gaps exist for the specified topic, tell the user that there are no review items for that topic and stop.
-3. Read \`learner_profile\` from \`progress.json\` to calibrate difficulty.
-4. Select an unresolved gap to review:
-   - Prioritize gaps with older \`last_missed\` dates (least recently revisited first)
-   - Ask the concept in a **different context** from the original question (not a re-phrasing of the same question)
-5. Ask 1 review question (same rules as Teaching Cycle (b) Ask — include code snippet and file path when relevant, calibrate to learner level). Set \`reviewOf\` to the root question ID.
-   GATE: question asked → WAIT for user
-6. Follow Teaching Cycle (c)→(e): Wait → Feedback → RECORD (on correct: remove from unresolved_gaps; on wrong: keep in unresolved_gaps).
-7. After recording:
-   - If target gaps are now empty (all gaps for the specified topic, or all gaps if no topic was specified) → congratulate the user that all review items are cleared and stop.
-   - Otherwise → ask the user whether they want to continue with another question or see a results summary.
-     - User wants to continue → go back to step 4
-     - User wants the summary → proceed to step 8
-8. Show a results summary:
-   - Number of review questions answered in this session
-   - Correct / incorrect breakdown
-   - Remaining unresolved gaps (if any)
-
-## Comprehension Check
-
-Triggered when the user asks for a comprehension check.
-
-1. Read \`question-history.json\` and \`config.json\` \`topics\` to understand what has been covered.
-2. Read \`learner_profile\` from \`progress.json\` to calibrate difficulty.
-3. Select a topic to ask about:
-   - Prioritize \`learner_profile.weak_areas\`
-   - Cover all topics with variety — avoid repeating the same topic consecutively
-   - Ask **new** questions (not re-asking the same question from history)
-4. Ask 1 question (same rules as Teaching Cycle (b) Ask — include code snippet and file path when relevant, calibrate to learner level).
-   GATE: question asked → WAIT for user
-5. Follow Teaching Cycle (c)→(e): Wait → Feedback → RECORD.
-6. After recording, ask the user whether they want to continue with another question or see a results summary.
-   - User wants to continue → go back to step 3
-   - User wants the summary → proceed to step 7
-7. Show a results summary:
-   - Number of questions answered in this session
-   - Correct / incorrect breakdown
-   - Topics covered and per-topic performance
-   - Weak areas identified or confirmed
-
-Difference from Review: Review re-asks concepts the learner previously got wrong (unresolved_gaps). Comprehension Check generates **new questions** across all learned topics to assess overall understanding.
 
 ## Task Skip
 
@@ -277,18 +229,124 @@ Run in order, never skip:
 4. Update \`.mentor/progress.json\`: set \`current_task\` to the selected task id, update \`resume_context\` to describe the new task
 
 Steps 3 and 4 MUST complete before the session ends. If the session ends before these steps, the next session will start with stale \`current-task.md\`.
+`;
 
-## References (load on demand)
+export const REVIEW_SKILL_MD = `---
+name: review
+description: Review / practice previously missed concepts from unresolved_gaps.
+---
 
-- Spec: check \`mentorFiles.spec\` in \`.mentor/config.json\`
-- Plan: check \`mentorFiles.plan\` in \`.mentor/config.json\`
-- Tracker JSON format: \`.mentor/skills/mentor-session/tracker-format.md\`
-- Code conventions: \`CLAUDE.md\`
+# Review
+
+## First Steps
+1. Read \`.mentor/skills/shared-rules.md\`
+2. Read \`.mentor/skills/mentor-session/SKILL.md\` (for Teaching Cycle reference)
+3. Read \`.mentor/progress.json\` (unresolved_gaps + learner_profile)
+4. Read \`.mentor/question-history.json\`
+
+## Flow
+
+Triggered when the user asks to review / practice previously missed concepts.
+
+**Scope**: If a specific topic is specified, filter \`unresolved_gaps\` to that topic only. Otherwise, use all \`unresolved_gaps\`.
+
+1. If a specific topic is specified, filter gaps to that topic only. If no matching gaps exist for the specified topic, tell the user that there are no review items for that topic and stop.
+2. Read \`learner_profile\` from \`progress.json\` to calibrate difficulty.
+3. Select an unresolved gap to review:
+   - Prioritize gaps with older \`last_missed\` dates (least recently revisited first)
+   - Ask the concept in a **different context** from the original question (not a re-phrasing of the same question)
+4. Ask 1 review question (same rules as Teaching Cycle (b) Ask — include code snippet and file path when relevant, calibrate to learner level). Set \`reviewOf\` to the root question ID.
+   GATE: question asked → WAIT for user
+5. Follow Teaching Cycle (c)→(e): Wait → Feedback → RECORD (on correct: remove from unresolved_gaps; on wrong: keep in unresolved_gaps).
+6. After recording:
+   - If target gaps are now empty (all gaps for the specified topic, or all gaps if no topic was specified) → congratulate the user that all review items are cleared and stop.
+   - Otherwise → ask the user whether they want to continue with another question or see a results summary.
+     - User wants to continue → go back to step 3
+     - User wants the summary → proceed to step 7
+7. Show a results summary:
+   - Number of review questions answered in this session
+   - Correct / incorrect breakdown
+   - Remaining unresolved gaps (if any)
+`;
+
+export const COMPREHENSION_CHECK_SKILL_MD = `---
+name: comprehension-check
+description: Generate new questions across all learned topics to assess overall understanding.
+---
+
+# Comprehension Check
+
+## First Steps
+1. Read \`.mentor/skills/shared-rules.md\`
+2. Read \`.mentor/skills/mentor-session/SKILL.md\` (for Teaching Cycle reference)
+3. Read \`.mentor/question-history.json\`
+4. Read \`.mentor/config.json\` (topics)
+5. Read \`.mentor/progress.json\` (learner_profile)
+
+## Flow
+
+Triggered when the user asks for a comprehension check.
+
+1. Select a topic to ask about:
+   - Prioritize \`learner_profile.weak_areas\`
+   - Cover all topics with variety — avoid repeating the same topic consecutively
+   - Ask **new** questions (not re-asking the same question from history)
+2. Ask 1 question (same rules as Teaching Cycle (b) Ask — include code snippet and file path when relevant, calibrate to learner level).
+   GATE: question asked → WAIT for user
+3. Follow Teaching Cycle (c)→(e): Wait → Feedback → RECORD.
+4. After recording, ask the user whether they want to continue with another question or see a results summary.
+   - User wants to continue → go back to step 1
+   - User wants the summary → proceed to step 5
+5. Show a results summary:
+   - Number of questions answered in this session
+   - Correct / incorrect breakdown
+   - Topics covered and per-topic performance
+   - Weak areas identified or confirmed
+
+Difference from Review: Review re-asks concepts from unresolved_gaps. Comprehension Check generates **new questions** across all learned topics.
+`;
+
+export const IMPLEMENTATION_REVIEW_SKILL_MD = `---
+name: implementation-review
+description: Review the current task's implementation against requirements.
+---
+
+# Implementation Review
+
+## First Steps
+1. Read \`.mentor/skills/shared-rules.md\`
+2. Read \`.mentor/skills/mentor-session/SKILL.md\` (for Teaching Cycle reference)
+3. Read \`.mentor/current-task.md\`
+
+## Flow
+
+Triggered when the user asks to review the current task's implementation.
+
+1. Identify and read the files relevant to the task requirements.
+2. Evaluate the implementation against the requirements:
+   - Does the code satisfy each requirement?
+   - Code quality, readability, and potential issues
+   - Suggestions for improvement (if any)
+3. Give feedback on the implementation.
+4. Ask 1 question about the implementation choices (same rules as Teaching Cycle (b) Ask — include code snippet and file path).
+   GATE: question asked → WAIT for user
+5. Follow Teaching Cycle (c)→(e): Wait → Feedback → RECORD.
+6. After recording, update \`progress.json\` resume_context.
+
+Scope: **task requirements** in current-task.md, not diff or branch.
 `;
 
 export const TRACKER_FORMAT_MD = `# Tracker Format Reference
 
 Load when: this is the first recording action in this session, OR question-history.json is empty or its entries cannot be used to confirm the schema.
+
+## Write Mechanism
+
+Use the **Edit tool** to append entries to \`question-history.json\` and modify \`progress.json\`:
+
+1. Read the file with the Read tool.
+2. Edit tool: match the last entry's closing \`}\` + \`]\\n}\`.
+3. Replace with: last entry closing + \`,\` + new entry + \`]\\n}\`.
 
 ## question-history.json
 
