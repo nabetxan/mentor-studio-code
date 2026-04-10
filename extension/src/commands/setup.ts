@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { findMentorRef, promptAndAddMentorRef } from "../services/claudeMd";
+import { MENTOR_CLI_JS } from "../templates/mentorCli";
 import {
   COMPREHENSION_CHECK_SKILL_MD,
   CREATE_PLAN_MD,
@@ -104,8 +105,10 @@ export async function runSetup(
 
   // Ensure directories exist
   const rulesDirUri = vscode.Uri.joinPath(mentorDirUri, "rules");
+  const toolsDirUri = vscode.Uri.joinPath(mentorDirUri, "tools");
   await vscode.workspace.fs.createDirectory(mentorDirUri);
   await vscode.workspace.fs.createDirectory(rulesDirUri);
+  await vscode.workspace.fs.createDirectory(toolsDirUri);
 
   const createdFiles: string[] = [];
   const skippedFiles: string[] = [];
@@ -266,6 +269,13 @@ export async function runSetup(
     vscode.Uri.joinPath(intakeDirUri, "SKILL.md"),
     INTAKE_SKILL_MD,
     "skills/intake/SKILL.md",
+  );
+
+  // CLI tool — always overwrite so updates take effect
+  await writeTemplate(
+    vscode.Uri.joinPath(toolsDirUri, "mentor-cli.js"),
+    MENTOR_CLI_JS,
+    "tools/mentor-cli.js",
   );
 
   // Data files — only write if missing

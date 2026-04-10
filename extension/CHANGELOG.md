@@ -7,14 +7,13 @@ All notable changes to "Mentor Studio Code" will be documented in this file.
 ### Added
 
 - Review, Comprehension Check, and Implementation Review as separate skill files — each flow now has its own `SKILL.md` with dedicated "First Steps" for loading only the context it needs
-- Shared rules file (`skills/shared-rules.md`) — BLOCKING RULE, File Write Safety, NEVER list, and External Skill Handoff extracted into a single shared reference loaded by all skills
-- File Write Safety rules — backup before editing JSON, never use shell read-and-write on the same file, validate JSON after every write
-- Write Mechanism in tracker-format — explicit Edit-tool-based append procedure for `question-history.json`
+- Shared rules file (`skills/shared-rules.md`) — BLOCKING RULE, CLI Tool, NEVER list, and External Skill Handoff extracted into a single shared reference loaded by all skills
+- CLI tool (`tools/mentor-cli.js`) — Node.js CLI that handles backup, validation, and atomic writes for `question-history.json`, `progress.json`, and `config.json`; AI must use CLI commands instead of directly editing these JSON files
 - Task Skip and Task Completion flows moved into mentor-session SKILL.md for better discoverability
 
 ### Improved
 
-- Setup command now writes all skill directories (review, comprehension-check, implementation-review, shared-rules) and re-enables `enableMentor` on re-setup
+- Setup command now writes all skill directories (review, comprehension-check, implementation-review, shared-rules), CLI tool (`tools/mentor-cli.js`), and re-enables `enableMentor` on re-setup
 - MENTOR_RULES.md simplified — BLOCKING RULE moved to shared-rules.md; activation gate messaging now includes "Do not ask follow-up questions" for clearer stop behavior
 - FileWatcher warns users with a notification when `progress.json` or `question-history.json` contains invalid JSON, instead of silently failing
 
