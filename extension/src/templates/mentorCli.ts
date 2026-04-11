@@ -204,15 +204,15 @@ const commands = {
   },
 
   "session-brief": function (argJson) {
-    var input = JSON.parse(argJson);
-    var flow = input.flow;
+    const input = JSON.parse(argJson);
+    const flow = input.flow;
     if (!flow) return fail("missing flow");
-    var validFlows = ["mentor-session", "review", "comprehension-check", "implementation-review"];
+    const validFlows = ["mentor-session", "review", "comprehension-check", "implementation-review"];
     if (validFlows.indexOf(flow) === -1) return fail("Unknown flow: " + flow);
-    var topic = input.topic || null;
-    var progress = readJSON(PROGRESS_PATH);
-    var profile = progress.learner_profile || {};
-    var learner = {
+    const topic = input.topic || null;
+    const progress = readJSON(PROGRESS_PATH);
+    const profile = progress.learner_profile || {};
+    const learner = {
       experience: profile.experience || "",
       level: profile.level || "",
       interests: profile.interests || [],
@@ -222,18 +222,18 @@ const commands = {
 
     if (flow === "mentor-session") {
       learner.lastUpdated = profile.last_updated || null;
-      var allGaps = (progress.unresolved_gaps || []).slice();
-      var currentTask = progress.current_task || null;
-      var relevantGaps;
+      const allGaps = (progress.unresolved_gaps || []).slice();
+      const currentTask = progress.current_task || null;
+      let relevantGaps;
       if (topic) {
         relevantGaps = allGaps.filter(function (g) { return g.topic === topic; });
       } else if (currentTask) {
         relevantGaps = allGaps.filter(function (g) { return g.task === currentTask; });
         if (relevantGaps.length === 0 && allGaps.length > 0) {
-          var fallback = allGaps.slice();
+          const fallback = allGaps.slice();
           fallback.sort(function (a, b) {
-            var ta = a.last_missed || "";
-            var tb = b.last_missed || "";
+            const ta = a.last_missed || "";
+            const tb = b.last_missed || "";
             return ta < tb ? -1 : ta > tb ? 1 : 0;
           });
           relevantGaps = fallback.slice(0, 5);
@@ -241,19 +241,19 @@ const commands = {
       } else {
         relevantGaps = allGaps.slice();
         relevantGaps.sort(function (a, b) {
-          var ta = a.last_missed || "";
-          var tb = b.last_missed || "";
+          const ta = a.last_missed || "";
+          const tb = b.last_missed || "";
           return ta < tb ? -1 : ta > tb ? 1 : 0;
         });
         relevantGaps = relevantGaps.slice(0, 5);
       }
-      var filteredCount = relevantGaps.length;
+      const filteredCount = relevantGaps.length;
       relevantGaps.sort(function (a, b) {
-        var ta = a.last_missed || "";
-        var tb = b.last_missed || "";
+        const ta = a.last_missed || "";
+        const tb = b.last_missed || "";
         return ta < tb ? -1 : ta > tb ? 1 : 0;
       });
-      var mappedGaps = relevantGaps.map(function (g) {
+      const mappedGaps = relevantGaps.map(function (g) {
         return {
           questionId: g.questionId,
           topic: g.topic,
@@ -272,19 +272,19 @@ const commands = {
         gapCount: { total: allGaps.length, filtered: filteredCount }
       });
     } else if (flow === "review") {
-      var reviewAllGaps = (progress.unresolved_gaps || []).slice();
-      var gaps;
+      const reviewAllGaps = (progress.unresolved_gaps || []).slice();
+      let gaps;
       if (topic) {
         gaps = reviewAllGaps.filter(function (g) { return g.topic === topic; });
       } else {
         gaps = reviewAllGaps.slice();
       }
       gaps.sort(function (a, b) {
-        var ta = a.last_missed || "";
-        var tb = b.last_missed || "";
+        const ta = a.last_missed || "";
+        const tb = b.last_missed || "";
         return ta < tb ? -1 : ta > tb ? 1 : 0;
       });
-      var mappedAllGaps = gaps.map(function (g) {
+      const mappedAllGaps = gaps.map(function (g) {
         return {
           questionId: g.questionId,
           topic: g.topic,
@@ -301,33 +301,33 @@ const commands = {
         gapCount: { total: reviewAllGaps.length, filtered: gaps.length }
       });
     } else if (flow === "comprehension-check") {
-      var history = readJSON(HISTORY_PATH);
-      var entries = history.history || [];
-      var conceptCounts = {};
-      var conceptOrder = [];
-      for (var i = entries.length - 1; i >= 0; i--) {
-        var e = entries[i];
-        var key = e.topic + ":" + e.concept;
+      const history = readJSON(HISTORY_PATH);
+      const entries = history.history || [];
+      const conceptCounts = {};
+      const conceptOrder = [];
+      for (let i = entries.length - 1; i >= 0; i--) {
+        const e = entries[i];
+        const key = e.topic + ":" + e.concept;
         if (!conceptCounts[key]) {
           conceptCounts[key] = { topic: e.topic, concept: e.concept, count: 0 };
           conceptOrder.push(key);
         }
       }
-      for (var ci = 0; ci < entries.length; ci++) {
-        var ck = entries[ci].topic + ":" + entries[ci].concept;
+      for (let ci = 0; ci < entries.length; ci++) {
+        const ck = entries[ci].topic + ":" + entries[ci].concept;
         if (conceptCounts[ck]) conceptCounts[ck].count++;
       }
-      var concepts = conceptOrder.map(function (k) { return conceptCounts[k]; });
-      var total = concepts.length;
-      var capped = concepts.slice(0, 100);
-      var topicSummary = {};
-      for (var j = 0; j < entries.length; j++) {
-        var t = entries[j].topic;
+      const concepts = conceptOrder.map(function (k) { return conceptCounts[k]; });
+      const total = concepts.length;
+      const capped = concepts.slice(0, 100);
+      const topicSummary = {};
+      for (let j = 0; j < entries.length; j++) {
+        const t = entries[j].topic;
         if (!topicSummary[t]) topicSummary[t] = 0;
         topicSummary[t]++;
       }
-      var config = readJSON(CONFIG_PATH);
-      var ccResult = {
+      const config = readJSON(CONFIG_PATH);
+      const ccResult = {
         flow: flow,
         learner: learner,
         coveredConcepts: capped,
@@ -349,39 +349,39 @@ const commands = {
   },
 
   "list-unresolved": function (argJson) {
-    var progress = readJSON(PROGRESS_PATH);
-    var allGaps = progress.unresolved_gaps || [];
-    var args = argJson ? JSON.parse(argJson) : {};
-    var topic = args.topic;
-    var filtered = topic
+    const progress = readJSON(PROGRESS_PATH);
+    const allGaps = progress.unresolved_gaps || [];
+    const args = argJson ? JSON.parse(argJson) : {};
+    const topic = args.topic;
+    let filtered = topic
       ? allGaps.filter(function (g) { return g.topic === topic; })
       : allGaps;
     filtered = filtered.slice().sort(function (a, b) {
-      var ta = a.last_missed || "";
-      var tb = b.last_missed || "";
+      const ta = a.last_missed || "";
+      const tb = b.last_missed || "";
       return ta < tb ? -1 : ta > tb ? 1 : 0;
     });
-    var gaps = filtered.map(function (g) {
+    const gaps = filtered.map(function (g) {
       return { questionId: g.questionId, topic: g.topic, concept: g.concept, lastMissed: g.last_missed, task: g.task, note: g.note };
     });
     ok({ gaps: gaps, gapCount: { total: allGaps.length, filtered: gaps.length } });
   },
 
   "get-history-by-ids": function (argJson) {
-    var args = JSON.parse(argJson);
-    var ids = args.ids;
+    const args = JSON.parse(argJson);
+    const ids = args.ids;
     if (!ids || !Array.isArray(ids)) return fail("missing_field: ids (array)");
-    var hist = readJSON(HISTORY_PATH);
-    var all = hist.history || [];
-    var idSet = new Set(ids);
-    var entries = [];
-    for (var j = 0; j < all.length; j++) {
+    const hist = readJSON(HISTORY_PATH);
+    const all = hist.history || [];
+    const idSet = new Set(ids);
+    const entries = [];
+    for (let j = 0; j < all.length; j++) {
       if (idSet.has(all[j].id)) {
         entries.push(all[j]);
         idSet.delete(all[j].id);
       }
     }
-    var notFound = Array.from(idSet);
+    const notFound = Array.from(idSet);
     ok({ entries: entries, notFound: notFound });
   },
 
