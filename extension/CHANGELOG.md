@@ -2,6 +2,28 @@
 
 All notable changes to "Mentor Studio Code" will be documented in this file.
 
+## [0.5.0] - 2026-04-11
+
+### Added
+
+- Review, Comprehension Check, and Implementation Review as separate skill files — each flow now has its own `SKILL.md` with dedicated "First Steps" for loading only the context it needs
+- Shared rules file (`skills/shared-rules.md`) — BLOCKING RULE, CLI Tool, NEVER list, and External Skill Handoff extracted into a single shared reference loaded by all skills
+- CLI tool (`tools/mentor-cli.js`) — Node.js CLI that handles backup and validation for `question-history.json`, `progress.json`, and `config.json`; AI must use CLI commands instead of directly editing these JSON files
+- CLI `session-brief` command — returns flow-specific filtered data for session start, replacing raw file reads of progress.json and question-history.json
+- CLI `list-unresolved` command — returns filtered and sorted unresolved gaps for mid-session review loops
+- CLI `get-history-by-ids` command — returns specific question-history entries by ID
+- `teaching-cycle-reference.md` — shared Feedback and RECORD procedure extracted from mentor-session SKILL.md, now referenced by all flows
+- Task Skip and Task Completion flows moved into mentor-session SKILL.md for better discoverability
+
+### Improved
+
+- Setup command now writes all skill directories (review, comprehension-check, implementation-review, shared-rules), CLI tool (`tools/mentor-cli.js`), and re-enables `enableMentor` on re-setup
+- MENTOR_RULES.md simplified — BLOCKING RULE moved to shared-rules.md; activation gate messaging now includes "Do not ask follow-up questions" for clearer stop behavior
+- Context consumption reduced 58-88% depending on flow — AI no longer reads raw `progress.json` or `question-history.json`; all data access via filtered CLI commands
+- Review, Comprehension Check, and Implementation Review load lightweight `teaching-cycle-reference.md` instead of full mentor-session SKILL.md
+- RECORD procedure centralized in `teaching-cycle-reference.md` (previously duplicated in mentor-session steps (e) and (i))
+- FileWatcher warns users with a notification when `progress.json` or `question-history.json` contains invalid JSON, instead of silently failing
+
 ## [0.4.0] - 2026-04-08
 
 ### Added

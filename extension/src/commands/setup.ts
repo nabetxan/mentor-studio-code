@@ -1,14 +1,20 @@
 import * as vscode from "vscode";
 import { findMentorRef, promptAndAddMentorRef } from "../services/claudeMd";
+import { MENTOR_CLI_JS } from "../templates/mentorCli";
 import {
+  COMPREHENSION_CHECK_SKILL_MD,
   CREATE_PLAN_MD,
   CREATE_SPEC_MD,
   CURRENT_TASK_MD,
+  IMPLEMENTATION_REVIEW_SKILL_MD,
   INTAKE_SKILL_MD,
   MENTOR_RULES_MD,
   MENTOR_SESSION_SKILL_MD,
   PROGRESS_JSON,
   QUESTION_HISTORY_JSON,
+  REVIEW_SKILL_MD,
+  SHARED_RULES_MD,
+  TEACHING_CYCLE_REFERENCE_MD,
   TRACKER_FORMAT_MD,
 } from "../templates/mentorFiles";
 
@@ -100,8 +106,10 @@ export async function runSetup(
 
   // Ensure directories exist
   const rulesDirUri = vscode.Uri.joinPath(mentorDirUri, "rules");
+  const toolsDirUri = vscode.Uri.joinPath(mentorDirUri, "tools");
   await vscode.workspace.fs.createDirectory(mentorDirUri);
   await vscode.workspace.fs.createDirectory(rulesDirUri);
+  await vscode.workspace.fs.createDirectory(toolsDirUri);
 
   const createdFiles: string[] = [];
   const skippedFiles: string[] = [];
@@ -149,6 +157,7 @@ export async function runSetup(
     // Update extensionVersion in existing config
     existingConfig.extensionVersion = extensionVersion;
     existingConfig.workspacePath = wsRoot.fsPath;
+    existingConfig.enableMentor = true;
     delete (existingConfig as Record<string, unknown>).extensionUninstalled;
     await vscode.workspace.fs.writeFile(
       configUri,
@@ -196,9 +205,25 @@ export async function runSetup(
     CREATE_SPEC_MD,
     "rules/CREATE_SPEC.md",
   );
+  // Shared rules — at skills/ root
+  const skillsDirUri = vscode.Uri.joinPath(mentorDirUri, "skills");
+  await vscode.workspace.fs.createDirectory(skillsDirUri);
+  await writeTemplate(
+    vscode.Uri.joinPath(skillsDirUri, "shared-rules.md"),
+    SHARED_RULES_MD,
+    "skills/shared-rules.md",
+  );
+
+  // Teaching cycle reference — at skills/ root
+  await writeTemplate(
+    vscode.Uri.joinPath(skillsDirUri, "teaching-cycle-reference.md"),
+    TEACHING_CYCLE_REFERENCE_MD,
+    "skills/teaching-cycle-reference.md",
+  );
+
+  // Mentor session skill
   const mentorSessionDirUri = vscode.Uri.joinPath(
-    mentorDirUri,
-    "skills",
+    skillsDirUri,
     "mentor-session",
   );
   await vscode.workspace.fs.createDirectory(mentorSessionDirUri);
@@ -212,12 +237,54 @@ export async function runSetup(
     TRACKER_FORMAT_MD,
     "skills/mentor-session/tracker-format.md",
   );
-  const intakeDirUri = vscode.Uri.joinPath(mentorDirUri, "skills", "intake");
+
+  // Review skill
+  const reviewDirUri = vscode.Uri.joinPath(skillsDirUri, "review");
+  await vscode.workspace.fs.createDirectory(reviewDirUri);
+  await writeTemplate(
+    vscode.Uri.joinPath(reviewDirUri, "SKILL.md"),
+    REVIEW_SKILL_MD,
+    "skills/review/SKILL.md",
+  );
+
+  // Comprehension check skill
+  const comprehensionDirUri = vscode.Uri.joinPath(
+    skillsDirUri,
+    "comprehension-check",
+  );
+  await vscode.workspace.fs.createDirectory(comprehensionDirUri);
+  await writeTemplate(
+    vscode.Uri.joinPath(comprehensionDirUri, "SKILL.md"),
+    COMPREHENSION_CHECK_SKILL_MD,
+    "skills/comprehension-check/SKILL.md",
+  );
+
+  // Implementation review skill
+  const implReviewDirUri = vscode.Uri.joinPath(
+    skillsDirUri,
+    "implementation-review",
+  );
+  await vscode.workspace.fs.createDirectory(implReviewDirUri);
+  await writeTemplate(
+    vscode.Uri.joinPath(implReviewDirUri, "SKILL.md"),
+    IMPLEMENTATION_REVIEW_SKILL_MD,
+    "skills/implementation-review/SKILL.md",
+  );
+
+  // Intake skill
+  const intakeDirUri = vscode.Uri.joinPath(skillsDirUri, "intake");
   await vscode.workspace.fs.createDirectory(intakeDirUri);
   await writeTemplate(
     vscode.Uri.joinPath(intakeDirUri, "SKILL.md"),
     INTAKE_SKILL_MD,
     "skills/intake/SKILL.md",
+  );
+
+  // CLI tool — always overwrite so updates take effect
+  await writeTemplate(
+    vscode.Uri.joinPath(toolsDirUri, "mentor-cli.js"),
+    MENTOR_CLI_JS,
+    "tools/mentor-cli.js",
   );
 
   // Data files — only write if missing
