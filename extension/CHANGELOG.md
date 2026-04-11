@@ -8,7 +8,7 @@ All notable changes to "Mentor Studio Code" will be documented in this file.
 
 - Review, Comprehension Check, and Implementation Review as separate skill files — each flow now has its own `SKILL.md` with dedicated "First Steps" for loading only the context it needs
 - Shared rules file (`skills/shared-rules.md`) — BLOCKING RULE, CLI Tool, NEVER list, and External Skill Handoff extracted into a single shared reference loaded by all skills
-- CLI tool (`tools/mentor-cli.js`) — Node.js CLI that handles backup, validation, and atomic writes for `question-history.json`, `progress.json`, and `config.json`; AI must use CLI commands instead of directly editing these JSON files
+- CLI tool (`tools/mentor-cli.js`) — Node.js CLI that handles backup and validation for `question-history.json`, `progress.json`, and `config.json`; AI must use CLI commands instead of directly editing these JSON files
 - CLI `session-brief` command — returns flow-specific filtered data for session start, replacing raw file reads of progress.json and question-history.json
 - CLI `list-unresolved` command — returns filtered and sorted unresolved gaps for mid-session review loops
 - CLI `get-history-by-ids` command — returns specific question-history entries by ID

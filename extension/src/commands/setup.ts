@@ -207,6 +207,7 @@ export async function runSetup(
   );
   // Shared rules — at skills/ root
   const skillsDirUri = vscode.Uri.joinPath(mentorDirUri, "skills");
+  await vscode.workspace.fs.createDirectory(skillsDirUri);
   await writeTemplate(
     vscode.Uri.joinPath(skillsDirUri, "shared-rules.md"),
     SHARED_RULES_MD,

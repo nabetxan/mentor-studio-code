@@ -357,7 +357,9 @@ const commands = {
       ? allGaps.filter(function (g) { return g.topic === topic; })
       : allGaps;
     filtered = filtered.slice().sort(function (a, b) {
-      return a.last_missed < b.last_missed ? -1 : 1;
+      var ta = a.last_missed || "";
+      var tb = b.last_missed || "";
+      return ta < tb ? -1 : ta > tb ? 1 : 0;
     });
     var gaps = filtered.map(function (g) {
       return { questionId: g.questionId, topic: g.topic, concept: g.concept, lastMissed: g.last_missed, task: g.task, note: g.note };
@@ -371,16 +373,15 @@ const commands = {
     if (!ids || !Array.isArray(ids)) return fail("missing_field: ids (array)");
     var hist = readJSON(HISTORY_PATH);
     var all = hist.history || [];
-    var idSet = {};
-    for (var i = 0; i < ids.length; i++) idSet[ids[i]] = true;
+    var idSet = new Set(ids);
     var entries = [];
     for (var j = 0; j < all.length; j++) {
-      if (idSet[all[j].id]) {
+      if (idSet.has(all[j].id)) {
         entries.push(all[j]);
-        delete idSet[all[j].id];
+        idSet.delete(all[j].id);
       }
     }
-    var notFound = Object.keys(idSet);
+    var notFound = Array.from(idSet);
     ok({ entries: entries, notFound: notFound });
   },
 

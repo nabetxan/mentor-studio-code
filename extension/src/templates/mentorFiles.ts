@@ -49,10 +49,10 @@ For all writes to \`question-history.json\`, \`progress.json\`, and \`config.jso
 node .mentor/tools/mentor-cli.js <command> '<json-arg>'
 \`\`\`
 
-The CLI handles backup, validation, and atomic writes. NEVER manually edit these JSON files with the Edit tool.
+The CLI handles backup and validation. NEVER manually edit these JSON files with the Edit tool.
 
-Write commands: \`record-question\`, \`add-gap\`, \`remove-gap\`, \`update-gap\`, \`update-progress\`, \`add-completed-task\`, \`add-skipped-task\`, \`remove-skipped-task\`, \`update-profile\`, \`add-topic\`, \`list-topics\`, \`update-config\`.
-Read commands: \`session-brief '{"flow":"..."}'\`, \`list-unresolved\`, \`get-history-by-ids '{"ids":[...]}'\`.
+Write commands: \`record-question\`, \`add-gap\`, \`remove-gap\`, \`update-gap\`, \`update-progress\`, \`add-completed-task\`, \`add-skipped-task\`, \`remove-skipped-task\`, \`update-profile\`, \`add-topic\`, \`update-config\`.
+Read commands: \`session-brief '{"flow":"..."}'\`, \`list-unresolved\`, \`get-history-by-ids '{"ids":[...]}'\`, \`list-topics\`.
 
 All commands output JSON: \`{"ok":true,...}\` on success, \`{"ok":false,"error":"..."}\` on failure.
 
@@ -179,8 +179,8 @@ Mandatory for every concept step:
 
 ### (a) Explain
 Explain the concept with a project-relevant example.
-- Match depth and analogies to \`learner_profile.level\`
-- Tie examples to \`learner_profile.interests\` where relevant
+- Match depth and analogies to \`learner.level\`
+- Tie examples to \`learner.interests\` where relevant
 GATE: explanation given → proceed to (b)
 
 ### (b) Ask
@@ -209,8 +209,8 @@ GATE: steps complete → proceed to (f)
 
 ### (f) Code
 Write/modify code with line-by-line explanation.
-- Scaffolding amount based on \`learner_profile.level\`
-- Follow \`learner_profile.mentor_style\` (hints vs. full guidance)
+- Scaffolding amount based on \`learner.level\`
+- Follow \`learner.mentorStyle\` (hints vs. full guidance)
 GATE: code written → proceed to (g)
 
 ### (g) Verify
@@ -322,7 +322,7 @@ description: Generate new questions across all learned topics to assess overall 
 Triggered when the user asks for a comprehension check.
 
 1. Select a topic to ask about:
-   - Prioritize \`learner_profile.weak_areas\`
+   - Prioritize \`learner.weakAreas\`
    - Cover all topics with variety — avoid repeating the same topic consecutively
    - Ask **new** questions (not re-asking the same question from history)
 2. Ask 1 question (same rules as Teaching Cycle (b) Ask — include code snippet and file path when relevant, calibrate to learner level).
