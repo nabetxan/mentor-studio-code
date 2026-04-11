@@ -51,7 +51,8 @@ node .mentor/tools/mentor-cli.js <command> '<json-arg>'
 
 The CLI handles backup, validation, and atomic writes. NEVER manually edit these JSON files with the Edit tool.
 
-Commands: \`record-question\`, \`add-gap\`, \`remove-gap\`, \`update-gap\`, \`update-progress\`, \`add-completed-task\`, \`add-skipped-task\`, \`remove-skipped-task\`, \`update-profile\`, \`add-topic\`, \`list-topics\`, \`update-config\`.
+Write commands: \`record-question\`, \`add-gap\`, \`remove-gap\`, \`update-gap\`, \`update-progress\`, \`add-completed-task\`, \`add-skipped-task\`, \`remove-skipped-task\`, \`update-profile\`, \`add-topic\`, \`list-topics\`, \`update-config\`.
+Read commands: \`session-brief '{"flow":"..."}'\`, \`list-unresolved\`, \`get-history-by-ids '{"ids":[...]}'\`.
 
 All commands output JSON: \`{"ok":true,...}\` on success, \`{"ok":false,"error":"..."}\` on failure.
 
@@ -63,6 +64,15 @@ All commands output JSON: \`{"ok":true,...}\` on success, \`{"ok":false,"error":
 - Proceed past a GATE without meeting its condition
 - Run an external skill/agent AND the mentor Teaching Cycle at the same time
 - Directly edit \`question-history.json\`, \`progress.json\`, or \`config.json\` with the Edit/Write tool (use CLI instead)
+
+## Data Access Rule
+
+Never read \`progress.json\` or \`question-history.json\` directly. Use CLI commands for all data access:
+- Session start: \`session-brief '{"flow":"..."}'\`
+- Mid-session gap list: \`list-unresolved\` or \`list-unresolved '{"topic":"..."}'\`
+- Specific history entries: \`get-history-by-ids '{"ids":["q_...","q_..."]}'\`
+
+CLI output uses camelCase for field names (e.g. \`weakAreas\` from \`weak_areas\`, \`lastMissed\` from \`last_missed\`).
 
 ## External Skill / Agent Handoff
 
@@ -88,6 +98,59 @@ Do NOT attempt to return to the Teaching Cycle within the same session after han
 - Code conventions: \`CLAUDE.md\`
 `;
 
+export const TEACHING_CYCLE_REFERENCE_MD = `---
+name: teaching-cycle-reference
+description: Feedback and RECORD procedure shared by all mentor flows.
+---
+
+# Teaching Cycle Reference
+
+## (d) Feedback
+Affirm effort, then judge and respond:
+- **Correct** → affirm and reinforce with example.
+- **Close / partial** → affirm what's right, give hint or rephrase.
+  Do NOT reveal the answer. WAIT for retry.
+  Repeat until correct or user gives up.
+- **Wrong** → acknowledge without judgment, try a simpler sub-question,
+  concrete example, or different angle. Do NOT immediately give the full
+  answer. WAIT for retry. If stuck after 2 attempts, explain the answer.
+
+When user answers correctly after hints, or when you explain → give feedback.
+
+After feedback, **always** ask if OK to proceed and WAIT. The user may:
+- Ask follow-up questions
+- Confirm understanding
+- Acknowledge (OK, etc.)
+
+Answer follow-ups before proceeding.
+GATE: feedback given AND user confirmed → proceed to (e)
+
+## (e) RECORD ← BLOCKING
+
+Execute in order:
+
+1. Check topic: \`node .mentor/tools/mentor-cli.js list-topics\`
+   - If no matching topic → \`node .mentor/tools/mentor-cli.js add-topic '{"key":"a-<kebab>","label":"<Name>"}'\`
+2. Record question:
+   \`node .mentor/tools/mentor-cli.js record-question '{"taskId":"...","topic":"...","concept":"...","question":"...","userAnswer":"...","isCorrect":true/false,"reviewOf":null}'\`
+   - \`isCorrect\`: true ONLY if correct on first attempt without hints/sub-questions/explanations
+   - \`userAnswer\`: single-turn as-is; multi-turn: "[first] → (after hint) [final]"
+3. Update gaps:
+   - \`isCorrect: true\` (regular) → no gap action
+   - \`isCorrect: true\` (review, i.e. reviewOf is set) → \`node .mentor/tools/mentor-cli.js remove-gap <root_questionId>\`
+   - \`isCorrect: false\` (new question) → \`node .mentor/tools/mentor-cli.js add-gap '{"questionId":"...","topic":"...","concept":"...","last_missed":"<answeredAt>","task":"...","note":"..."}'\`
+   - \`isCorrect: false\` (review, i.e. reviewOf is set) → \`node .mentor/tools/mentor-cli.js update-gap <root_questionId> '{"last_missed":"<answeredAt>"}'\`
+4. Post-record checks — evaluate ALL, ask one at a time, wait for each:
+   - weak_areas concept answered correctly in different context → ask remove?
+   - Repeated struggles on concept not in weak_areas → ask add?
+   - Strong interest shown → ask add to interests?
+   - On YES: \`node .mentor/tools/mentor-cli.js update-profile '{"weak_areas":[...]}'\` or \`'{"interests":[...]}'\`
+   - On NO: no change
+   - None apply → proceed
+
+GATE: steps 1-4 complete → return to calling flow
+`;
+
 export const MENTOR_SESSION_SKILL_MD = `---
 name: mentor-session
 description: Main learning session — loads session state, runs Teaching Cycle, manages task progression.
@@ -97,14 +160,16 @@ description: Main learning session — loads session state, runs Teaching Cycle,
 
 ## First Steps
 1. Read \`.mentor/skills/shared-rules.md\`
-2. Read \`.mentor/progress.json\` → check current_task, resume_context, unresolved_gaps, learner_profile
-3. Read \`.mentor/current-task.md\`
+2. Read \`.mentor/skills/teaching-cycle-reference.md\`
+3. Run: \`node .mentor/tools/mentor-cli.js session-brief '{"flow":"mentor-session"}'\`
+   - If the command returns \`{"ok": false, ...}\`, tell the user the error and STOP.
+4. Read \`.mentor/current-task.md\`
 
 ## Session Start
 
-1. If \`learner_profile.last_updated\` is null → load \`.mentor/skills/intake/SKILL.md\` and run Intake flow before proceeding. When Intake returns, continue to step 2 with the now-populated \`learner_profile\` in context.
-2. (Conditional) If unresolved_gaps match current task topic → propose a quick review before beginning
-3. (Always) If current_task is actively in progress, suggest continuing it; otherwise ask the user what they would like to work on today.
+1. If \`learner.lastUpdated\` is null → load \`.mentor/skills/intake/SKILL.md\` and run Intake flow before proceeding. When Intake returns, continue to step 2 with the now-populated learner data in context.
+2. (Conditional) If relevantGaps from session-brief match current task topic → propose a quick review before beginning
+3. (Always) If currentTask from session-brief is actively in progress, suggest continuing it; otherwise ask the user what they would like to work on today.
 
 Do NOT load other docs at session start.
 
@@ -119,11 +184,11 @@ Explain the concept with a project-relevant example.
 GATE: explanation given → proceed to (b)
 
 ### (b) Ask
-Check \`unresolved_gaps\` in progress.json:
+Check \`relevantGaps\` from session-brief output:
 - Gaps related to this task's topic → ask a review question on that gap first.
 - No relevant gaps → ask 1 question about the concept needed for this step.
-  - Calibrate question difficulty to \`learner_profile.level\`
-  - Prioritize \`learner_profile.weak_areas\` topics when a related concept appears
+  - Calibrate question difficulty to \`learner.level\`
+  - Prioritize \`learner.weakAreas\` topics when a related concept appears
 - **Context rule**: When the question involves code, ALWAYS include:
   - The relevant code snippet (inline or fenced block)
   - The file path where the code lives (e.g. \`extension/src/services/foo.ts\`)
@@ -135,23 +200,11 @@ Do NOT continue until the user responds.
 GATE: user responded → proceed to (d)
 
 ### (d) Feedback
-Affirm effort, then judge and respond:
-- **Correct** (core concept accurately captured without help) → affirm and reinforce with example.
-- **Close / partial** (some correct elements but misses or misunderstands the core point) → affirm what's right, then give a hint or rephrase the question from a different angle. Do NOT reveal the answer yet. WAIT for user to try again. Repeat until correct or user says they give up.
-- **Wrong** (misses the core concept entirely, or contradicts the correct answer; any form of "I don't know" is also Wrong) → acknowledge without judgment, then try ONE of: a simpler sub-question, a concrete example, or a different angle. Do NOT immediately give the full answer. WAIT for user to try again. If still stuck after 2 attempts, then explain the answer.
-
-When the user eventually answers correctly after hints/sub-questions, or when you explain the answer → give feedback on their understanding.
-
-After feedback is complete, **always** ask if it's OK to proceed and WAIT (every time, not just after hints). The user may:
-- Ask follow-up questions about the feedback
-- Confirm understanding
-- Simply acknowledge (OK, etc.)
-
-Answer any follow-up questions before proceeding. Once the user is satisfied (or explicitly says to move on), proceed to (e).
-GATE: feedback given AND user confirmed to proceed → proceed to (e) (NOT (f))
+→ Follow teaching-cycle-reference.md (d) Feedback.
+GATE: feedback given AND user confirmed → proceed to (e)
 
 ### (e) RECORD ← BLOCKING
-Follow the **RECORD Procedure** below.
+→ Follow teaching-cycle-reference.md (e) RECORD procedure.
 GATE: steps complete → proceed to (f)
 
 ### (f) Code
@@ -165,20 +218,17 @@ Ask exactly 1 verification question about the code just written.
 GATE: question asked → WAIT for user response, then proceed to (h)
 
 ### (h) Feedback
-Follow Teaching Cycle (d) Feedback rules: affirm effort, judge correctness, give hints if partial/wrong, ask if OK to proceed and WAIT.
-GATE: feedback given AND user confirmed to proceed → proceed to (i) (NOT (f))
+→ Follow teaching-cycle-reference.md (d) Feedback.
+GATE: feedback given AND user confirmed → proceed to (i)
 
 ### (i) RECORD ← BLOCKING
-Follow the **RECORD Procedure** below. Then additionally:
-1. Update progress:
-   \`\`\`bash
-   node .mentor/tools/mentor-cli.js update-progress '{"current_step":"Task X, Step Y complete","resume_context":"Task X Step Y done. Next: ..."}'
-   \`\`\`
-2. Tell the user that progress has been saved and they can continue from here in a new session.
-
+→ Follow teaching-cycle-reference.md (e) RECORD procedure.
+Additionally after RECORD:
+1. Update progress: \`node .mentor/tools/mentor-cli.js update-progress '{"current_step":"...","resume_context":"..."}'\`
+2. Tell user progress saved.
 GATE: steps complete → check current task steps.
 - More steps remain → start next step from (a)
-- All steps complete → run **Task Completion** flow
+- All steps complete → run Task Completion flow
 
 ## Task Skip
 
@@ -213,57 +263,6 @@ Run in order, never skip:
    \`\`\`
 
 Steps 3 and 4 MUST complete before the session ends. If the session ends before these steps, the next session will start with stale \`current-task.md\`.
-
-## RECORD Procedure
-
-Execute in order:
-
-1. Check if the concept's topic exists:
-   \`\`\`bash
-   node .mentor/tools/mentor-cli.js list-topics
-   \`\`\`
-   If no matching topic → add it (prefix \`a-\` required for AI-generated keys):
-   \`\`\`bash
-   node .mentor/tools/mentor-cli.js add-topic '{"key":"a-<kebab-case>","label":"<Display Name>"}'
-   \`\`\`
-
-2. Record the question:
-   \`\`\`bash
-   node .mentor/tools/mentor-cli.js record-question '{"taskId":"...","topic":"...","concept":"...","question":"...","userAnswer":"...","isCorrect":true/false,"reviewOf":null}'
-   \`\`\`
-   - \`isCorrect\`: true ONLY if correct on first attempt without hints/sub-questions/explanations
-   - \`userAnswer\`: single-turn: as-is; multi-turn: "[first answer] → (after hint) [final answer]"
-   - \`reviewOf\`: null for first-time questions; for review questions, always the root question ID
-
-3. Based on result:
-   - \`isCorrect: false\` + new question (not a review) → add gap:
-     \`\`\`bash
-     node .mentor/tools/mentor-cli.js add-gap '{"questionId":"<returned id>","topic":"...","concept":"...","last_missed":"<now ISO8601>","task":"...","note":"<what was misunderstood>"}'
-     \`\`\`
-   - \`isCorrect: false\` + reviewing existing gap → do NOT add a new gap. Only update the existing gap's last_missed:
-     \`\`\`bash
-     node .mentor/tools/mentor-cli.js update-gap <root-questionId> '{"last_missed":"<now ISO8601>"}'
-     \`\`\`
-   - \`isCorrect: true\` + reviewing unresolved_gap → remove gap:
-     \`\`\`bash
-     node .mentor/tools/mentor-cli.js remove-gap <root-questionId>
-     \`\`\`
-   - \`isCorrect: true\` + regular question → no additional action
-
-4. Post-record checks — evaluate ALL of the following. For each that applies, ask the user one at a time and wait for each answer before asking the next:
-   - Concept in \`weak_areas\` answered correctly (\`isCorrect: true\`) in a different context → ask if it should be removed from weak_areas
-   - Concept not in \`weak_areas\` where user struggles repeatedly → ask if it should be added to weak_areas
-   - Strong interest shown in a topic → ask if it should be added to interests
-   - On YES:
-     \`\`\`bash
-     node .mentor/tools/mentor-cli.js update-profile '{"weak_areas":[...]}'
-     \`\`\`
-     or
-     \`\`\`bash
-     node .mentor/tools/mentor-cli.js update-profile '{"interests":[...]}'
-     \`\`\`
-   - On NO: no change
-   - If none apply, proceed.
 `;
 
 export const REVIEW_SKILL_MD = `---
@@ -275,9 +274,9 @@ description: Review / practice previously missed concepts from unresolved_gaps.
 
 ## First Steps
 1. Read \`.mentor/skills/shared-rules.md\`
-2. Read \`.mentor/skills/mentor-session/SKILL.md\` (for Teaching Cycle reference)
-3. Read \`.mentor/progress.json\` (unresolved_gaps + learner_profile)
-4. Read \`.mentor/question-history.json\`
+2. Read \`.mentor/skills/teaching-cycle-reference.md\`
+3. Run: \`node .mentor/tools/mentor-cli.js session-brief '{"flow":"review"}'\` (add \`"topic"\` if user specified one)
+   - If the command returns \`{"ok": false, ...}\`, tell the user the error and STOP.
 
 ## Flow
 
@@ -286,19 +285,20 @@ Triggered when the user asks to review / practice previously missed concepts.
 **Scope**: If a specific topic is specified, filter \`unresolved_gaps\` to that topic only. Otherwise, use all \`unresolved_gaps\`.
 
 1. If a specific topic is specified, filter gaps to that topic only. If no matching gaps exist for the specified topic, tell the user that there are no review items for that topic and stop.
-2. Read \`learner_profile\` from \`progress.json\` to calibrate difficulty.
+2. Use \`learner\` data from session-brief output to calibrate difficulty.
 3. Select an unresolved gap to review:
    - Prioritize gaps with older \`last_missed\` dates (least recently revisited first)
    - Ask the concept in a **different context** from the original question (not a re-phrasing of the same question)
 4. Ask 1 review question (same rules as Teaching Cycle (b) Ask — include code snippet and file path when relevant, calibrate to learner level). Set \`reviewOf\` to the root question ID.
    GATE: question asked → WAIT for user
-5. Follow Teaching Cycle (c)→(e): Wait → Feedback → RECORD (on correct: remove from unresolved_gaps; on wrong: keep in unresolved_gaps).
-6. After recording:
+5. WAIT for user response, then follow teaching-cycle-reference.md (d) Feedback → (e) RECORD
+6. After RECORD, to get the updated gap list: Run: \`node .mentor/tools/mentor-cli.js list-unresolved\` (or with \`'{"topic":"..."}'\` if topic-scoped)
+7. After recording:
    - If target gaps are now empty (all gaps for the specified topic, or all gaps if no topic was specified) → congratulate the user that all review items are cleared and stop.
    - Otherwise → ask the user whether they want to continue with another question or see a results summary.
      - User wants to continue → go back to step 3
-     - User wants the summary → proceed to step 7
-7. Show a results summary:
+     - User wants the summary → proceed to step 8
+8. Show a results summary:
    - Number of review questions answered in this session
    - Correct / incorrect breakdown
    - Remaining unresolved gaps (if any)
@@ -313,10 +313,9 @@ description: Generate new questions across all learned topics to assess overall 
 
 ## First Steps
 1. Read \`.mentor/skills/shared-rules.md\`
-2. Read \`.mentor/skills/mentor-session/SKILL.md\` (for Teaching Cycle reference)
-3. Read \`.mentor/question-history.json\`
-4. Read \`.mentor/config.json\` (topics)
-5. Read \`.mentor/progress.json\` (learner_profile)
+2. Read \`.mentor/skills/teaching-cycle-reference.md\`
+3. Run: \`node .mentor/tools/mentor-cli.js session-brief '{"flow":"comprehension-check"}'\`
+   - If the command returns \`{"ok": false, ...}\`, tell the user the error and STOP.
 
 ## Flow
 
@@ -328,7 +327,7 @@ Triggered when the user asks for a comprehension check.
    - Ask **new** questions (not re-asking the same question from history)
 2. Ask 1 question (same rules as Teaching Cycle (b) Ask — include code snippet and file path when relevant, calibrate to learner level).
    GATE: question asked → WAIT for user
-3. Follow Teaching Cycle (c)→(e): Wait → Feedback → RECORD.
+3. WAIT for user response, then follow teaching-cycle-reference.md (d) Feedback → (e) RECORD
 4. After recording, ask the user whether they want to continue with another question or see a results summary.
    - User wants to continue → go back to step 1
    - User wants the summary → proceed to step 5
@@ -350,8 +349,10 @@ description: Review the current task's implementation against requirements.
 
 ## First Steps
 1. Read \`.mentor/skills/shared-rules.md\`
-2. Read \`.mentor/skills/mentor-session/SKILL.md\` (for Teaching Cycle reference)
-3. Read \`.mentor/current-task.md\`
+2. Read \`.mentor/skills/teaching-cycle-reference.md\`
+3. Run: \`node .mentor/tools/mentor-cli.js session-brief '{"flow":"implementation-review"}'\`
+   - If the command returns \`{"ok": false, ...}\`, tell the user the error and STOP.
+4. Read \`.mentor/current-task.md\` (full task requirements — session-brief only provides the task ID)
 
 ## Flow
 
@@ -365,7 +366,7 @@ Triggered when the user asks to review the current task's implementation.
 3. Give feedback on the implementation.
 4. Ask 1 question about the implementation choices (same rules as Teaching Cycle (b) Ask — include code snippet and file path).
    GATE: question asked → WAIT for user
-5. Follow Teaching Cycle (c)→(e): Wait → Feedback → RECORD.
+5. WAIT for user response, then follow teaching-cycle-reference.md (d) Feedback → (e) RECORD
 6. After recording, update progress:
    \`\`\`bash
    node .mentor/tools/mentor-cli.js update-progress '{"resume_context":"..."}'

@@ -14,6 +14,7 @@ import {
   QUESTION_HISTORY_JSON,
   REVIEW_SKILL_MD,
   SHARED_RULES_MD,
+  TEACHING_CYCLE_REFERENCE_MD,
   TRACKER_FORMAT_MD,
 } from "../templates/mentorFiles";
 
@@ -210,6 +211,13 @@ export async function runSetup(
     vscode.Uri.joinPath(skillsDirUri, "shared-rules.md"),
     SHARED_RULES_MD,
     "skills/shared-rules.md",
+  );
+
+  // Teaching cycle reference — at skills/ root
+  await writeTemplate(
+    vscode.Uri.joinPath(skillsDirUri, "teaching-cycle-reference.md"),
+    TEACHING_CYCLE_REFERENCE_MD,
+    "skills/teaching-cycle-reference.md",
   );
 
   // Mentor session skill
