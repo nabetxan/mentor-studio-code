@@ -41,18 +41,24 @@ describe("bootstrapDb", () => {
     const dbPath = join(dir, "data.db");
     await bootstrapDb(dbPath, {
       wasmPath: WASM,
-      topics: [
-        { key: "a-js", label: "JS" },
-        { key: "a-ts", label: "TS" },
-      ],
+      topics: [{ label: "JS" }, { label: "TS" }],
     });
     const SQL = await loadSqlJs(WASM);
     const db = new SQL.Database(readFileSync(dbPath));
-    const rows = db.exec("SELECT key,label FROM topics ORDER BY key")[0].values;
+    const rows = db.exec("SELECT id, label FROM topics ORDER BY id")[0].values;
     expect(rows).toEqual([
-      ["a-js", "JS"],
-      ["a-ts", "TS"],
+      [1, "JS"],
+      [2, "TS"],
     ]);
+  });
+
+  it("leaves topics empty when topics: []", async () => {
+    const dbPath = join(dir, "data.db");
+    await bootstrapDb(dbPath, { wasmPath: WASM, topics: [] });
+    const SQL = await loadSqlJs(WASM);
+    const db = new SQL.Database(readFileSync(dbPath));
+    const count = db.exec("SELECT COUNT(*) FROM topics")[0].values[0][0];
+    expect(count).toBe(0);
   });
 
   it("refuses to overwrite an existing DB", async () => {

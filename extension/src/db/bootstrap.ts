@@ -6,7 +6,7 @@ import { loadSqlJs } from "./sqlJsLoader";
 
 export interface BootstrapOptions {
   wasmPath: string;
-  topics: { key: string; label: string }[];
+  topics: { label: string }[];
 }
 
 export async function bootstrapDb(
@@ -31,9 +31,9 @@ export async function bootstrapDb(
       try {
         db.exec(SCHEMA_DDL);
         if (opts.topics.length > 0) {
-          const stmt = db.prepare("INSERT INTO topics(key,label) VALUES (?,?)");
+          const stmt = db.prepare("INSERT INTO topics(label) VALUES (?)");
           try {
-            for (const t of opts.topics) stmt.run([t.key, t.label]);
+            for (const t of opts.topics) stmt.run([t.label]);
           } finally {
             stmt.free();
           }

@@ -53,14 +53,59 @@ describe("SCHEMA_DDL", () => {
     ).toThrow();
   });
 
+  it("inserts a topic with only label and auto-assigns id", async () => {
+    const db = await createDb();
+    db.exec(`INSERT INTO topics(label) VALUES ('JS')`);
+    const result = db.exec(`SELECT id, label FROM topics`)[0];
+    expect(result.values.length).toBe(1);
+    const [id, label] = result.values[0];
+    expect(typeof id).toBe("number");
+    expect(label).toBe("JS");
+  });
+
+  it("allows duplicate labels with distinct ids (spec §9 prefix-collision behavior)", async () => {
+    const db = await createDb();
+    db.exec(`INSERT INTO topics(label) VALUES ('JavaScript')`);
+    db.exec(`INSERT INTO topics(label) VALUES ('JavaScript')`);
+    const result = db.exec(`SELECT id, label FROM topics ORDER BY id`)[0];
+    expect(result.values.length).toBe(2);
+    const [id1] = result.values[0];
+    const [id2] = result.values[1];
+    expect(id1).not.toBe(id2);
+    expect(result.values[0][1]).toBe("JavaScript");
+    expect(result.values[1][1]).toBe("JavaScript");
+  });
+
   it("rejects deletion of referenced topic (ON DELETE RESTRICT)", async () => {
     const db = await createDb();
     db.exec(`PRAGMA foreign_keys = ON`);
-    db.exec(`INSERT INTO topics(key,label) VALUES ('a-js','JS')`);
+    db.exec(`INSERT INTO topics(label) VALUES ('JS')`);
+    const topicIdResult = db.exec(`SELECT id FROM topics WHERE label='JS'`)[0];
+    const topicId = topicIdResult.values[0][0] as number;
     db.exec(
-      `INSERT INTO questions(lastAnsweredAt,topicKey,concept,question,userAnswer,isCorrect) VALUES ('2026-01-01T00:00:00Z','a-js','c','q','a',1)`,
+      `INSERT INTO questions(lastAnsweredAt,topicId,concept,question,userAnswer,isCorrect) VALUES ('2026-01-01T00:00:00Z',${topicId},'c','q','a',1)`,
     );
-    expect(() => db.exec(`DELETE FROM topics WHERE key='a-js'`)).toThrow();
+    expect(() => db.exec(`DELETE FROM topics WHERE id=${topicId}`)).toThrow();
+  });
+
+  it("rejects inserting a question with a non-existent topicId (FK violation)", async () => {
+    const db = await createDb();
+    db.exec(`PRAGMA foreign_keys = ON`);
+    expect(() =>
+      db.exec(
+        `INSERT INTO questions(lastAnsweredAt,topicId,concept,question,userAnswer,isCorrect) VALUES ('2026-01-01T00:00:00Z',999,'c','q','a',1)`,
+      ),
+    ).toThrow();
+  });
+
+  it("has idx_questions_topicId index", async () => {
+    const db = await createDb();
+    const rows = db
+      .exec(
+        `SELECT name FROM sqlite_master WHERE type='index' AND name='idx_questions_topicId'`,
+      )[0]
+      .values.flat();
+    expect(rows).toContain("idx_questions_topicId");
   });
 
   it("sets user_version to 1", async () => {

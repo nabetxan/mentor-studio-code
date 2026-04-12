@@ -1,10 +1,10 @@
 import { existsSync } from "node:fs";
-import { bootstrapDb } from "./bootstrap";
+import { bootstrapDb, type BootstrapOptions } from "./bootstrap";
 import * as integrity from "./integrity";
 
 export interface OpenOptions {
   wasmPath: string;
-  bootstrap?: { topics: { key: string; label: string }[] };
+  bootstrap?: { topics: BootstrapOptions["topics"] };
 }
 
 export interface OpenResult {

@@ -2,7 +2,7 @@ export const SCHEMA_VERSION = 1;
 
 export const SCHEMA_DDL = `
 CREATE TABLE IF NOT EXISTS topics (
-  key TEXT PRIMARY KEY,
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
   label TEXT NOT NULL
 );
 
@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS questions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   lastAnsweredAt TEXT NOT NULL,
   taskId INTEGER,
-  topicKey TEXT NOT NULL,
+  topicId INTEGER NOT NULL,
   concept TEXT NOT NULL,
   question TEXT NOT NULL,
   userAnswer TEXT NOT NULL,
@@ -36,11 +36,11 @@ CREATE TABLE IF NOT EXISTS questions (
   note TEXT,
   attempts INTEGER NOT NULL DEFAULT 1,
   FOREIGN KEY (taskId) REFERENCES tasks(id) ON DELETE RESTRICT,
-  FOREIGN KEY (topicKey) REFERENCES topics(key) ON DELETE RESTRICT
+  FOREIGN KEY (topicId) REFERENCES topics(id) ON DELETE RESTRICT
 );
 
 CREATE INDEX IF NOT EXISTS idx_questions_isCorrect ON questions(isCorrect);
-CREATE INDEX IF NOT EXISTS idx_questions_topicKey ON questions(topicKey);
+CREATE INDEX IF NOT EXISTS idx_questions_topicId ON questions(topicId);
 CREATE INDEX IF NOT EXISTS idx_questions_taskId ON questions(taskId) WHERE taskId IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_tasks_plan_sort ON tasks(planId, sortOrder);
 CREATE INDEX IF NOT EXISTS idx_plans_sort ON plans(sortOrder);

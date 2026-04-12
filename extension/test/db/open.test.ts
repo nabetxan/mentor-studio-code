@@ -23,7 +23,7 @@ describe("openDb", () => {
     const dbPath = join(dir, "data.db");
     const result = await openDb(dbPath, {
       wasmPath: WASM,
-      bootstrap: { topics: [{ key: "a-js", label: "JS" }] },
+      bootstrap: { topics: [{ label: "JS" }] },
     });
     expect(result.created).toBe(true);
     expect(existsSync(dbPath)).toBe(true);

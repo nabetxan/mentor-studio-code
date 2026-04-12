@@ -13,7 +13,7 @@ async function seedDb(dbPath: string) {
   const SQL = await loadSqlJs(WASM);
   const db = new SQL.Database();
   db.exec(SCHEMA_DDL);
-  db.exec(`INSERT INTO topics(key,label) VALUES ('a-js','JS')`);
+  db.exec(`INSERT INTO topics(label) VALUES ('JS')`);
   const bytes = Buffer.from(db.export());
   await writeFile(dbPath, bytes);
   db.close();
@@ -33,16 +33,16 @@ describe("withWriteTransaction", () => {
       dbPath,
       { wasmPath: WASM, purpose: "normal" },
       (db) => {
-        db.exec(`INSERT INTO topics(key,label) VALUES ('a-ts','TS')`);
+        db.exec(`INSERT INTO topics(label) VALUES ('TS')`);
       },
     );
 
     const SQL = await loadSqlJs(WASM);
     const reloaded = new SQL.Database(readFileSync(dbPath));
     const rows = reloaded
-      .exec("SELECT key FROM topics ORDER BY key")[0]
-      .values.flat();
-    expect(rows).toEqual(["a-js", "a-ts"]);
+      .exec("SELECT id, label FROM topics ORDER BY id")[0]
+      .values.map((row) => row[1]);
+    expect(rows).toEqual(["JS", "TS"]);
   });
 
   it("rolls back on thrown error — no partial changes on disk", async () => {
@@ -54,7 +54,7 @@ describe("withWriteTransaction", () => {
         dbPath,
         { wasmPath: WASM, purpose: "normal" },
         (db) => {
-          db.exec(`INSERT INTO topics(key,label) VALUES ('a-ts','TS')`);
+          db.exec(`INSERT INTO topics(label) VALUES ('TS')`);
           throw new Error("boom");
         },
       ),
@@ -62,8 +62,8 @@ describe("withWriteTransaction", () => {
 
     const SQL = await loadSqlJs(WASM);
     const reloaded = new SQL.Database(readFileSync(dbPath));
-    const rows = reloaded.exec("SELECT key FROM topics")[0].values.flat();
-    expect(rows).toEqual(["a-js"]);
+    const rows = reloaded.exec("SELECT label FROM topics")[0].values.flat();
+    expect(rows).toEqual(["JS"]);
   });
 
   it("releases lock after commit", async () => {
@@ -98,19 +98,19 @@ describe("withWriteTransaction", () => {
     const opts = { wasmPath: WASM, purpose: "normal" as const };
     await Promise.all([
       withWriteTransaction(dbPath, opts, (db) =>
-        db.exec(`INSERT INTO topics(key,label) VALUES ('a-a','A')`),
+        db.exec(`INSERT INTO topics(label) VALUES ('A')`),
       ),
       withWriteTransaction(dbPath, opts, (db) =>
-        db.exec(`INSERT INTO topics(key,label) VALUES ('a-b','B')`),
+        db.exec(`INSERT INTO topics(label) VALUES ('B')`),
       ),
       withWriteTransaction(dbPath, opts, (db) =>
-        db.exec(`INSERT INTO topics(key,label) VALUES ('a-c','C')`),
+        db.exec(`INSERT INTO topics(label) VALUES ('C')`),
       ),
     ]);
     const SQL = await loadSqlJs(WASM);
     const reloaded = new SQL.Database(readFileSync(dbPath));
-    const rows = reloaded.exec("SELECT key FROM topics")[0].values.flat();
-    const keys = rows.map((v) => String(v)).sort();
-    expect(keys).toEqual(["a-a", "a-b", "a-c", "a-js"]);
+    const rows = reloaded.exec("SELECT label FROM topics")[0].values.flat();
+    const labels = rows.map((v) => String(v)).sort();
+    expect(labels).toEqual(["A", "B", "C", "JS"]);
   });
 });
