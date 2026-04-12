@@ -1,6 +1,7 @@
+import { promises as fsp } from "node:fs";
+import { join } from "node:path";
 import * as vscode from "vscode";
 import { findMentorRef, promptAndAddMentorRef } from "../services/claudeMd";
-import { MENTOR_CLI_JS } from "../templates/mentorCli";
 import {
   COMPREHENSION_CHECK_SKILL_MD,
   CREATE_PLAN_MD,
@@ -17,6 +18,21 @@ import {
   TEACHING_CYCLE_REFERENCE_MD,
   TRACKER_FORMAT_MD,
 } from "../templates/mentorFiles";
+
+export async function copyCliArtifacts(
+  distDir: string,
+  targetToolsDir: string,
+): Promise<void> {
+  await fsp.mkdir(targetToolsDir, { recursive: true });
+  await fsp.copyFile(
+    join(distDir, "mentor-cli.js"),
+    join(targetToolsDir, "mentor-cli.js"),
+  );
+  await fsp.copyFile(
+    join(distDir, "sql-wasm.wasm"),
+    join(targetToolsDir, "sql-wasm.wasm"),
+  );
+}
 
 async function writeIfMissing(
   uri: vscode.Uri,
@@ -280,12 +296,12 @@ export async function runSetup(
     "skills/intake/SKILL.md",
   );
 
-  // CLI tool — always overwrite so updates take effect
-  await writeTemplate(
-    vscode.Uri.joinPath(toolsDirUri, "mentor-cli.js"),
-    MENTOR_CLI_JS,
-    "tools/mentor-cli.js",
-  );
+  // CLI tool — always overwrite bundled mentor-cli.js and sql-wasm.wasm
+  // so updates to the extension's bundled CLI take effect on setup.
+  const distDir = vscode.Uri.joinPath(context.extensionUri, "dist").fsPath;
+  await copyCliArtifacts(distDir, toolsDirUri.fsPath);
+  createdFiles.push("tools/mentor-cli.js");
+  createdFiles.push("tools/sql-wasm.wasm");
 
   // Data files — only write if missing
   await writeDataIfMissing(

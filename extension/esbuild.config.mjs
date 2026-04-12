@@ -24,7 +24,7 @@ const wasmCopyPlugin = {
 };
 
 /** @type {import('esbuild').BuildOptions} */
-const options = {
+const extensionOptions = {
   entryPoints: ["src/extension.ts"],
   bundle: true,
   outfile: "dist/extension.js",
@@ -37,11 +37,27 @@ const options = {
   plugins: [wasmCopyPlugin],
 };
 
+/** @type {import('esbuild').BuildOptions} */
+const cliOptions = {
+  entryPoints: ["src/cli/main.ts"],
+  bundle: true,
+  outfile: "dist/mentor-cli.js",
+  format: "cjs",
+  platform: "node",
+  target: "node18",
+  sourcemap: false,
+  minify: !isWatch,
+  banner: { js: "#!/usr/bin/env node" },
+};
+
 if (isWatch) {
-  const ctx = await context(options);
-  await ctx.watch();
+  const [extCtx, cliCtx] = await Promise.all([
+    context(extensionOptions),
+    context(cliOptions),
+  ]);
+  await Promise.all([extCtx.watch(), cliCtx.watch()]);
   console.log("Watching for changes...");
 } else {
-  await build(options);
+  await Promise.all([build(extensionOptions), build(cliOptions)]);
   console.log("Build complete");
 }

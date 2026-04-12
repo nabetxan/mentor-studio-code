@@ -86,7 +86,8 @@ function readFixture(filename: string): Record<string, unknown> {
   ) as Record<string, unknown>;
 }
 
-describe("mentor-cli", () => {
+// Phase 2 Task P2-5-3 で削除予定。MENTOR_CLI_JS テンプレは廃止
+describe.skip("mentor-cli", () => {
   beforeEach(() => setupFixtures());
   afterEach(() => rmSync(TMP_ROOT, { recursive: true, force: true }));
 
