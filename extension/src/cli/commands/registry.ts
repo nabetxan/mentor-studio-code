@@ -1,12 +1,12 @@
-import type { CliPaths } from "../context";
+import { listTopics } from "./listTopics";
+import { listUnresolved } from "./listUnresolved";
+import { sessionBrief } from "./sessionBrief";
+import type { CommandMap } from "./types";
 
-export type CommandOk = { ok: true; [k: string]: unknown };
-export type CommandFail = { ok: false; error: string; [k: string]: unknown };
-export type CommandResult = CommandOk | CommandFail;
-export type Command = (
-  args: unknown,
-  paths: CliPaths,
-) => Promise<CommandResult>;
-export type CommandMap = Record<string, Command>;
+export * from "./types";
 
-export const COMMANDS: CommandMap = {};
+export const COMMANDS: CommandMap = {
+  "list-topics": listTopics,
+  "list-unresolved": listUnresolved,
+  "session-brief": sessionBrief,
+};
