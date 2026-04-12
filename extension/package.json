@@ -70,10 +70,12 @@
     "vscode:uninstall": "node scripts/uninstall.js"
   },
   "dependencies": {
-    "@mentor-studio/shared": "*"
+    "@mentor-studio/shared": "*",
+    "sql.js": "^1.10.3"
   },
   "devDependencies": {
     "@types/node": "^18.19.130",
+    "@types/sql.js": "^1.4.11",
     "@types/vscode": "~1.85.0",
     "esbuild": "^0.28.0",
     "typescript": "^5.7.0",
