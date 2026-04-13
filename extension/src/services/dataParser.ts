@@ -1,13 +1,8 @@
 import type {
-  DashboardData,
   LearnerProfile,
   MentorStudioConfig,
   ProgressData,
-  QuestionHistory,
-  QuestionHistoryEntry,
   SkippedTask,
-  TopicConfig,
-  TopicStats,
   UnresolvedGap,
 } from "@mentor-studio/shared";
 
@@ -115,58 +110,6 @@ export function parseProgressData(raw: string): ProgressData | null {
   }
 }
 
-export function parseQuestionHistory(raw: string): QuestionHistory {
-  try {
-    const data: unknown = JSON.parse(raw);
-    if (typeof data !== "object" || data === null) {
-      return { history: [] };
-    }
-    const obj = data as Record<string, unknown>;
-    if (!Array.isArray(obj.history)) {
-      return { history: [] };
-    }
-    let autoIdCounter = 0;
-    const history = obj.history
-      .filter(
-        (entry): entry is Record<string, unknown> =>
-          typeof entry === "object" &&
-          entry !== null &&
-          typeof (entry as Record<string, unknown>).topic === "string" &&
-          typeof (entry as Record<string, unknown>).isCorrect === "boolean",
-      )
-      .map(
-        (entry): QuestionHistoryEntry => ({
-          id:
-            typeof entry.id === "string"
-              ? entry.id
-              : `q_auto${String(autoIdCounter++).padStart(4, "0")}`,
-          reviewOf: typeof entry.reviewOf === "string" ? entry.reviewOf : null,
-          answeredAt:
-            typeof entry.answeredAt === "string"
-              ? (entry.answeredAt as string)
-              : "",
-          taskId:
-            typeof entry.taskId === "string" ? (entry.taskId as string) : "",
-          topic: entry.topic as string,
-          concept:
-            typeof entry.concept === "string" ? (entry.concept as string) : "",
-          question:
-            typeof entry.question === "string"
-              ? (entry.question as string)
-              : "",
-          userAnswer:
-            typeof entry.userAnswer === "string"
-              ? (entry.userAnswer as string)
-              : "",
-          isCorrect: entry.isCorrect as boolean,
-        }),
-      );
-    return { history };
-  } catch {
-    return { history: [] };
-  }
-}
-
 export function parseConfig(raw: string): MentorStudioConfig | null {
   try {
     const data: unknown = JSON.parse(raw);
@@ -174,10 +117,11 @@ export function parseConfig(raw: string): MentorStudioConfig | null {
       return null;
     }
     const obj = data as Record<string, unknown>;
-    if (typeof obj.repositoryName !== "string" || !Array.isArray(obj.topics)) {
+    if (typeof obj.repositoryName !== "string") {
       return null;
     }
-    const topics = (obj.topics as unknown[]).filter(
+    const rawTopics = Array.isArray(obj.topics) ? obj.topics : [];
+    const topics = rawTopics.filter(
       (item): item is { key: string; label: string } =>
         typeof item === "object" &&
         item !== null &&
@@ -223,94 +167,4 @@ export function parseConfig(raw: string): MentorStudioConfig | null {
   } catch {
     return null;
   }
-}
-
-export function computeDashboardData(
-  progress: ProgressData,
-  history: QuestionHistory,
-  topics: TopicConfig[],
-): DashboardData {
-  const entries = history.history;
-  const totalQuestions = entries.length;
-
-  // Build set of all known IDs for orphan detection
-  const allIds = new Set(entries.map((e) => e.id));
-
-  // Group entries by root ID
-  const groups = new Map<string, QuestionHistoryEntry[]>();
-  for (const entry of entries) {
-    let rootId: string;
-    if (entry.reviewOf === null || !allIds.has(entry.reviewOf)) {
-      rootId = entry.id;
-    } else {
-      rootId = entry.reviewOf;
-    }
-    const group = groups.get(rootId) ?? [];
-    group.push(entry);
-    groups.set(rootId, group);
-  }
-
-  // Pick latest entry per group (last in array order for tie-breaking)
-  const latestPerGroup: QuestionHistoryEntry[] = [];
-  for (const group of groups.values()) {
-    let latest = group[0];
-    for (let i = 1; i < group.length; i++) {
-      if (group[i].answeredAt >= latest.answeredAt) {
-        latest = group[i];
-      }
-    }
-    latestPerGroup.push(latest);
-  }
-
-  const numberOfGroups = latestPerGroup.length;
-  const latestCorrectCount = latestPerGroup.filter((e) => e.isCorrect).length;
-  const correctRate =
-    numberOfGroups > 0 ? latestCorrectCount / numberOfGroups : 0;
-
-  // Per-topic stats (group-based)
-  const topicMap = new Map<string, { correct: number; total: number }>();
-  for (const entry of latestPerGroup) {
-    const existing = topicMap.get(entry.topic) ?? { correct: 0, total: 0 };
-    existing.total += 1;
-    if (entry.isCorrect) {
-      existing.correct += 1;
-    }
-    topicMap.set(entry.topic, existing);
-  }
-
-  const byTopic: TopicStats[] = [];
-  for (const [topicKey, stats] of topicMap) {
-    const config = topics.find((t) => t.key === topicKey);
-    byTopic.push({
-      topic: topicKey,
-      label: config?.label ?? topicKey,
-      total: stats.total,
-      correct: stats.correct,
-      rate: stats.total > 0 ? stats.correct / stats.total : 0,
-    });
-  }
-
-  // Hide topics where all questions are answered correctly (rate === 1)
-  const filtered = byTopic.filter((t) => t.rate < 1);
-  filtered.sort((a, b) => a.rate - b.rate);
-
-  // Collect all topic keys that have any history or unresolved gaps
-  const topicsWithHistorySet = new Set<string>();
-  for (const entry of entries) {
-    topicsWithHistorySet.add(entry.topic);
-  }
-  for (const gap of progress.unresolved_gaps) {
-    topicsWithHistorySet.add(gap.topic);
-  }
-
-  return {
-    totalQuestions,
-    correctRate,
-    byTopic: filtered,
-    unresolvedGaps: progress.unresolved_gaps,
-    completedTasks: progress.completed_tasks,
-    currentTask: progress.current_task,
-    profileLastUpdated: progress.learner_profile?.last_updated ?? null,
-    topicsWithHistory: [...topicsWithHistorySet],
-  };
 }

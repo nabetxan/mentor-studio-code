@@ -198,6 +198,14 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     this.postMessage({ type: "update", data });
   }
 
+  getSubscriber(): { postMessage(msg: unknown): void } {
+    return {
+      postMessage: (msg: unknown) => {
+        this.view?.webview.postMessage(msg);
+      },
+    };
+  }
+
   sendConfig(config: MentorStudioConfig): void {
     this.latestConfig = config;
     this.hasConfig = true;

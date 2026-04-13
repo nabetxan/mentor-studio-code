@@ -5,7 +5,9 @@ import { runCleanupMentor, runRemoveMentor } from "./commands/removeMentor";
 import { runSetup } from "./commands/setup";
 import { migrate } from "./migration/migrate";
 import { shouldMigrate } from "./migration/shouldMigrate";
+import { BroadcastBus } from "./services/broadcastBus";
 import { FileWatcherService } from "./services/fileWatcher";
+import { selfHealProgress } from "./services/progressHealing";
 import { SidebarProvider } from "./views/sidebarProvider";
 
 let outputChannel: vscode.OutputChannel | undefined;
@@ -61,6 +63,26 @@ export function activate(context: vscode.ExtensionContext): void {
   }
 
   const mentorPath = ".mentor";
+  const mentorDir = vscode.Uri.joinPath(workspaceRoot, mentorPath).fsPath;
+  const dbPath = vscode.Uri.joinPath(
+    workspaceRoot,
+    mentorPath,
+    "data.db",
+  ).fsPath;
+  const progressPath = vscode.Uri.joinPath(
+    workspaceRoot,
+    mentorPath,
+    "progress.json",
+  ).fsPath;
+  const wasmPath = vscode.Uri.joinPath(
+    context.extensionUri,
+    "dist",
+    "sql-wasm.wasm",
+  ).fsPath;
+
+  const bus = new BroadcastBus();
+  const unregisterSidebar = bus.register(sidebarProvider.getSubscriber());
+  context.subscriptions.push({ dispose: () => unregisterSidebar() });
 
   // File watcher
   const watcher = new FileWatcherService(
@@ -76,6 +98,18 @@ export function activate(context: vscode.ExtensionContext): void {
     },
     (msg) => getOutputChannel().appendLine(msg),
     context.globalState,
+    async () => {
+      bus.broadcast({ type: "dbChanged" });
+      try {
+        await selfHealProgress(dbPath, progressPath, wasmPath);
+      } catch (err: unknown) {
+        getOutputChannel().appendLine(
+          `selfHealProgress failed: ${String(err)}`,
+        );
+      }
+    },
+    dbPath,
+    wasmPath,
   );
 
   sidebarProvider.setTopicHandlers({
@@ -96,12 +130,13 @@ export function activate(context: vscode.ExtensionContext): void {
     previousVersion !== undefined && previousVersion !== currentVersion;
   void context.globalState.update("extensionVersion", currentVersion);
 
-  const mentorDir = vscode.Uri.joinPath(workspaceRoot, mentorPath).fsPath;
-  const wasmPath = vscode.Uri.joinPath(
-    context.extensionUri,
-    "dist",
-    "sql-wasm.wasm",
-  ).fsPath;
+  const runSelfHeal = async (): Promise<void> => {
+    try {
+      await selfHealProgress(dbPath, progressPath, wasmPath);
+    } catch (err) {
+      getOutputChannel().appendLine(`selfHealProgress failed: ${String(err)}`);
+    }
+  };
 
   const startWatcher = (): void => {
     void watcher
@@ -162,11 +197,12 @@ export function activate(context: vscode.ExtensionContext): void {
           `Migration threw: ${err instanceof Error ? err.message : String(err)}`,
         );
       } finally {
+        await runSelfHeal();
         startWatcher();
       }
     })();
   } else {
-    startWatcher();
+    void runSelfHeal().finally(() => startWatcher());
   }
 
   context.subscriptions.push(watcher);

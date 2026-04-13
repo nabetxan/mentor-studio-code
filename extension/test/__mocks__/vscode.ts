@@ -9,11 +9,113 @@ export class RelativePattern {
   ) {}
 }
 
+type Handler = (uri: unknown) => void;
+
+export interface MockFileSystemWatcher {
+  pattern: RelativePattern;
+  onDidChange: (h: Handler) => Disposable;
+  onDidCreate: (h: Handler) => Disposable;
+  onDidDelete: (h: Handler) => Disposable;
+  dispose: () => void;
+  emitChange: () => void;
+  emitCreate: () => void;
+  emitDelete: () => void;
+}
+
+export const __watchers: MockFileSystemWatcher[] = [];
+
+export function __resetWatchers(): void {
+  __watchers.length = 0;
+}
+
 export const workspace = {
-  createFileSystemWatcher: () => ({
-    onDidChange: () => new Disposable(),
-    onDidCreate: () => new Disposable(),
-    onDidDelete: () => new Disposable(),
-    dispose: () => {},
-  }),
+  createFileSystemWatcher: (
+    pattern: RelativePattern,
+  ): MockFileSystemWatcher => {
+    const changeHandlers: Handler[] = [];
+    const createHandlers: Handler[] = [];
+    const deleteHandlers: Handler[] = [];
+    const w: MockFileSystemWatcher = {
+      pattern,
+      onDidChange: (h) => {
+        changeHandlers.push(h);
+        return new Disposable();
+      },
+      onDidCreate: (h) => {
+        createHandlers.push(h);
+        return new Disposable();
+      },
+      onDidDelete: (h) => {
+        deleteHandlers.push(h);
+        return new Disposable();
+      },
+      dispose: () => {},
+      emitChange: () => {
+        for (const h of changeHandlers) h(undefined);
+      },
+      emitCreate: () => {
+        for (const h of createHandlers) h(undefined);
+      },
+      emitDelete: () => {
+        for (const h of deleteHandlers) h(undefined);
+      },
+    };
+    __watchers.push(w);
+    return w;
+  },
+};
+
+export const window = {
+  showWarningMessage: (..._args: unknown[]): Promise<string | undefined> =>
+    Promise.resolve(undefined),
+  showErrorMessage: (..._args: unknown[]): Promise<string | undefined> =>
+    Promise.resolve(undefined),
+  showInformationMessage: (..._args: unknown[]): Promise<string | undefined> =>
+    Promise.resolve(undefined),
+  showOpenDialog: (..._args: unknown[]): Promise<unknown> =>
+    Promise.resolve(undefined),
+  showTextDocument: (..._args: unknown[]): Promise<unknown> =>
+    Promise.resolve(undefined),
+};
+
+export interface MockUri {
+  fsPath: string;
+  toString(): string;
+}
+
+export const Uri = {
+  joinPath: (base: MockUri, ...parts: string[]): MockUri => {
+    const fsPath = [base.fsPath, ...parts].join("/");
+    return { fsPath, toString: () => fsPath };
+  },
+  file: (p: string): MockUri => ({ fsPath: p, toString: () => p }),
+};
+
+export const env = {
+  language: "ja",
+  clipboard: {
+    writeText: (_text: string): Promise<void> => Promise.resolve(),
+  },
+};
+
+export const commands = {
+  executeCommand: (..._args: unknown[]): Promise<unknown> =>
+    Promise.resolve(undefined),
+};
+
+interface MutableWorkspace {
+  createFileSystemWatcher: (pattern: RelativePattern) => MockFileSystemWatcher;
+  workspaceFolders: { uri: MockUri }[] | undefined;
+  fs: {
+    readFile: (uri: MockUri) => Promise<Uint8Array>;
+    writeFile: (uri: MockUri, content: Uint8Array) => Promise<void>;
+  };
+}
+
+(workspace as unknown as MutableWorkspace).workspaceFolders = undefined;
+(workspace as unknown as MutableWorkspace).fs = {
+  readFile: (_uri: MockUri): Promise<Uint8Array> =>
+    Promise.resolve(new Uint8Array()),
+  writeFile: (_uri: MockUri, _content: Uint8Array): Promise<void> =>
+    Promise.resolve(),
 };
