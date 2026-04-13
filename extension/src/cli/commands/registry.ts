@@ -4,6 +4,8 @@ import { listUnresolved } from "./listUnresolved";
 import { recordAnswer } from "./recordAnswer";
 import { sessionBrief } from "./sessionBrief";
 import type { CommandMap } from "./types";
+import { updateProfile } from "./updateProfile";
+import { updateProgress } from "./updateProgress";
 import { updateTask } from "./updateTask";
 
 export * from "./types";
@@ -14,5 +16,7 @@ export const COMMANDS: CommandMap = {
   "list-unresolved": listUnresolved,
   "record-answer": recordAnswer,
   "session-brief": sessionBrief,
+  "update-profile": updateProfile,
+  "update-progress": updateProgress,
   "update-task": updateTask,
 };
