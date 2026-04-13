@@ -16,7 +16,6 @@ import {
   REVIEW_SKILL_MD,
   SHARED_RULES_MD,
   TEACHING_CYCLE_REFERENCE_MD,
-  TRACKER_FORMAT_MD,
 } from "../templates/mentorFiles";
 
 export async function copyCliArtifacts(
@@ -248,12 +247,6 @@ export async function runSetup(
     MENTOR_SESSION_SKILL_MD,
     "skills/mentor-session/SKILL.md",
   );
-  await writeTemplate(
-    vscode.Uri.joinPath(mentorSessionDirUri, "tracker-format.md"),
-    TRACKER_FORMAT_MD,
-    "skills/mentor-session/tracker-format.md",
-  );
-
   // Review skill
   const reviewDirUri = vscode.Uri.joinPath(skillsDirUri, "review");
   await vscode.workspace.fs.createDirectory(reviewDirUri);
