@@ -1,7 +1,10 @@
 import type { CleanupOptions } from "@mentor-studio/shared";
+import { relative } from "node:path";
 import * as vscode from "vscode";
 import { runCleanupMentor, runRemoveMentor } from "./commands/removeMentor";
 import { runSetup } from "./commands/setup";
+import { migrate } from "./migration/migrate";
+import { shouldMigrate } from "./migration/shouldMigrate";
 import { FileWatcherService } from "./services/fileWatcher";
 import { SidebarProvider } from "./views/sidebarProvider";
 
@@ -93,37 +96,78 @@ export function activate(context: vscode.ExtensionContext): void {
     previousVersion !== undefined && previousVersion !== currentVersion;
   void context.globalState.update("extensionVersion", currentVersion);
 
-  void watcher
-    .start()
-    .then(() => {
-      const config = watcher.getConfig();
-      if (config) {
-        sidebarProvider.sendConfig(config);
+  const mentorDir = vscode.Uri.joinPath(workspaceRoot, mentorPath).fsPath;
+  const wasmPath = vscode.Uri.joinPath(
+    context.extensionUri,
+    "dist",
+    "sql-wasm.wasm",
+  ).fsPath;
 
-        if (isVersionUpdated) {
-          const isJa = config.locale !== "en";
-          const message = isJa
-            ? `Mentor Studio Code が更新されました (v${currentVersion})。最新のプロンプトを適用するには Setup を実行してください。`
-            : `Mentor Studio Code has been updated (v${currentVersion}). Run Setup to apply the latest prompts.`;
-          const button = isJa ? "Setup を実行" : "Run Setup";
-          void vscode.window
-            .showInformationMessage(message, button)
-            .then((choice) => {
-              if (choice === button) {
-                void vscode.commands.executeCommand("mentor-studio.setup");
-              }
-            });
+  const startWatcher = (): void => {
+    void watcher
+      .start()
+      .then(() => {
+        const config = watcher.getConfig();
+        if (config) {
+          sidebarProvider.sendConfig(config);
+
+          if (isVersionUpdated) {
+            const isJa = config.locale !== "en";
+            const message = isJa
+              ? `Mentor Studio Code が更新されました (v${currentVersion})。最新のプロンプトを適用するには Setup を実行してください。`
+              : `Mentor Studio Code has been updated (v${currentVersion}). Run Setup to apply the latest prompts.`;
+            const button = isJa ? "Setup を実行" : "Run Setup";
+            void vscode.window
+              .showInformationMessage(message, button)
+              .then((choice) => {
+                if (choice === button) {
+                  void vscode.commands.executeCommand("mentor-studio.setup");
+                }
+              });
+          }
+        } else {
+          sidebarProvider.sendNoConfig();
         }
-      } else {
+      })
+      .catch((err: unknown) => {
+        getOutputChannel().appendLine(
+          `Failed to start file watcher: ${String(err)}`,
+        );
         sidebarProvider.sendNoConfig();
+      });
+  };
+
+  if (shouldMigrate(mentorDir)) {
+    void (async () => {
+      try {
+        const result = await migrate(mentorDir, wasmPath);
+        if (result.ok) {
+          const rel = (p: string): string => relative(mentorDir, p) || p;
+          void vscode.window.showInformationMessage(
+            `Mentor data migrated to SQLite (${result.stats.questions} questions, ${result.stats.plans} plans). ` +
+              `Backups kept at: ${result.bakPaths.map(rel).join(", ")}. ` +
+              `Delete them manually after verifying.`,
+          );
+        } else if (result.error === "migration_partial") {
+          void vscode.window.showWarningMessage(
+            `Mentor migration completed in DB but JSON rewrite failed: ${result.detail ?? ""}`,
+          );
+        } else {
+          void vscode.window.showErrorMessage(
+            `Mentor migration failed: ${result.detail ?? ""}. Rerun after checking logs.`,
+          );
+        }
+      } catch (err) {
+        getOutputChannel().appendLine(
+          `Migration threw: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      } finally {
+        startWatcher();
       }
-    })
-    .catch((err: unknown) => {
-      getOutputChannel().appendLine(
-        `Failed to start file watcher: ${String(err)}`,
-      );
-      sidebarProvider.sendNoConfig();
-    });
+    })();
+  } else {
+    startWatcher();
+  }
 
   context.subscriptions.push(watcher);
 }
