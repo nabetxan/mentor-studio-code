@@ -2,6 +2,48 @@
 
 All notable changes to "Mentor Studio Code" will be documented in this file.
 
+## [0.6.0] - 2026-04-14
+
+### Added
+
+- SQLite-backed runtime data store (`.mentor/data.db`) — topics, plans, tasks, and question history now live in a single SQLite database with foreign-key integrity, status invariants (unique active plan / active task), and auto-incrementing integer IDs, replacing the JSON-based `question-history.json` and parts of `progress.json`
+- One-time JSON-to-SQLite migration — on first activation of v0.6.0 with a legacy workspace, the extension detects `question-history.json`, backs up legacy files (`.bak`), builds `data.db`, rewrites `progress.json` to a slimmed-down shape (task IDs as integers, `unresolved_gaps` and `completed_tasks`/`skipped_tasks` removed — now derived from the DB), and strips `topics` and `mentorFiles.plan` from `config.json`
+- Legacy-plan synthesis during migration — pre-schema string task entries and orphan history are bucketed under a synthesized "Legacy" plan so nothing is dropped
+- Rebuilt mentor-cli (`.mentor/tools/mentor-cli.js`) with a new command surface talking to SQLite:
+  - `session-brief '{"flow":"mentor-session|review|comprehension-check|implementation-review","topicId":<id?>}'` — flow-specific filtered bundle (learner profile, current task, relevant gaps, etc.)
+  - `list-unresolved '{"topicId":<id?>,"limit":<n?>}'` — unresolved gaps sorted by `lastAnsweredAt`
+  - `list-topics` — all topics with their integer IDs
+  - `add-topic '{"label":"..."}'` — insert a topic, returns the new integer ID
+  - `record-answer '{...}'` — insert a new question row, or update an existing one when `id` is passed (used for review cycles / gap resolution)
+  - `update-task '{"id":<n>,"status":"completed|skipped"}'` — advances task status and auto-activates the next queued task under the same plan; syncs `current_task` in `progress.json`
+  - `update-profile '{...}'` — partial update of `learner_profile` with `last_updated` stamping
+  - `update-progress '{"current_step":...,"resume_context":...}'` — partial update of transient progress fields
+  - `update-config '{"mentorFiles":{...}}'` — safe partial config edits
+- DB foundation modules (`src/db/`) — schema + DDL, `sql.js` loader, atomic writes, cross-process advisory lock, write transactions, integrity checks, and status invariant assertions
+- DB-backed dashboard service (`services/dbDashboard.ts`) and progress healing (`services/progressHealing.ts`) to keep the webview and `progress.json` consistent with DB state
+- Broadcast bus (`services/broadcastBus.ts`) for coalescing DB-change notifications to the webview
+- Mock VS Code file system watcher for deterministic tests
+- End-to-end smoke tests for mentor-cli and extensive unit tests across the DB, migration, CLI command, and session-brief layers
+- Template validation tests for SKILL.md files
+
+### Changed
+
+- `progress.json` is now a thin file holding only `current_task` (integer task ID), `current_step`, `resume_context`, and `learner_profile`; `completed_tasks`, `skipped_tasks`, and `unresolved_gaps` are derived from the DB on demand
+- `config.json` no longer stores `topics` or `mentorFiles.plan` — topics live in the DB, and the active plan is implied by the single plan row with `status = 'active'`
+- Task and topic identifiers are integers (DB auto-increment) instead of string keys; all CLI commands and the migration take integer IDs
+- `FileWatcher` rewritten around DB change events (with legacy JSON parsing kept only for progress/config metadata)
+- `setup` command copies the new `mentor-cli.js` bundle and bootstraps an empty `data.db` when none exists
+- `remove-mentor` cleanup now also removes DB artifacts and `.bak` files
+
+### Removed
+
+- Direct AI reads and writes to `question-history.json` — all question I/O goes through mentor-cli
+- Legacy `mentorCli` test suite (superseded by per-command and e2e tests)
+
+### Fixed
+
+- Active-task invariant enforced at the schema level (partial unique index on `tasks.status = 'active'`), preventing the long-standing "two active tasks" drift that could occur when advancing from a queued task
+
 ## [0.5.0] - 2026-04-11
 
 ### Added
