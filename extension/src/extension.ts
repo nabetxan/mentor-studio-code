@@ -5,6 +5,7 @@ import { runCleanupMentor, runRemoveMentor } from "./commands/removeMentor";
 import { runSetup } from "./commands/setup";
 import { migrate } from "./migration/migrate";
 import { shouldMigrate } from "./migration/shouldMigrate";
+import { PlanPanel } from "./panels/planPanel";
 import { BroadcastBus } from "./services/broadcastBus";
 import { FileWatcherService } from "./services/fileWatcher";
 import { selfHealProgress } from "./services/progressHealing";
@@ -84,6 +85,22 @@ export function activate(context: vscode.ExtensionContext): void {
   const unregisterSidebar = bus.register(sidebarProvider.getSubscriber());
   context.subscriptions.push({ dispose: () => unregisterSidebar() });
 
+  context.subscriptions.push(
+    vscode.commands.registerCommand("mentor-studio.openPlanPanel", () => {
+      PlanPanel.createOrShow(context, bus, { dbPath, wasmPath });
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "mentor-studio.addFilesToPlan",
+      async (uri: vscode.Uri, uris?: vscode.Uri[]) => {
+        const targets = uris && uris.length > 0 ? uris : [uri];
+        await watcher.addFilesToPlan(targets);
+      },
+    ),
+  );
+
   // File watcher
   const watcher = new FileWatcherService(
     workspaceRoot.fsPath,
@@ -118,6 +135,15 @@ export function activate(context: vscode.ExtensionContext): void {
       watcher.updateTopicLabel(key, newLabel),
     addTopic: (label) => watcher.addTopic(label),
     deleteTopics: (keys) => watcher.deleteTopics(keys),
+  });
+
+  sidebarProvider.setPlanHandlers({
+    activatePlan: (id) => watcher.activatePlan(id),
+    deactivatePlan: (id) => watcher.deactivatePlan(id),
+    pauseActivePlan: (id) => watcher.pauseActivePlan(id),
+    changeActivePlanFile: (id, relPath) =>
+      watcher.changeActivePlanFile(id, relPath),
+    createAndActivatePlan: (relPath) => watcher.createAndActivatePlan(relPath),
   });
 
   const currentPkg = context.extension.packageJSON as Record<string, unknown>;

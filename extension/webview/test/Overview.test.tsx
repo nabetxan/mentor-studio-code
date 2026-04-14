@@ -1,4 +1,4 @@
-import type { DashboardData } from "@mentor-studio/shared";
+import type { DashboardData, PlanDto } from "@mentor-studio/shared";
 import {
   cleanup,
   fireEvent,
@@ -22,6 +22,8 @@ const mockData: DashboardData = {
   currentTask: "3",
   profileLastUpdated: null,
   topicsWithHistory: [],
+  plans: [],
+  activePlan: null,
 };
 
 const defaultProps = {
@@ -116,6 +118,8 @@ describe("Overview", () => {
       currentTask: "1",
       profileLastUpdated: null,
       topicsWithHistory: ["javascript"],
+      plans: [],
+      activePlan: null,
     };
     render(
       <Overview
@@ -132,6 +136,50 @@ describe("Overview", () => {
     expect(screen.getByText("closures")).toBeTruthy();
   });
 
+  describe("Active plan display", () => {
+    it("shows 'no active plan' warning when activePlan is null", () => {
+      render(<Overview {...defaultProps} />);
+      expect(
+        screen.getByText(
+          "アクティブなプランがありません — `add-plan` CLI またはプランパネルで作成してください",
+        ),
+      ).toBeTruthy();
+    });
+
+    it("renders plan name as link when activePlan has filePath", async () => {
+      const { postMessage } = await import("../src/vscodeApi");
+      (postMessage as ReturnType<typeof vi.fn>).mockClear();
+      const activePlan: PlanDto = {
+        id: 1,
+        name: "Phase 1",
+        filePath: "docs/plan.md",
+        status: "active",
+        sortOrder: 0,
+      };
+      render(<Overview {...defaultProps} data={{ ...mockData, activePlan }} />);
+      const link = screen.getByText("Phase 1");
+      expect(link).toBeTruthy();
+      fireEvent.click(link);
+      expect(postMessage).toHaveBeenCalledWith({
+        type: "openFile",
+        relativePath: "docs/plan.md",
+      });
+    });
+
+    it("renders plan name with UI-only label when filePath is null", () => {
+      const activePlan: PlanDto = {
+        id: 2,
+        name: "Sketch",
+        filePath: null,
+        status: "active",
+        sortOrder: 0,
+      };
+      render(<Overview {...defaultProps} data={{ ...mockData, activePlan }} />);
+      expect(screen.getByText(/Sketch/)).toBeTruthy();
+      expect(screen.getByText(/\(UIのみのプラン\)/)).toBeTruthy();
+    });
+  });
+
   it("renders topic progress bars", () => {
     const data: DashboardData = {
       totalQuestions: 5,
@@ -145,6 +193,8 @@ describe("Overview", () => {
       currentTask: "2",
       profileLastUpdated: null,
       topicsWithHistory: [],
+      plans: [],
+      activePlan: null,
     };
     render(<Overview {...defaultProps} data={data} />);
     expect(screen.getByText("TypeScript")).toBeTruthy();

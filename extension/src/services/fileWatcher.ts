@@ -1,9 +1,16 @@
 import type { DashboardData, MentorStudioConfig } from "@mentor-studio/shared";
 import { readFile, writeFile } from "fs/promises";
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "path";
+import { basename, join } from "path";
 import * as vscode from "vscode";
 import { loadSqlJs } from "../db";
+import {
+  activatePlan as dbActivatePlan,
+  createPlan as dbCreatePlan,
+  deactivatePlan as dbDeactivatePlan,
+  pausePlan as dbPausePlan,
+  updatePlan as dbUpdatePlan,
+} from "../panels/writes/planWrites";
 import { parseConfig, parseLearnerProfile } from "./dataParser";
 import {
   computeDashboardDataFromDb,
@@ -171,6 +178,8 @@ export class FileWatcherService implements vscode.Disposable {
         currentTask: null,
         profileLastUpdated: progress.learner_profile?.last_updated ?? null,
         topicsWithHistory: [],
+        plans: [],
+        activePlan: null,
       });
       return;
     }
@@ -230,6 +239,121 @@ export class FileWatcherService implements vscode.Disposable {
     if (!this.dbPath || !this.wasmPath) return;
     await dbUpdateTopicLabel(this.dbPath, key, newLabel, this.wasmPath);
     await this.refresh();
+  }
+
+  async activatePlan(id: number): Promise<void> {
+    if (!this.dbPath || !this.wasmPath) {
+      throw new Error("db_not_ready");
+    }
+    await dbActivatePlan(this.dbPath, { id }, this.wasmPath);
+    await this.refresh();
+  }
+
+  async deactivatePlan(id: number): Promise<void> {
+    if (!this.dbPath || !this.wasmPath) {
+      throw new Error("db_not_ready");
+    }
+    await dbDeactivatePlan(this.dbPath, { id }, this.wasmPath);
+    await this.refresh();
+  }
+
+  async pauseActivePlan(id: number): Promise<void> {
+    if (!this.dbPath || !this.wasmPath) {
+      throw new Error("db_not_ready");
+    }
+    await dbPausePlan(this.dbPath, id, this.wasmPath);
+    await this.refresh();
+  }
+
+  async changeActivePlanFile(id: number, relPath: string): Promise<void> {
+    if (!this.dbPath || !this.wasmPath) {
+      throw new Error("db_not_ready");
+    }
+    await dbUpdatePlan(this.dbPath, { id, filePath: relPath }, this.wasmPath);
+    await this.refresh();
+  }
+
+  async createAndActivatePlan(relPath: string): Promise<void> {
+    if (!this.dbPath || !this.wasmPath) throw new Error("db_not_ready");
+    const name = basename(relPath, ".md");
+    const { id } = await dbCreatePlan(
+      this.dbPath,
+      { name, filePath: relPath },
+      this.wasmPath,
+    );
+    await dbActivatePlan(this.dbPath, { id }, this.wasmPath);
+    await this.refresh();
+  }
+
+  async addFilesToPlan(uris: vscode.Uri[]): Promise<void> {
+    if (!this.dbPath || !this.wasmPath) return;
+    if (uris.length === 0) return;
+
+    const dbPath = this.dbPath;
+    const wasmPath = this.wasmPath;
+
+    let added = 0;
+    let skipped = 0;
+
+    for (const uri of uris) {
+      if (!uri.fsPath.endsWith(".md")) continue;
+
+      const relPath = vscode.workspace.asRelativePath(uri, false);
+      const name = basename(relPath, ".md");
+
+      // Check for existing plan with this filePath (NULL rows must not match)
+      const SQL = await loadSqlJs(wasmPath);
+      const db = new SQL.Database(readFileSync(dbPath));
+      let count = 0;
+      try {
+        const res = db.exec("SELECT COUNT(*) FROM plans WHERE filePath = ?", [
+          relPath,
+        ]);
+        count = Number(res[0]?.values?.[0]?.[0] ?? 0);
+      } finally {
+        db.close();
+      }
+
+      if (count > 0) {
+        skipped++;
+        continue;
+      }
+
+      await dbCreatePlan(dbPath, { name, filePath: relPath }, wasmPath);
+      added++;
+    }
+
+    // No .md files at all — do nothing
+    if (added === 0 && skipped === 0) return;
+
+    await this.refresh();
+
+    const openPlanPanel = "Open Plan Panel";
+
+    if (added === 0) {
+      // All skipped
+      await vscode.window.showWarningMessage(
+        `${skipped} file(s) already exist in the Mentor Plan and were skipped.`,
+      );
+    } else if (skipped === 0) {
+      // All added
+      const choice = await vscode.window.showInformationMessage(
+        `Added ${added} file(s) to the Mentor Plan.`,
+        openPlanPanel,
+      );
+      if (choice === openPlanPanel) {
+        await vscode.commands.executeCommand("mentor-studio.openPlanPanel");
+      }
+    } else {
+      // Mixed
+      const choice = await vscode.window.showInformationMessage(
+        `Added ${added} file(s) to the Mentor Plan. ${skipped} file(s) already existed and were skipped.`,
+        openPlanPanel,
+      );
+      if (choice === openPlanPanel) {
+        await vscode.commands.executeCommand("mentor-studio.openPlanPanel");
+      }
+    }
   }
 
   private async syncLearnerProfile(progressPath: string): Promise<void> {

@@ -1,6 +1,8 @@
 import type {
   CompletedTask,
   DashboardData,
+  PlanDto,
+  PlanStatus,
   TopicConfig,
   TopicStats,
   UnresolvedGap,
@@ -167,6 +169,20 @@ export function computeDashboardDataFromDb(
       progress.learner_profile.last_updated) ||
     null;
 
+  // Plans
+  const plansRes = exec(
+    db,
+    "SELECT id, name, filePath, status, sortOrder FROM plans ORDER BY sortOrder ASC",
+  )[0];
+  const plans: PlanDto[] = (plansRes?.values ?? []).map((r) => ({
+    id: Number(r[0]),
+    name: String(r[1] ?? ""),
+    filePath: r[2] === null || r[2] === undefined ? null : String(r[2]),
+    status: String(r[3]) as PlanStatus,
+    sortOrder: Number(r[4]),
+  }));
+  const activePlan = plans.find((p) => p.status === "active") ?? null;
+
   return {
     totalQuestions,
     correctRate,
@@ -176,6 +192,8 @@ export function computeDashboardDataFromDb(
     currentTask,
     profileLastUpdated,
     topicsWithHistory,
+    plans,
+    activePlan,
   };
 }
 

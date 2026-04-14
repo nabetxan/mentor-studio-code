@@ -188,9 +188,17 @@ export function Overview({
               </a>
             )}
           </div>
-          {config?.mentorFiles?.plan != null &&
-            (() => {
-              const planPath = config.mentorFiles.plan;
+          {(() => {
+            const activePlan = data.activePlan ?? null;
+            if (!activePlan) {
+              return (
+                <div className="stat-sub stat-sub--warning">
+                  {t("overview.activePlan.none", locale)}
+                </div>
+              );
+            }
+            const { name, filePath } = activePlan;
+            if (filePath) {
               return (
                 <div className="stat-sub">
                   <a
@@ -199,16 +207,23 @@ export function Overview({
                       e.preventDefault();
                       postMessage({
                         type: "openFile",
-                        relativePath: planPath,
+                        relativePath: filePath,
                       });
                     }}
                     className="file-path-link"
+                    title={filePath}
                   >
-                    {planPath}
+                    {name}
                   </a>
                 </div>
               );
-            })()}
+            }
+            return (
+              <div className="stat-sub">
+                {name} {t("overview.activePlan.uiOnly", locale)}
+              </div>
+            );
+          })()}
         </div>
       </div>
 

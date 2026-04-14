@@ -171,8 +171,25 @@ description: Main learning session — loads session state, runs Teaching Cycle,
 ## Session Start
 
 1. If \`learner.lastUpdated\` is null → load \`.mentor/skills/intake/SKILL.md\` and run the Intake flow. When it returns, continue with the now-populated learner data.
-2. (Conditional) If \`relevantGaps\` match the \`currentTask\`'s topic → propose a quick review before beginning.
-3. (Always) If \`currentTask\` is set and \`resumeContext\` indicates active progress, suggest continuing it; otherwise ask the user what they would like to work on today.
+2. **Plan Health Check** — run \`node .mentor/tools/mentor-cli.js list-plans '{}'\` and inspect every plan with status \`active\` or \`queued\`. If any such plan has **zero tasks in the DB**, it needs a task breakdown before it can be used. This applies symmetrically to plans created via:
+   - Explorer right-click "Add to Mentor Plan"
+   - Sidebar Settings → Select File
+   - External tools (superpowers etc.) that only wrote a markdown file
+   - The Plan Panel (\`Mentor Studio Code: Open Plan Panel\`)
+   - Manual CLI \`add-plan\` calls
+
+   For each zero-task plan:
+   - Tell the user: "This plan has no tasks yet. I'll generate a task breakdown."
+   - If the plan has a \`filePath\` pointing to an existing markdown file → read it. Extract any \`## Task N\` headings as a starting point; otherwise generate a structured task list (≥ 1 task) from the goal.
+   - If the plan has no \`filePath\` (UI-only plan) → ask the user about the goal, then propose creating \`.mentor/plan/YYYY-MM-DD-<slug>.md\` with the task breakdown. Never overwrite an existing file; append a counter or timestamp on collision.
+   - On user confirmation:
+     - Register each task in order: \`node .mentor/tools/mentor-cli.js add-task '{"planId":<id>,"name":"<task name>"}'\`
+     - If a markdown file was newly created, set \`filePath\`: \`node .mentor/tools/mentor-cli.js update-plan '{"id":<id>,"filePath":"<rel path>"}'\`
+   - After tasks exist, if the plan is \`queued\`, ask whether to activate it. On OK: \`node .mentor/tools/mentor-cli.js activate-plan '{"id":<id>}'\`.
+
+   After the health check completes, re-run \`session-brief\` to pick up the now-populated \`currentTask\`.
+3. (Conditional) If \`relevantGaps\` match the \`currentTask\`'s topic → propose a quick review before beginning.
+4. (Always) If \`currentTask\` is set and \`resumeContext\` indicates active progress, suggest continuing it; otherwise ask the user what they would like to work on today.
    - If \`currentTask\` is null → tell the user to pick or activate a task in the Plan Panel (\`Mentor Studio Code: Open Plan Panel\`) and stop.
 
 Do NOT load other docs at session start.
@@ -392,27 +409,42 @@ export const CREATE_PLAN_MD = `## Plan Creation Rules
 ### Minimum Valid Plan
 
 - A goal (what to achieve — new app, feature, bug fix, refactor, etc.) — at least 1 sentence
-- At least 1 implementation step
+- At least 1 task with at least 1 implementation step
 
 ### Plan Setup Flow
 
-Triggered when \`mentorFiles.plan\` is null, file does not exist, file has no recognizable structure, or all tasks are complete.
+Triggered when no active plan exists in the DB, or when all tasks in the current plan are complete (see All-Tasks-Complete Detection below).
 
 1. Ask the user what they want to build or accomplish. Mention that if they have an existing plan, spec, or notes, they can share the file path or content for reference.
 2. If the user provides a file path → read it; if file is unreadable or has no text content → treat as "no structure" and proceed from conversation. If no file provided → infer from conversation.
-3. Propose goal + implementation steps → ask user to confirm (revise until confirmed).
-4. On confirmation → create a new structured plan file at \`.mentor/plan.md\` (or a timestamped variant if that path is already taken). Original file left untouched if one existed.
-5. Tell the user that the plan file has been created at \`<path>\`, and ask if they want to set it as the active plan. Mention that this can always be changed from Settings.
-   - If user says no → proceed to Session Start without setting the plan.
-6. On OK:
+3. Propose goal + tasks (each with bullet steps) → ask user to confirm (revise until confirmed).
+4. On confirmation → write a new plan markdown file at \`.mentor/plan/<YYYY-MM-DD-slug>.md\`.
+   - Create the \`.mentor/plan/\` directory if it does not exist.
+   - \`YYYY-MM-DD\` is today's date; \`slug\` is a short lowercase kebab-case description of the goal.
+   - **Never overwrite** an existing file — if the computed filename already exists, append a counter (e.g. \`-2\`, \`-3\`) or a short timestamp suffix before \`.md\`.
+5. Register the plan and tasks via CLI in order:
    \`\`\`bash
-   node .mentor/tools/mentor-cli.js update-config '{"mentorFiles":{"plan":"<path>"}}'
+   node .mentor/tools/mentor-cli.js add-plan '{"name":"<plan-name>","filePath":".mentor/plan/<dated-slug>.md"}'
    \`\`\`
-   If write fails → tell the user to set it manually in Settings.
+   Capture the returned \`id\`. Then for each task, in order:
+   \`\`\`bash
+   node .mentor/tools/mentor-cli.js add-task '{"planId":<id>,"name":"<task-name>"}'
+   \`\`\`
+6. Ask the user whether to set the new plan as **active** now or leave it **queued**.
+   - If **active**:
+     \`\`\`bash
+     node .mentor/tools/mentor-cli.js activate-plan '{"id":<id>}'
+     \`\`\`
+   - If **queued**: leave it — proceed to session without activating.
+7. Tell the user the plan file has been created at \`.mentor/plan/<dated-slug>.md\` and registered. Mention that the active plan can always be changed from the Plan Panel.
+
+If any CLI call fails → tell the user the error and suggest retrying or checking the CLI output.
 
 ### All-Tasks-Complete Detection
 
-Count \`## Task N\` headings in plan. If \`completed_tasks.length\` >= heading count → plan complete → trigger Plan Setup Flow.
+Call \`node .mentor/tools/mentor-cli.js list-plans '{}'\` and check the returned task statuses from \`session-brief\`. If the active plan has no tasks with status \`queued\` or \`active\` (i.e. all tasks are \`completed\` or \`skipped\`) → plan complete → trigger Plan Setup Flow.
+
+Do **not** count \`## Task N\` headings in the markdown file to determine completion — the DB is the authoritative source.
 
 ### Recommended Plan File Format
 
@@ -428,15 +460,13 @@ What to build (new app / feature / bug fix / refactor, etc.)
 - Step 1: ...
 \`\`\`
 
-
 Format is flexible — a single task with 2–3 steps is valid.
 
-### AI Updating \`.mentor/config.json\`
+### Notes
 
-- Always ask permission before writing.
-- Always mention that this can be changed anytime from Settings.
-- Use the CLI: \`node .mentor/tools/mentor-cli.js update-config '{"mentorFiles":{"plan":"<path>"}}'\`
-- The extension's fileWatcher auto-reloads.
+- The markdown file is for human reference; the DB tasks (\`tasks\` table) are what the extension reads and tracks.
+- The \`mentorFiles.plan\` / \`update-config\` flow is fully deprecated — do not use it.
+- After CLI writes, the extension's sidebar auto-refreshes via the file watcher / broadcast bus.
 `;
 
 export const CREATE_SPEC_MD = `## Spec Creation Rules

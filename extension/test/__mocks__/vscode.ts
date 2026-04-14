@@ -103,9 +103,18 @@ export const commands = {
     Promise.resolve(undefined),
 };
 
+export enum ViewColumn {
+  Active = -1,
+  Beside = -2,
+  One = 1,
+  Two = 2,
+  Three = 3,
+}
+
 interface MutableWorkspace {
   createFileSystemWatcher: (pattern: RelativePattern) => MockFileSystemWatcher;
   workspaceFolders: { uri: MockUri }[] | undefined;
+  asRelativePath: (uri: MockUri, includeWorkspaceFolder: boolean) => string;
   fs: {
     readFile: (uri: MockUri) => Promise<Uint8Array>;
     writeFile: (uri: MockUri, content: Uint8Array) => Promise<void>;
@@ -113,6 +122,10 @@ interface MutableWorkspace {
 }
 
 (workspace as unknown as MutableWorkspace).workspaceFolders = undefined;
+(workspace as unknown as MutableWorkspace).asRelativePath = (
+  uri: MockUri,
+  _includeWorkspaceFolder: boolean,
+): string => uri.fsPath;
 (workspace as unknown as MutableWorkspace).fs = {
   readFile: (_uri: MockUri): Promise<Uint8Array> =>
     Promise.resolve(new Uint8Array()),

@@ -59,8 +59,27 @@
         "command": "mentor-studio.removeMentor",
         "title": "Remove Mentor",
         "category": "Mentor Studio Code"
+      },
+      {
+        "command": "mentor-studio.openPlanPanel",
+        "title": "Open Plan Panel",
+        "category": "Mentor Studio Code"
+      },
+      {
+        "command": "mentor-studio.addFilesToPlan",
+        "title": "Add to Mentor Plan",
+        "category": "Mentor Studio Code"
       }
-    ]
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "mentor-studio.addFilesToPlan",
+          "when": "resourceExtname == .md && workspaceFolderCount > 0",
+          "group": "mentor@1"
+        }
+      ]
+    }
   },
   "scripts": {
     "build": "node esbuild.config.mjs",
@@ -70,11 +89,18 @@
     "vscode:uninstall": "node scripts/uninstall.js"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^8.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@mentor-studio/shared": "*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "sql.js": "^1.10.3"
   },
   "devDependencies": {
     "@types/node": "^18.19.130",
+    "@types/react": "^18.3.28",
+    "@types/react-dom": "^18.3.7",
     "@types/sql.js": "^1.4.11",
     "@types/vscode": "~1.85.0",
     "esbuild": "^0.28.0",

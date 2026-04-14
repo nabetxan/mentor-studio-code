@@ -3,6 +3,7 @@ import type {
   FileField,
   Locale,
   MentorStudioConfig,
+  PlanDto,
 } from "@mentor-studio/shared";
 import { useState } from "react";
 import { useCopyFeedback } from "../hooks/useCopyFeedback";
@@ -16,6 +17,133 @@ interface SettingsProps {
   locale: Locale;
   onLocaleChange: (locale: Locale) => void;
   profileLastUpdated: string | null;
+  activePlan: PlanDto | null;
+  planActionError: string | null;
+}
+
+interface ActivePlanSettingProps {
+  activePlan: PlanDto | null;
+  locale: Locale;
+  planActionError: string | null;
+}
+
+function ActivePlanSetting({
+  activePlan,
+  locale,
+  planActionError,
+}: ActivePlanSettingProps) {
+  const [copiedKey, triggerCopy] = useCopyFeedback();
+  const copied = copiedKey !== null;
+
+  const handleCopyPrompt = () => {
+    postMessage({ type: "copy", text: t("settings.prompt.plan", locale) });
+    triggerCopy("copied");
+  };
+
+  const label = t("settings.activePlan", locale);
+
+  if (!activePlan) {
+    return (
+      <div className="setting-item setting-item--warning">
+        <span className="setting-warning-badge" aria-hidden="true">
+          !
+        </span>
+        <div className="setting-label-row">
+          <div className="setting-label">{label}</div>
+          <span className="setting-warning">
+            {t("settings.activePlan.none", locale)}
+          </span>
+        </div>
+        <div className="setting-unset">
+          <div className="setting-actions-vertical">
+            <button
+              className="btn-primary"
+              onClick={() => postMessage({ type: "selectFile", field: "plan" })}
+            >
+              {t("settings.selectFile", locale)}
+            </button>
+            <button
+              className="snippet-btn"
+              onClick={handleCopyPrompt}
+              data-tooltip={t("settings.copyCreatePrompt.plan", locale)}
+            >
+              <span className="snippet-title">
+                {t("settings.createPrompt.plan", locale)}
+              </span>
+              <span className="snippet-icon" aria-live="polite">
+                {copied ? (
+                  <>
+                    <CheckIcon />
+                    <span className="snippet-copied-text">
+                      {t("actions.copied", locale)}
+                    </span>
+                  </>
+                ) : (
+                  <SparkleIcon />
+                )}
+              </span>
+            </button>
+          </div>
+          {planActionError && (
+            <p className="setting-warning" role="alert">
+              {planActionError}
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  const { id, filePath } = activePlan;
+
+  return (
+    <div className="setting-item">
+      <div className="setting-label">{label}</div>
+      <div className="setting-value">
+        {filePath ? (
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              postMessage({ type: "openFile", relativePath: filePath });
+            }}
+            className="file-path-link"
+            title={filePath}
+          >
+            {filePath}
+          </a>
+        ) : (
+          <span className="file-path-link muted">
+            {t("settings.activePlan.uiOnly", locale)}
+          </span>
+        )}
+        <div className="setting-actions">
+          <button
+            className="btn-primary"
+            onClick={() => postMessage({ type: "changeActivePlanFile", id })}
+          >
+            {t("settings.change", locale)}
+          </button>
+          <button
+            className="btn-outlined"
+            onClick={() => postMessage({ type: "pauseActivePlan", id })}
+          >
+            {t("settings.detach", locale)}
+          </button>
+        </div>
+        {planActionError && (
+          <p className="setting-warning" role="alert">
+            {planActionError}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Populated after Plan Panel (B-2) sets sortOrder for queued plans
+function NextPlansSection() {
+  return null;
 }
 
 interface FileSettingProps {
@@ -274,6 +402,8 @@ export function Settings({
   locale,
   onLocaleChange,
   profileLastUpdated,
+  activePlan,
+  planActionError,
 }: SettingsProps) {
   const mentorFiles = config?.mentorFiles ?? {
     spec: null,
@@ -284,16 +414,20 @@ export function Settings({
     <div className="settings">
       <ProfileSection profileLastUpdated={profileLastUpdated} locale={locale} />
       <p className="setting-guide">{t("settings.unsetGuide", locale)}</p>
-      <FileSetting
-        label={t("settings.plan", locale)}
-        field="plan"
-        value={mentorFiles.plan}
-        createPrompt={t("settings.prompt.plan", locale)}
-        buttonLabel={t("settings.createPrompt.plan", locale)}
-        tooltipKey="settings.copyCreatePrompt.plan"
+      <ActivePlanSetting
+        activePlan={activePlan}
         locale={locale}
-        warning={!mentorFiles.plan}
+        planActionError={planActionError}
       />
+      <NextPlansSection />
+      <div className="setting-item">
+        <button
+          className="btn-outlined"
+          onClick={() => postMessage({ type: "openPlanPanel" })}
+        >
+          {t("settings.openPlanPanel.button", locale)}
+        </button>
+      </div>
       <FileSetting
         label={t("settings.spec", locale)}
         field="spec"

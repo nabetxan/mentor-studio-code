@@ -26,6 +26,14 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
   private onDeleteTopics?: (
     keys: string[],
   ) => Promise<{ key: string; ok: boolean; error?: string }[]>;
+  private onActivatePlan?: (id: number) => Promise<void>;
+  private onDeactivatePlan?: (id: number) => Promise<void>;
+  private onPauseActivePlan?: (id: number) => Promise<void>;
+  private onChangeActivePlanFile?: (
+    id: number,
+    relPath: string,
+  ) => Promise<void>;
+  private onCreateAndActivatePlan?: (relPath: string) => Promise<void>;
 
   constructor(private extensionUri: vscode.Uri) {}
 
@@ -43,6 +51,20 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     this.onUpdateTopicLabel = handlers.updateTopicLabel;
     this.onAddTopic = handlers.addTopic;
     this.onDeleteTopics = handlers.deleteTopics;
+  }
+
+  setPlanHandlers(handlers: {
+    activatePlan: (id: number) => Promise<void>;
+    deactivatePlan: (id: number) => Promise<void>;
+    pauseActivePlan: (id: number) => Promise<void>;
+    changeActivePlanFile: (id: number, relPath: string) => Promise<void>;
+    createAndActivatePlan: (relPath: string) => Promise<void>;
+  }): void {
+    this.onActivatePlan = handlers.activatePlan;
+    this.onDeactivatePlan = handlers.deactivatePlan;
+    this.onPauseActivePlan = handlers.pauseActivePlan;
+    this.onChangeActivePlanFile = handlers.changeActivePlanFile;
+    this.onCreateAndActivatePlan = handlers.createAndActivatePlan;
   }
 
   resolveWebviewView(webviewView: vscode.WebviewView): void {
@@ -75,31 +97,52 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             );
           }
         } else if (message.type === "selectFile") {
-          const uris = await vscode.window.showOpenDialog({
-            canSelectMany: false,
-            filters: { Markdown: ["md"] },
-            openLabel: "Select File",
-          });
-          if (uris && uris.length > 0) {
-            const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
-            if (!wsRoot) {
-              return;
-            }
-            const selectedPath = uris[0].fsPath;
-            const wsPath = wsRoot.fsPath;
-            const relativePath = path.relative(wsPath, selectedPath);
-            if (
-              path.isAbsolute(relativePath) ||
-              relativePath.startsWith("..")
-            ) {
+          if (message.field === "plan") {
+            // New DB flow: create + activate a plan from the chosen file
+            const uris = await vscode.window.showOpenDialog({
+              canSelectFiles: true,
+              canSelectMany: false,
+              filters: { Markdown: ["md"] },
+            });
+            if (!uris || uris.length === 0) return;
+            const relPath = vscode.workspace.asRelativePath(uris[0], false);
+            try {
+              await this.onCreateAndActivatePlan?.(relPath);
+            } catch (err) {
               vscode.window.showErrorMessage(
                 this.isJa
-                  ? "ワークスペース内のファイルを選択してください。"
-                  : "File must be inside the workspace.",
+                  ? `プランの作成に失敗しました: ${err instanceof Error ? err.message : String(err)}`
+                  : `Failed to create plan: ${err instanceof Error ? err.message : String(err)}`,
               );
-              return;
             }
-            await this.updateMentorFile(message.field, relativePath);
+          } else {
+            // Legacy spec flow: write to config.json
+            const uris = await vscode.window.showOpenDialog({
+              canSelectMany: false,
+              filters: { Markdown: ["md"] },
+              openLabel: "Select File",
+            });
+            if (uris && uris.length > 0) {
+              const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
+              if (!wsRoot) {
+                return;
+              }
+              const selectedPath = uris[0].fsPath;
+              const wsPath = wsRoot.fsPath;
+              const relativePath = path.relative(wsPath, selectedPath);
+              if (
+                path.isAbsolute(relativePath) ||
+                relativePath.startsWith("..")
+              ) {
+                vscode.window.showErrorMessage(
+                  this.isJa
+                    ? "ワークスペース内のファイルを選択してください。"
+                    : "File must be inside the workspace.",
+                );
+                return;
+              }
+              await this.updateMentorFile(message.field, relativePath);
+            }
           }
         } else if (message.type === "clearFile") {
           await this.updateMentorFile(message.field, null);
@@ -169,6 +212,105 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             }));
             this.postMessage({ type: "deleteTopicsResult", results });
           }
+        } else if (message.type === "activatePlan") {
+          try {
+            if (!this.onActivatePlan) {
+              this.postMessage({
+                type: "activatePlanResult",
+                id: message.id,
+                ok: false,
+                error: "no_handler",
+              });
+              return;
+            }
+            await this.onActivatePlan(message.id);
+            this.postMessage({
+              type: "activatePlanResult",
+              id: message.id,
+              ok: true,
+            });
+          } catch (err) {
+            this.postMessage({
+              type: "activatePlanResult",
+              id: message.id,
+              ok: false,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        } else if (message.type === "deactivatePlan") {
+          try {
+            if (!this.onDeactivatePlan) {
+              this.postMessage({
+                type: "deactivatePlanResult",
+                id: message.id,
+                ok: false,
+                error: "no_handler",
+              });
+              return;
+            }
+            await this.onDeactivatePlan(message.id);
+            this.postMessage({
+              type: "deactivatePlanResult",
+              id: message.id,
+              ok: true,
+            });
+          } catch (err) {
+            this.postMessage({
+              type: "deactivatePlanResult",
+              id: message.id,
+              ok: false,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        } else if (message.type === "pauseActivePlan") {
+          try {
+            await this.onPauseActivePlan?.(message.id);
+            this.postMessage({
+              type: "pauseActivePlanResult",
+              id: message.id,
+              ok: true,
+            });
+          } catch (err) {
+            this.postMessage({
+              type: "pauseActivePlanResult",
+              id: message.id,
+              ok: false,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        } else if (message.type === "changeActivePlanFile") {
+          const uris = await vscode.window.showOpenDialog({
+            canSelectFiles: true,
+            canSelectMany: false,
+            filters: { Markdown: ["md"] },
+          });
+          if (!uris || uris.length === 0) {
+            this.postMessage({
+              type: "changeActivePlanFileResult",
+              id: message.id,
+              ok: true,
+            });
+            return;
+          }
+          const relPath = vscode.workspace.asRelativePath(uris[0], false);
+          try {
+            await this.onChangeActivePlanFile?.(message.id, relPath);
+            this.postMessage({
+              type: "changeActivePlanFileResult",
+              id: message.id,
+              ok: true,
+            });
+          } catch (err) {
+            this.postMessage({
+              type: "changeActivePlanFileResult",
+              id: message.id,
+              ok: false,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        } else if (message.type === "openPlanPanel") {
+          await vscode.commands.executeCommand("mentor-studio.openPlanPanel");
+          return;
         } else if (message.type === "cleanupMentor") {
           const opts = message.options;
           if (

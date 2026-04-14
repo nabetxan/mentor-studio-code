@@ -111,6 +111,22 @@ describe("computeDashboardDataFromDb", () => {
       ]);
       expect(out.currentTask).toBe("Build");
       expect(out.profileLastUpdated).toBe("2026-04-13T00:00:00Z");
+      expect(out.plans).toEqual([
+        {
+          id: 1,
+          name: "Phase 1",
+          filePath: null,
+          status: "active",
+          sortOrder: 1,
+        },
+      ]);
+      expect(out.activePlan).toEqual({
+        id: 1,
+        name: "Phase 1",
+        filePath: null,
+        status: "active",
+        sortOrder: 1,
+      });
     } finally {
       db.close();
     }
@@ -127,6 +143,50 @@ describe("computeDashboardDataFromDb", () => {
       expect(out.unresolvedGaps).toEqual([]);
       expect(out.completedTasks).toEqual([]);
       expect(out.currentTask).toBeNull();
+      expect(out.plans).toEqual([]);
+      expect(out.activePlan).toBeNull();
+    } finally {
+      db.close();
+    }
+  });
+
+  it("returns all plans sorted by sortOrder with mixed statuses", async () => {
+    const env = await makeEnvWithDb([]);
+    await seedPlans(env.paths.dbPath, [
+      {
+        name: "Phase 2",
+        filePath: "docs/p2.md",
+        status: "queued",
+        sortOrder: 2,
+        createdAt: "2026-04-13T00:00:00Z",
+      },
+      {
+        name: "Phase 1",
+        filePath: "docs/p1.md",
+        status: "completed",
+        sortOrder: 1,
+        createdAt: "2026-04-12T00:00:00Z",
+      },
+      {
+        name: "Phase 3",
+        status: "active",
+        sortOrder: 3,
+        createdAt: "2026-04-14T00:00:00Z",
+      },
+    ]);
+
+    const db = await openReadOnly(env.paths.dbPath);
+    try {
+      const out = computeDashboardDataFromDb(db, { current_task: null });
+      expect(out.plans.map((p) => p.name)).toEqual([
+        "Phase 1",
+        "Phase 2",
+        "Phase 3",
+      ]);
+      expect(out.plans[0].filePath).toBe("docs/p1.md");
+      expect(out.plans[2].filePath).toBeNull();
+      expect(out.activePlan?.name).toBe("Phase 3");
+      expect(out.activePlan?.status).toBe("active");
     } finally {
       db.close();
     }
