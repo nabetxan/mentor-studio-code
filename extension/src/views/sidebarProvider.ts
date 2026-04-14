@@ -201,7 +201,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
   getSubscriber(): { postMessage(msg: unknown): void } {
     return {
       postMessage: (msg: unknown) => {
-        this.view?.webview.postMessage(msg);
+        void this.view?.webview.postMessage(msg);
       },
     };
   }

@@ -158,6 +158,14 @@ describe("update-task", () => {
     expect(await readPlanStatus(env.paths.dbPath, 1)).toBe("completed");
   });
 
+  it("returns invalid_state when target task is queued (not active)", async () => {
+    const res = await updateTask({ id: 2, status: "completed" }, env.paths);
+    expect(res).toMatchObject({ ok: false, error: "invalid_state" });
+    // Rolled back: both tasks unchanged.
+    expect(await readTaskStatus(env.paths.dbPath, 1)).toBe("active");
+    expect(await readTaskStatus(env.paths.dbPath, 2)).toBe("queued");
+  });
+
   it("returns invariant_violation when autoAdvance would break invariants", async () => {
     const env2 = await makeEnvWithDb();
     await seedPlans(env2.paths.dbPath, [

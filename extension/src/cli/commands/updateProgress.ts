@@ -33,12 +33,22 @@ export const updateProgress: Command = async (rawArgs, paths) => {
 
   if (!hasKnownKey) return { ok: true };
 
-  const progress = existsSync(paths.progressPath)
-    ? (JSON.parse(readFileSync(paths.progressPath, "utf-8")) as Record<
-        string,
-        unknown
-      >)
-    : defaultProgress();
+  let progress: Record<string, unknown>;
+  if (existsSync(paths.progressPath)) {
+    try {
+      progress = JSON.parse(
+        readFileSync(paths.progressPath, "utf-8"),
+      ) as Record<string, unknown>;
+    } catch (e) {
+      return {
+        ok: false,
+        error: "invalid_json",
+        detail: (e as Error).message,
+      };
+    }
+  } else {
+    progress = defaultProgress();
+  }
 
   for (const k of MUTABLE_KEYS) {
     if (k in args) progress[k] = args[k];
@@ -47,7 +57,7 @@ export const updateProgress: Command = async (rawArgs, paths) => {
   try {
     await atomicWriteFile(
       paths.progressPath,
-      Buffer.from(JSON.stringify(progress, null, 2), "utf-8"),
+      Buffer.from(`${JSON.stringify(progress, null, 2)}\n`, "utf-8"),
     );
   } catch (e) {
     return {

@@ -185,6 +185,17 @@ describe("migrate", () => {
     db.close();
   });
 
+  it("returns legacy_read_failed when a legacy JSON file is malformed", async () => {
+    const mentor = mkMentor();
+    writeJson(join(mentor, "config.json"), baseConfig);
+    writeJson(join(mentor, "progress.json"), baseProgress);
+    writeFileSync(join(mentor, "question-history.json"), "{ not json", "utf-8");
+    const result = await migrate(mentor, WASM);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toBe("legacy_read_failed");
+  });
+
   it("rolls back and deletes data.db if invariants fail", async () => {
     const mentor = mkMentor();
     // current_task references a task that doesn't exist → it will stay null, but no invariant break.

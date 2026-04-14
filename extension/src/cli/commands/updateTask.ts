@@ -6,6 +6,11 @@ import type { Command } from "./types";
 import { autoAdvance, type AdvanceResult } from "./updateTask/advance";
 
 class TaskNotFoundError extends Error {}
+class InvalidTaskStateError extends Error {
+  constructor(public readonly currentStatus: string) {
+    super(`task is ${currentStatus}, only active tasks can be updated`);
+  }
+}
 
 function currentPlanState(
   db: import("sql.js").Database,
@@ -82,6 +87,13 @@ export const updateTask: Command = async (rawArgs, paths) => {
           return currentPlanState(db, current.planId);
         }
 
+        // Reject updates on non-active tasks (e.g. queued): advancing from
+        // a queued task would activate a second task under the same plan,
+        // tripping the uq_tasks_active partial unique index.
+        if (current.status !== "active") {
+          throw new InvalidTaskStateError(current.status);
+        }
+
         const upd = db.prepare("UPDATE tasks SET status = ? WHERE id = ?");
         try {
           upd.run([status, taskId]);
@@ -95,6 +107,13 @@ export const updateTask: Command = async (rawArgs, paths) => {
   } catch (e) {
     if (e instanceof TaskNotFoundError) {
       return { ok: false, error: "not_found" };
+    }
+    if (e instanceof InvalidTaskStateError) {
+      return {
+        ok: false,
+        error: "invalid_state",
+        detail: e.message,
+      };
     }
     if (e instanceof InvariantViolationError) {
       return { ok: false, error: "invariant_violation", detail: e.message };

@@ -90,15 +90,26 @@ export async function migrate(
   try {
     const bakPaths = await createBackups(mentorDir);
 
-    const config = JSON.parse(
-      readFileSync(join(mentorDir, "config.json"), "utf-8"),
-    ) as Record<string, unknown>;
-    const progress = JSON.parse(
-      readFileSync(join(mentorDir, "progress.json"), "utf-8"),
-    ) as Record<string, unknown>;
-    const historyRaw: unknown = JSON.parse(
-      readFileSync(join(mentorDir, "question-history.json"), "utf-8"),
-    );
+    let config: Record<string, unknown>;
+    let progress: Record<string, unknown>;
+    let historyRaw: unknown;
+    try {
+      config = JSON.parse(
+        readFileSync(join(mentorDir, "config.json"), "utf-8"),
+      ) as Record<string, unknown>;
+      progress = JSON.parse(
+        readFileSync(join(mentorDir, "progress.json"), "utf-8"),
+      ) as Record<string, unknown>;
+      historyRaw = JSON.parse(
+        readFileSync(join(mentorDir, "question-history.json"), "utf-8"),
+      );
+    } catch (e) {
+      return {
+        ok: false,
+        error: "legacy_read_failed",
+        detail: e instanceof Error ? e.message : String(e),
+      };
+    }
     const history = parseHistory(historyRaw);
     const gaps: LegacyGap[] = Array.isArray(progress.unresolved_gaps)
       ? (progress.unresolved_gaps as LegacyGap[])

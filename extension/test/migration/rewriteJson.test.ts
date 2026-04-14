@@ -38,6 +38,14 @@ describe("rewriteProgress", () => {
     expect(out.current_task).toBeNull();
   });
 
+  it("preserves numeric current_task (post-migration value) as-is", () => {
+    const out = rewriteProgress({
+      progress: { current_task: 42 },
+      taskMap: new Map([["legacy-7", 99]]),
+    });
+    expect(out.current_task).toBe(42);
+  });
+
   it("null current_task stays null", () => {
     const out = rewriteProgress({
       progress: { current_task: null },

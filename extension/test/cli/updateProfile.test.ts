@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { beforeEach, describe, expect, it } from "vitest";
@@ -141,6 +141,18 @@ describe("update-profile", () => {
       .learner_profile as Record<string, unknown>;
     expect(profile.level).toBe("mid");
     expect(profile.bogus).toBeUndefined();
+  });
+
+  it("returns invalid_json when progress.json is malformed", async () => {
+    writeFileSync(env.paths.progressPath, "{ not json", "utf-8");
+    const res = await updateProfile({ level: "mid" }, env.paths);
+    expect(res).toMatchObject({ ok: false, error: "invalid_json" });
+  });
+
+  it("writes progress.json with trailing newline", async () => {
+    await updateProfile({ level: "mid" }, env.paths);
+    const raw = readFileSync(env.paths.progressPath, "utf-8");
+    expect(raw.endsWith("\n")).toBe(true);
   });
 
   it("returns progress_write_failed when progress.json cannot be written", async () => {

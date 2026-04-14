@@ -8,10 +8,14 @@ export function rewriteProgress(
 ): Record<string, unknown> {
   const p = input.progress;
   const rawCurrent = p.current_task;
-  const current =
-    typeof rawCurrent === "string"
-      ? (input.taskMap.get(rawCurrent) ?? null)
-      : null;
+  let current: number | null;
+  if (typeof rawCurrent === "string") {
+    current = input.taskMap.get(rawCurrent) ?? null;
+  } else if (typeof rawCurrent === "number") {
+    current = rawCurrent;
+  } else {
+    current = null;
+  }
   return {
     current_task: current,
     current_step: p.current_step ?? null,
