@@ -2,7 +2,7 @@
   "name": "mentor-studio-code",
   "displayName": "Mentor Studio Code",
   "description": "An AI-mentor extension for VS Code, optimized for use with Claude Code. Track your understanding, spot your weak points, and keep learning in your own projects.",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "icon": "images/icon.png",
   "license": "MIT",
   "publisher": "nabetxan",

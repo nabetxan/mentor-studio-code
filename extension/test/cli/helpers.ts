@@ -18,6 +18,7 @@ export function makeEnv(): TestEnv {
     mentorRoot: dir,
     dbPath: join(dir, "data.db"),
     progressPath: join(dir, "progress.json"),
+    configPath: join(dir, "config.json"),
     wasmPath: WASM,
   };
   return { dir, paths };

@@ -1,4 +1,5 @@
 import type { Database } from "sql.js";
+import { safeRun } from "./safeRun";
 
 export interface LegacyTopic {
   key: string;
@@ -18,7 +19,7 @@ export function insertTopics(
   const stmt = db.prepare("INSERT INTO topics(label) VALUES (?)");
   try {
     for (const t of topics) {
-      stmt.run([t.label]);
+      safeRun(stmt, "insertTopics", t.key ?? "(no key)", [t.label]);
       map.set(t.key, lastInsertRowId(db));
     }
   } finally {
@@ -36,7 +37,7 @@ export function ensureTopicId(
   if (existing !== undefined) return existing;
   const stmt = db.prepare("INSERT INTO topics(label) VALUES (?)");
   try {
-    stmt.run([oldKey]);
+    safeRun(stmt, "ensureTopicId", oldKey ?? "(no key)", [oldKey]);
   } finally {
     stmt.free();
   }

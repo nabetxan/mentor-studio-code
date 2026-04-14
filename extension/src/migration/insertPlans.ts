@@ -1,4 +1,5 @@
 import type { Database } from "sql.js";
+import { safeRun } from "./safeRun";
 
 export interface LegacyTask {
   id: string;
@@ -130,7 +131,13 @@ export async function insertPlans(
   );
   try {
     for (const p of planEntries) {
-      planInsert.run([p.name, p.filePath, p.status, p.sortOrder, now()]);
+      safeRun(planInsert, "insertPlans.plan", p.filePath ?? "(no filePath)", [
+        p.name,
+        p.filePath,
+        p.status,
+        p.sortOrder,
+        now(),
+      ]);
       const planId = lastInsertRowId(db);
       p.tasks.forEach((row, idx) => {
         const taskStatus: string =
@@ -141,7 +148,12 @@ export async function insertPlans(
               : row.legacyStatus === "skipped"
                 ? "skipped"
                 : "queued";
-        taskInsert.run([planId, row.task.name, taskStatus, idx + 1]);
+        safeRun(taskInsert, "insertPlans.task", row.task.id ?? "(no id)", [
+          planId,
+          row.task.name,
+          taskStatus,
+          idx + 1,
+        ]);
         const taskId = lastInsertRowId(db);
         taskIdMap.set(row.task.id, taskId);
       });

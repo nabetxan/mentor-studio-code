@@ -49,7 +49,7 @@ For all writes, use the bundled CLI:
 node .mentor/tools/mentor-cli.js <command> '<json-arg>'
 \`\`\`
 
-Write commands: \`record-answer\`, \`add-topic\`, \`update-task\`, \`update-progress\`, \`update-profile\`.
+Write commands: \`record-answer\`, \`add-topic\`, \`update-task\`, \`update-progress\`, \`update-profile\`, \`update-config\`.
 Read commands: \`session-brief '{"flow":"..."}'\`, \`list-topics\`, \`list-unresolved '{"topicId":N,"limit":N}'\`.
 
 All commands output JSON: \`{"ok":true,...}\` on success, \`{"ok":false,"error":"..."}\` on failure.

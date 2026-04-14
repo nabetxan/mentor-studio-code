@@ -5,10 +5,11 @@ import {
   ensureLegacyPlan,
   type LegacyPlanState,
 } from "./legacyPlan";
+import { safeRun } from "./safeRun";
 
 export interface LegacyQuestion {
   id: string;
-  timestamp: string;
+  answeredAt: string;
   taskId: string | null;
   topic: string;
   concept: string;
@@ -63,8 +64,8 @@ export function insertQuestions(
           input.taskMap.set(r.taskId, taskId);
         }
       }
-      insertStmt.run([
-        r.timestamp,
+      safeRun(insertStmt, "insertQuestions.root", r.id, [
+        r.answeredAt,
         taskId,
         topicId,
         r.concept,
@@ -83,7 +84,7 @@ export function insertQuestions(
   );
   try {
     const sortedReviews = [...reviews].sort((a, b) =>
-      a.timestamp.localeCompare(b.timestamp),
+      a.answeredAt.localeCompare(b.answeredAt),
     );
     for (const rv of sortedReviews) {
       if (rv.reviewOf === rv.id) {
@@ -95,10 +96,10 @@ export function insertQuestions(
         warn(`reviewOf points to missing root ${rv.reviewOf}`);
         continue;
       }
-      updStmt.run([
+      safeRun(updStmt, "insertQuestions.review", rv.id, [
         rv.userAnswer,
         rv.isCorrect ? 1 : 0,
-        rv.timestamp,
+        rv.answeredAt,
         rootNewId,
       ]);
     }
@@ -116,7 +117,10 @@ export function insertQuestions(
         warn(`gap refers to missing question ${g.questionId}`);
         continue;
       }
-      noteStmt.run([g.note ?? null, newId]);
+      safeRun(noteStmt, "insertQuestions.gap", g.questionId, [
+        g.note ?? null,
+        newId,
+      ]);
     }
   } finally {
     noteStmt.free();

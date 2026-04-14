@@ -1,4 +1,5 @@
 import type { Database } from "sql.js";
+import { safeRun } from "./safeRun";
 
 export interface LegacyPlanState {
   legacyPlanId: number | null;
@@ -28,7 +29,7 @@ export function ensureLegacyPlan(
     "INSERT INTO plans(name, filePath, status, sortOrder, createdAt) VALUES ('Legacy', NULL, 'completed', ?, ?)",
   );
   try {
-    stmt.run([nextSort, now()]);
+    safeRun(stmt, "ensureLegacyPlan", "Legacy", [nextSort, now()]);
   } finally {
     stmt.free();
   }
@@ -40,16 +41,22 @@ export function createPlaceholderTask(
   db: Database,
   legacyPlanId: number,
   oldTaskIdStr: string,
+  status: "completed" | "skipped" = "completed",
 ): number {
   const maxRes = db.exec(
     `SELECT COALESCE(MAX(sortOrder), 0) FROM tasks WHERE planId = ${legacyPlanId}`,
   );
   const nextSort = Number(maxRes[0].values[0][0]) + 1;
   const stmt = db.prepare(
-    "INSERT INTO tasks(planId, name, status, sortOrder) VALUES (?, ?, 'completed', ?)",
+    "INSERT INTO tasks(planId, name, status, sortOrder) VALUES (?, ?, ?, ?)",
   );
   try {
-    stmt.run([legacyPlanId, oldTaskIdStr, nextSort]);
+    safeRun(stmt, "createPlaceholderTask", oldTaskIdStr ?? "(no id)", [
+      legacyPlanId,
+      oldTaskIdStr,
+      status,
+      nextSort,
+    ]);
   } finally {
     stmt.free();
   }

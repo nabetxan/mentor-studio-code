@@ -53,7 +53,7 @@ const baseHistory = {
   history: [
     {
       id: "q1",
-      timestamp: "2026-03-22T00:01:00Z",
+      answeredAt: "2026-03-22T00:01:00Z",
       taskId: "t1",
       topic: "a-js",
       concept: "closures",
@@ -63,7 +63,7 @@ const baseHistory = {
     },
     {
       id: "q2",
-      timestamp: "2026-03-22T00:02:00Z",
+      answeredAt: "2026-03-22T00:02:00Z",
       taskId: "t1",
       topic: "a-css",
       concept: "specificity",
@@ -73,7 +73,7 @@ const baseHistory = {
     },
     {
       id: "q3",
-      timestamp: "2026-03-22T00:03:00Z",
+      answeredAt: "2026-03-22T00:03:00Z",
       taskId: "t2",
       topic: "unknown-topic",
       concept: "foo",
@@ -83,7 +83,7 @@ const baseHistory = {
     },
     {
       id: "q4",
-      timestamp: "2026-03-22T00:04:00Z",
+      answeredAt: "2026-03-22T00:04:00Z",
       taskId: "t1",
       topic: "a-js",
       concept: "closures",
@@ -162,6 +162,43 @@ describe("migrate", () => {
     expect(newConfig).not.toHaveProperty("topics");
     expect(newConfig.mentorFiles).not.toHaveProperty("plan");
     expect(newConfig.mentorFiles).toHaveProperty("spec");
+  });
+
+  it("handles mixed legacy task entries: strings + objects with 'task' field", async () => {
+    const mentor = mkMentor();
+    seedFixture(mentor, {
+      config: { ...baseConfig, mentorFiles: { spec: null, plan: null } },
+      progress: {
+        ...baseProgress,
+        completed_tasks: [
+          "Task 1: pre-schema string entry",
+          "Task 2: another string",
+          { task: "t1", name: "T1", plan: "plans/phase-1.md" },
+        ],
+        skipped_tasks: ["Old skipped string"],
+        current_task: null,
+      },
+      history: { history: [] },
+    });
+    const result = await migrate(mentor, WASM);
+    if (!result.ok)
+      throw new Error(`migration failed: ${result.error} ${result.detail}`);
+
+    const SQL = await loadSqlJs(WASM);
+    const db = new SQL.Database(readFileSync(join(mentor, "data.db")));
+    const tasks = db.exec("SELECT name, status FROM tasks ORDER BY id")[0]
+      .values;
+    expect(tasks).toEqual([
+      ["T1", "completed"],
+      ["Task 1: pre-schema string entry", "completed"],
+      ["Task 2: another string", "completed"],
+      ["Old skipped string", "skipped"],
+    ]);
+    const legacy = db.exec(
+      "SELECT COUNT(*) FROM plans WHERE name='Legacy' AND filePath IS NULL",
+    )[0].values[0][0];
+    expect(Number(legacy)).toBe(1);
+    db.close();
   });
 
   it("extracts plan name from first-line heading of real file (default reader)", async () => {

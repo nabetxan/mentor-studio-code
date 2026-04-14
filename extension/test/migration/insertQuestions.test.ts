@@ -54,7 +54,7 @@ async function setupFixture(
 function q(partial: Partial<LegacyQuestion>): LegacyQuestion {
   return {
     id: "q?",
-    timestamp: "2026-03-22T00:00:00Z",
+    answeredAt: "2026-03-22T00:00:00Z",
     taskId: "task-1",
     topic: "js",
     concept: "c",
@@ -82,11 +82,11 @@ describe("insertQuestions", () => {
     const db = await mkDb();
     const ctx = await setupFixture(db);
     const history: LegacyQuestion[] = [
-      q({ id: "q1", timestamp: "2026-03-22T00:01:00Z", isCorrect: false }),
-      q({ id: "q2", timestamp: "2026-03-22T00:02:00Z", isCorrect: true }),
+      q({ id: "q1", answeredAt: "2026-03-22T00:01:00Z", isCorrect: false }),
+      q({ id: "q2", answeredAt: "2026-03-22T00:02:00Z", isCorrect: true }),
       q({
         id: "q3",
-        timestamp: "2026-03-22T00:03:00Z",
+        answeredAt: "2026-03-22T00:03:00Z",
         reviewOf: "q1",
         userAnswer: "correct-now",
         isCorrect: true,
@@ -109,17 +109,17 @@ describe("insertQuestions", () => {
     const db = await mkDb();
     const ctx = await setupFixture(db);
     const history: LegacyQuestion[] = [
-      q({ id: "q1", timestamp: "2026-03-22T00:01:00Z", isCorrect: false }),
+      q({ id: "q1", answeredAt: "2026-03-22T00:01:00Z", isCorrect: false }),
       q({
         id: "q3",
-        timestamp: "2026-03-22T00:03:00Z",
+        answeredAt: "2026-03-22T00:03:00Z",
         reviewOf: "q1",
         userAnswer: "middle",
         isCorrect: false,
       }),
       q({
         id: "q2",
-        timestamp: "2026-03-22T00:02:00Z",
+        answeredAt: "2026-03-22T00:02:00Z",
         reviewOf: "q1",
         userAnswer: "early",
         isCorrect: true,

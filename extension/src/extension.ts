@@ -180,8 +180,7 @@ export function activate(context: vscode.ExtensionContext): void {
           const rel = (p: string): string => relative(mentorDir, p) || p;
           void vscode.window.showInformationMessage(
             `Mentor data migrated to SQLite (${result.stats.questions} questions, ${result.stats.plans} plans). ` +
-              `Backups kept at: ${result.bakPaths.map(rel).join(", ")}. ` +
-              `Delete them manually after verifying.`,
+              `Backups kept at: ${result.bakPaths.map(rel).join(", ")}.`,
           );
         } else if (result.error === "migration_partial") {
           void vscode.window.showWarningMessage(

@@ -18,7 +18,50 @@ import {
   type LegacyQuestion,
 } from "./insertQuestions";
 import { insertTopics, type LegacyTopic } from "./insertTopics";
+import { createPlaceholderTask, ensureLegacyPlan } from "./legacyPlan";
 import { rewriteConfig, rewriteProgress } from "./rewriteJson";
+
+interface RawTaskObject {
+  task?: string;
+  id?: string;
+  name?: string;
+  plan?: string;
+}
+
+function partitionTaskEntries(entries: unknown[] | undefined): {
+  strings: string[];
+  objects: RawTaskObject[];
+} {
+  const strings: string[] = [];
+  const objects: RawTaskObject[] = [];
+  for (const e of entries ?? []) {
+    if (typeof e === "string") {
+      strings.push(e);
+    } else if (e !== null && typeof e === "object") {
+      objects.push(e as RawTaskObject);
+    }
+  }
+  return { strings, objects };
+}
+
+function normalizeStructured(
+  entries: RawTaskObject[],
+  warn: (msg: string) => void,
+): LegacyTask[] {
+  const out: LegacyTask[] = [];
+  for (const e of entries) {
+    const id = e.id ?? e.task;
+    const plan = e.plan;
+    if (typeof id !== "string" || typeof plan !== "string") {
+      warn(
+        `dropping legacy task entry (missing id/plan): ${JSON.stringify(e)}`,
+      );
+      continue;
+    }
+    out.push({ id, name: e.name ?? id, plan });
+  }
+  return out;
+}
 
 export interface MigrationStats {
   topics: number;
@@ -120,16 +163,28 @@ export async function migrate(
     db.exec(SCHEMA_DDL);
     db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
 
+    const warn = (msg: string): void => {
+      console.warn(`[migration] ${msg}`);
+    };
+
     db.exec("BEGIN IMMEDIATE");
     let taskIdMap: Map<string, number>;
     try {
       const topics = (config.topics as LegacyTopic[] | undefined) ?? [];
       const topicMap = insertTopics(db, topics);
+
+      const completedSplit = partitionTaskEntries(
+        progress.completed_tasks as unknown[] | undefined,
+      );
+      const skippedSplit = partitionTaskEntries(
+        progress.skipped_tasks as unknown[] | undefined,
+      );
+
       const planResult = await insertPlans(
         db,
         {
-          completed_tasks: progress.completed_tasks as LegacyTask[] | undefined,
-          skipped_tasks: progress.skipped_tasks as LegacyTask[] | undefined,
+          completed_tasks: normalizeStructured(completedSplit.objects, warn),
+          skipped_tasks: normalizeStructured(skippedSplit.objects, warn),
           current_task:
             (progress.current_task as string | null | undefined) ?? null,
         },
@@ -141,6 +196,17 @@ export async function migrate(
         readHeading,
       );
       taskIdMap = planResult.taskIdMap;
+
+      // Pre-schema string entries: bucket under the synthesized "Legacy" plan.
+      for (const s of completedSplit.strings) {
+        const lpid = ensureLegacyPlan(db, legacyPlanState);
+        createPlaceholderTask(db, lpid, s, "completed");
+      }
+      for (const s of skippedSplit.strings) {
+        const lpid = ensureLegacyPlan(db, legacyPlanState);
+        createPlaceholderTask(db, lpid, s, "skipped");
+      }
+
       insertQuestions(db, {
         history,
         gaps,
