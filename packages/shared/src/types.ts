@@ -93,7 +93,13 @@ export interface TopicStats {
   rate: number;
 }
 
-export type PlanStatus = "queued" | "active" | "paused" | "completed";
+export type PlanStatus =
+  | "queued"
+  | "active"
+  | "paused"
+  | "completed"
+  | "backlog"
+  | "removed";
 
 export interface PlanDto {
   id: number;

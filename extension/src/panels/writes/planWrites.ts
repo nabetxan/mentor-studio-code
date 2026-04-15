@@ -1,5 +1,7 @@
 import type { Database } from "sql.js";
 
+import type { PlanStatus } from "@mentor-studio/shared";
+
 import { assertStatusInvariants, withWriteTransaction } from "../../db";
 
 function rowExists(db: Database, table: string, id: number): boolean {
@@ -19,7 +21,7 @@ export async function createPlan(
     const createdAt = new Date().toISOString();
 
     const stmt = db.prepare(
-      "INSERT INTO plans (name, filePath, status, sortOrder, createdAt) VALUES (?, ?, 'queued', ?, ?)",
+      "INSERT INTO plans (name, filePath, status, sortOrder, createdAt) VALUES (?, ?, 'backlog', ?, ?)",
     );
     try {
       stmt.run([args.name, args.filePath, nextSort, createdAt]);
@@ -70,6 +72,7 @@ export async function updatePlan(
   });
 }
 
+/** Hard delete. UI uses removePlan(soft delete). Reserved for CLI/admin paths. */
 export async function deletePlan(
   dbPath: string,
   args: { id: number },
@@ -91,6 +94,48 @@ export async function deletePlan(
     const stmt = db.prepare("DELETE FROM plans WHERE id = ?");
     try {
       stmt.run([args.id]);
+    } finally {
+      stmt.free();
+    }
+    assertStatusInvariants(db);
+  });
+}
+
+export async function removePlan(
+  dbPath: string,
+  args: { id: number },
+  wasmPath: string,
+): Promise<void> {
+  await withWriteTransaction(dbPath, { wasmPath, purpose: "normal" }, (db) => {
+    if (!rowExists(db, "plans", args.id)) {
+      throw new Error(`plan not found: ${args.id}`);
+    }
+    const statusRes = db.exec(`SELECT status FROM plans WHERE id = ${args.id}`);
+    const currentStatus = String(statusRes[0].values[0][0]);
+    if (currentStatus === "active") {
+      throw new Error("cannot remove active plan");
+    }
+    const stmt = db.prepare("UPDATE plans SET status = 'removed' WHERE id = ?");
+    try {
+      stmt.run([args.id]);
+    } finally {
+      stmt.free();
+    }
+    assertStatusInvariants(db);
+  });
+}
+
+export async function restorePlan(
+  dbPath: string,
+  args: { id: number; toStatus: Exclude<PlanStatus, "active" | "removed"> },
+  wasmPath: string,
+): Promise<void> {
+  await withWriteTransaction(dbPath, { wasmPath, purpose: "normal" }, (db) => {
+    const stmt = db.prepare(
+      "UPDATE plans SET status = ? WHERE id = ? AND status = 'removed'",
+    );
+    try {
+      stmt.run([args.toStatus, args.id]);
     } finally {
       stmt.free();
     }

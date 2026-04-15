@@ -2,7 +2,6 @@ import type {
   PlanDto,
   PlanStatus,
   TaskDto,
-  TaskStatus,
   TopicDto,
 } from "@mentor-studio/shared";
 
@@ -11,23 +10,13 @@ export type PanelMessage =
   | { type: "initData"; plans: PlanDto[]; tasks: TaskDto[]; topics: TopicDto[] }
   | { type: "dbChanged"; timestamp?: number } // optional — not all broadcasters populate it
   | { type: "writeError"; requestId: string; error: string }
-  | { type: "writeOk"; requestId: string };
+  | { type: "writeOk"; requestId: string }
+  | { type: "pickPlanFileResult"; requestId: string; filePath: string | null };
 
 // Panel → Extension
 export type PanelRequest =
   | { type: "reorderPlans"; requestId: string; orderedIds: number[] }
-  | {
-      type: "reorderTasks";
-      requestId: string;
-      planId: number;
-      orderedIds: number[];
-    }
-  | {
-      type: "createPlan";
-      requestId: string;
-      name: string;
-      filePath: string | null;
-    }
+  | { type: "createPlan"; requestId: string; name: string; filePath: string }
   | {
       type: "updatePlan";
       requestId: string;
@@ -36,15 +25,13 @@ export type PanelRequest =
       filePath?: string | null;
       status?: PlanStatus;
     }
-  | { type: "deletePlan"; requestId: string; id: number }
-  | { type: "createTask"; requestId: string; planId: number; name: string }
+  | { type: "removePlan"; requestId: string; id: number }
   | {
-      type: "updateTask";
+      type: "restorePlan";
       requestId: string;
       id: number;
-      name?: string;
-      status?: TaskStatus;
+      toStatus: Exclude<PlanStatus, "active" | "removed">;
     }
-  | { type: "deleteTask"; requestId: string; id: number }
   | { type: "openMarkdownFile"; filePath: string }
+  | { type: "pickPlanFile"; requestId: string }
   | { type: "ready" };

@@ -8,6 +8,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { SCHEMA_VERSION } from "../../src/db/schema";
 import { loadSqlJs } from "../../src/db/sqlJsLoader";
 import { migrate } from "../../src/migration/migrate";
 
@@ -144,7 +145,9 @@ describe("migrate", () => {
       3,
     );
     // PRAGMA user_version
-    expect(Number(db.exec("PRAGMA user_version")[0].values[0][0])).toBe(1);
+    expect(Number(db.exec("PRAGMA user_version")[0].values[0][0])).toBe(
+      SCHEMA_VERSION,
+    );
     db.close();
 
     const newProgress = JSON.parse(

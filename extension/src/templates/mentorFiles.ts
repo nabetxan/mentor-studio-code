@@ -171,23 +171,39 @@ description: Main learning session — loads session state, runs Teaching Cycle,
 ## Session Start
 
 1. If \`learner.lastUpdated\` is null → load \`.mentor/skills/intake/SKILL.md\` and run the Intake flow. When it returns, continue with the now-populated learner data.
-2. **Plan Health Check** — run \`node .mentor/tools/mentor-cli.js list-plans '{}'\` and inspect every plan with status \`active\` or \`queued\`. If any such plan has **zero tasks in the DB**, it needs a task breakdown before it can be used. This applies symmetrically to plans created via:
-   - Explorer right-click "Add to Mentor Plan"
-   - Sidebar Settings → Select File
-   - External tools (superpowers etc.) that only wrote a markdown file
-   - The Plan Panel (\`Mentor Studio Code: Open Plan Panel\`)
-   - Manual CLI \`add-plan\` calls
+2. **Plan Health Check** — run \`node .mentor/tools/mentor-cli.js list-plans '{}'\` (each plan includes \`taskCount: number\`; \`removed\`/\`completed\` plans are excluded by default). Inspect the result and handle the following cases in order:
 
-   For each zero-task plan:
+   **Case A — No \`active\` plan (zero plans with status \`active\`)**:
+   - Tell the user there is no active plan.
+   - Ask: "Which plan would you like to activate?" and list the \`queued\`/\`paused\`/\`backlog\` plans returned.
+   - On user selection: \`node .mentor/tools/mentor-cli.js activate-plan '{"id":<id>}'\`
+   - Re-run \`list-plans '{}'\` and continue to Case B/C.
+
+   **Case B — \`active\` plan exists but \`taskCount === 0\`** (tasks not yet registered in DB):
    - Tell the user: "This plan has no tasks yet. I'll generate a task breakdown."
    - If the plan has a \`filePath\` pointing to an existing markdown file → read it. Extract any \`## Task N\` headings as a starting point; otherwise generate a structured task list (≥ 1 task) from the goal.
    - If the plan has no \`filePath\` (UI-only plan) → ask the user about the goal, then propose creating \`.mentor/plan/YYYY-MM-DD-<slug>.md\` with the task breakdown. Never overwrite an existing file; append a counter or timestamp on collision.
    - On user confirmation:
      - Register each task in order: \`node .mentor/tools/mentor-cli.js add-task '{"planId":<id>,"name":"<task name>"}'\`
      - If a markdown file was newly created, set \`filePath\`: \`node .mentor/tools/mentor-cli.js update-plan '{"id":<id>,"filePath":"<rel path>"}'\`
-   - After tasks exist, if the plan is \`queued\`, ask whether to activate it. On OK: \`node .mentor/tools/mentor-cli.js activate-plan '{"id":<id>}'\`.
+
+   **Case C — \`active\` plan exists with tasks**: no action needed.
+
+   Also check any \`queued\` plan with \`taskCount === 0\` and apply the same task-generation flow as Case B before activating it.
 
    After the health check completes, re-run \`session-brief\` to pick up the now-populated \`currentTask\`.
+
+   ### Plan Status Reference
+
+   | status | meaning |
+   |---|---|
+   | \`active\` | Currently being worked on. At most 1 at a time. 0 is also valid (see Case A above). |
+   | \`queued\` | Scheduled. Auto-promoted to \`active\` (by \`sortOrder\`) when the current active plan completes. |
+   | \`paused\` | Temporarily suspended. |
+   | \`completed\` | Finished. |
+   | \`backlog\` | Not started, timing undecided. **Default for newly created plans.** |
+   | \`removed\` | Soft-deleted. Managed from the Plan Panel only — do not touch via CLI or AI. |
+
 3. (Conditional) If \`relevantGaps\` match the \`currentTask\`'s topic → propose a quick review before beginning.
 4. (Always) If \`currentTask\` is set and \`resumeContext\` indicates active progress, suggest continuing it; otherwise ask the user what they would like to work on today.
    - If \`currentTask\` is null → tell the user to pick or activate a task in the Plan Panel (\`Mentor Studio Code: Open Plan Panel\`) and stop.
@@ -430,19 +446,20 @@ Triggered when no active plan exists in the DB, or when all tasks in the current
    \`\`\`bash
    node .mentor/tools/mentor-cli.js add-task '{"planId":<id>,"name":"<task-name>"}'
    \`\`\`
-6. Ask the user whether to set the new plan as **active** now or leave it **queued**.
-   - If **active**:
+6. Ask the user which status to assign the new plan. Offer three choices:
+   - **active** — start working on it right away:
      \`\`\`bash
      node .mentor/tools/mentor-cli.js activate-plan '{"id":<id>}'
      \`\`\`
-   - If **queued**: leave it — proceed to session without activating.
+   - **queued** — schedule it; it will auto-activate when the current active plan completes. Leave it — proceed to session without activating.
+   - **backlog** — register now, work on it later (timing undecided). This is the **default**. Leave it — proceed to session without activating.
 7. Tell the user the plan file has been created at \`.mentor/plan/<dated-slug>.md\` and registered. Mention that the active plan can always be changed from the Plan Panel.
 
 If any CLI call fails → tell the user the error and suggest retrying or checking the CLI output.
 
 ### All-Tasks-Complete Detection
 
-Call \`node .mentor/tools/mentor-cli.js list-plans '{}'\` and check the returned task statuses from \`session-brief\`. If the active plan has no tasks with status \`queued\` or \`active\` (i.e. all tasks are \`completed\` or \`skipped\`) → plan complete → trigger Plan Setup Flow.
+Call \`node .mentor/tools/mentor-cli.js list-plans '{}'\` and check the returned task statuses from \`session-brief\`. Each plan in the response includes a \`taskCount\` field (count of non-\`completed\`/non-\`skipped\` tasks); \`removed\` and \`completed\` plans are excluded by default (pass \`includeCompleted:true\` or \`includeRemoved:true\` to include them). If the active plan has no tasks with status \`queued\` or \`active\` (i.e. all tasks are \`completed\` or \`skipped\`) → plan complete → trigger Plan Setup Flow.
 
 Do **not** count \`## Task N\` headings in the markdown file to determine completion — the DB is the authoritative source.
 
@@ -464,8 +481,8 @@ Format is flexible — a single task with 2–3 steps is valid.
 
 ### Notes
 
-- The markdown file is for human reference; the DB tasks (\`tasks\` table) are what the extension reads and tracks.
-- The \`mentorFiles.plan\` / \`update-config\` flow is fully deprecated — do not use it.
+- The markdown file is for human reference; the DB tasks (\`tasks\` table) are what the extension reads and tracks. The DB is the **sole source of truth** for plan/task state.
+- The \`mentorFiles.plan\` / \`update-config\` flow is **fully deprecated and removed**. Do not read or write \`mentorFiles.plan\`. Do not call \`update-config\` with a \`plan\` key. The Plan Panel and the DB (via CLI) are the only interfaces.
 - After CLI writes, the extension's sidebar auto-refreshes via the file watcher / broadcast bus.
 `;
 
@@ -477,10 +494,16 @@ export const CREATE_SPEC_MD = `## Spec Creation Rules
 - Tech stack
 - Key features list
 
+### Default Location
+
+When the AI creates a new spec file, write it to \`.mentor/spec/<slug>.md\` (create the \`.mentor/spec/\` directory if it does not exist). Use a short kebab-case slug derived from the project name or feature (e.g., \`.mentor/spec/todo-app.md\`). On name collision, append a counter or timestamp — never overwrite an existing file.
+
+\`mentorFiles.spec\` may still point to **any path** (e.g., an existing \`docs/\` file, a superpowers spec, or any arbitrary markdown). The \`.mentor/spec/\` convention only applies when the AI is creating a new spec from scratch; users remain free to point \`mentorFiles.spec\` anywhere.
+
 ### Spec Setup Flow
 
 1. Ask the user what the project is about; ask follow-up questions for missing info.
-2. Create spec file.
+2. Create the spec file at \`.mentor/spec/<slug>.md\` (default).
 3. Tell the user that the spec file has been created at \`<path>\`, and ask if they want to set it as the active spec. Mention that this can always be changed from Settings.
    - If user says no → leave \`mentorFiles.spec\` unchanged.
 4. On OK:

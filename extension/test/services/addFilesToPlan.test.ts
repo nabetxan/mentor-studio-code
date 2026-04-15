@@ -86,7 +86,7 @@ describe("FileWatcherService.addFilesToPlan", () => {
       const [name, fp, status] = res[0].values[0];
       expect(name).toBe("my-plan");
       expect(fp).toBe("my-plan.md");
-      expect(status).toBe("queued");
+      expect(status).toBe("backlog");
     } finally {
       db.close();
     }

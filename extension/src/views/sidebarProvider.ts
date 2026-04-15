@@ -521,6 +521,9 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     field: FileField,
     value: string | null,
   ): Promise<void> {
+    if (field === "plan") {
+      throw new Error("mentorFiles.plan is managed by Plan Panel, not Sidebar");
+    }
     await this.updateConfig((config) => {
       const mentorFiles = config.mentorFiles ?? {
         spec: null,

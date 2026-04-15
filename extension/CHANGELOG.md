@@ -2,7 +2,21 @@
 
 All notable changes to "Mentor Studio Code" will be documented in this file.
 
-## [0.6.0] - 2026-04-14
+## [0.6.0] - 2026-04-16
+
+### Plan Panel redesign
+
+- Plan Panel rebuilt as a single Plans pane (Tasks pane removed)
+- New plan statuses: `backlog` (default for new plans, undated work) and `removed` (soft-delete; rows hidden unless **Show Removed** is toggled)
+- "Add Plan from File…" uses the VS Code file picker; plan name is auto-derived from the markdown filename
+- Delete is now a soft **Remove** (status → `removed`); a **Restore** button appears when `Show Removed` is on
+- New header toggles: `Show Completed`, `Show Removed`
+- `completed` plans get a subdued Activate button matching the `open ↗` style
+- When the active plan completes, the next `queued` plan is auto-promoted to `active` (sortOrder ascending); `backlog` plans are never auto-promoted
+- DB schema migrated from v1 → v2 (extends `plans.status` CHECK to the 6-status set); existing databases auto-migrate on open
+- `mentor-cli list-plans` returns `taskCount` per plan; `removed` and `completed` are excluded by default (`includeRemoved` / `includeCompleted` opt-in)
+- mentor-session skill detects `active` plans with `taskCount === 0` and offers to regenerate the plan file with a task breakdown
+- `mentorFiles.plan` config writes are rejected from both Sidebar and `update-config` CLI — the DB is the single source of truth for plan state
 
 ### Added
 

@@ -30,7 +30,14 @@ export const updateConfig: Command = async (rawArgs, paths) => {
       };
     }
     const incoming = mf as Record<string, unknown>;
-    for (const k of ["plan", "spec"] as const) {
+    if ("plan" in incoming) {
+      return {
+        ok: false,
+        error: "invalid_args",
+        detail: "mentorFiles.plan is managed by Plan Panel, not CLI",
+      };
+    }
+    for (const k of ["spec"] as const) {
       if (k in incoming) {
         const v = incoming[k];
         if (v !== null && typeof v !== "string") {

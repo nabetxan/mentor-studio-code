@@ -3,7 +3,6 @@ import { BroadcastBus } from "../services/broadcastBus";
 import type { PanelRequest } from "./protocol";
 import { readSnapshot } from "./snapshot";
 import * as planWrites from "./writes/planWrites";
-import * as taskWrites from "./writes/taskWrites";
 
 interface DbPaths {
   dbPath: string;
@@ -11,7 +10,10 @@ interface DbPaths {
 }
 
 async function handleWrite(
-  req: Exclude<PanelRequest, { type: "ready" } | { type: "openMarkdownFile" }>,
+  req: Exclude<
+    PanelRequest,
+    { type: "ready" } | { type: "openMarkdownFile" } | { type: "pickPlanFile" }
+  >,
   dbPath: string,
   wasmPath: string,
 ): Promise<void> {
@@ -20,13 +22,6 @@ async function handleWrite(
       await planWrites.reorderPlans(
         dbPath,
         { orderedIds: req.orderedIds },
-        wasmPath,
-      );
-      return;
-    case "reorderTasks":
-      await taskWrites.reorderTasks(
-        dbPath,
-        { planId: req.planId, orderedIds: req.orderedIds },
         wasmPath,
       );
       return;
@@ -43,8 +38,8 @@ async function handleWrite(
       } else if (req.status === "queued") {
         // deactivatePlan sets status back to 'queued'
         await planWrites.deactivatePlan(dbPath, { id: req.id }, wasmPath);
-      } else if (req.status === "paused" || req.status === "completed") {
-        // No helper exists for these transitions; surface as unsupported (same pattern as updateTask status)
+      } else if (req.status !== undefined) {
+        // paused / completed / backlog / removed — not supported via panel
         throw new Error(`plan status '${req.status}' not supported via panel`);
       } else {
         // status is undefined — name/filePath-only update
@@ -55,28 +50,15 @@ async function handleWrite(
         );
       }
       return;
-    case "deletePlan":
-      await planWrites.deletePlan(dbPath, { id: req.id }, wasmPath);
+    case "removePlan":
+      await planWrites.removePlan(dbPath, { id: req.id }, wasmPath);
       return;
-    case "createTask":
-      await taskWrites.createTask(
+    case "restorePlan":
+      await planWrites.restorePlan(
         dbPath,
-        { planId: req.planId, name: req.name },
+        { id: req.id, toStatus: req.toStatus },
         wasmPath,
       );
-      return;
-    case "updateTask":
-      if (req.status !== undefined) {
-        throw new Error("task status changes not supported via panel");
-      }
-      await taskWrites.updateTask(
-        dbPath,
-        { id: req.id, name: req.name },
-        wasmPath,
-      );
-      return;
-    case "deleteTask":
-      await taskWrites.deleteTask(dbPath, { id: req.id }, wasmPath);
       return;
     default: {
       const _exhaustive: never = req;
@@ -151,14 +133,25 @@ export class PlanPanel {
               vscode.Uri.file(req.filePath),
             );
             return;
+          case "pickPlanFile": {
+            const picked = await vscode.window.showOpenDialog({
+              canSelectMany: false,
+              filters: { Markdown: ["md"] },
+            });
+            const filePath =
+              picked && picked.length > 0 ? picked[0].fsPath : null;
+            void this.panel.webview.postMessage({
+              type: "pickPlanFileResult",
+              requestId: req.requestId,
+              filePath,
+            });
+            return;
+          }
           case "reorderPlans":
-          case "reorderTasks":
           case "createPlan":
           case "updatePlan":
-          case "deletePlan":
-          case "createTask":
-          case "updateTask":
-          case "deleteTask":
+          case "removePlan":
+          case "restorePlan":
             try {
               await handleWrite(req, this.dbPath, this.wasmPath);
               void this.panel.webview.postMessage({

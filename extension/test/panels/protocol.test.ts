@@ -45,6 +45,29 @@ describe("protocol types", () => {
     }
   });
 
+  it("PanelMessage pickPlanFileResult carries requestId and filePath", () => {
+    const msg: PanelMessage = {
+      type: "pickPlanFileResult",
+      requestId: "r-pick",
+      filePath: "/path/to/plan.md",
+    };
+    if (msg.type === "pickPlanFileResult") {
+      expect(msg.requestId).toBe("r-pick");
+      expect(msg.filePath).toBe("/path/to/plan.md");
+    }
+  });
+
+  it("PanelMessage pickPlanFileResult allows null filePath (cancelled)", () => {
+    const msg: PanelMessage = {
+      type: "pickPlanFileResult",
+      requestId: "r-cancel",
+      filePath: null,
+    };
+    if (msg.type === "pickPlanFileResult") {
+      expect(msg.filePath).toBeNull();
+    }
+  });
+
   it("PanelRequest ready has no extra fields", () => {
     const req: PanelRequest = { type: "ready" };
     expect(req.type).toBe("ready");
@@ -60,16 +83,16 @@ describe("protocol types", () => {
     }
   });
 
-  it("PanelRequest createPlan carries name and filePath", () => {
+  it("PanelRequest createPlan carries name and filePath (string required)", () => {
     const req: PanelRequest = {
       type: "createPlan",
       requestId: "r3",
       name: "My Plan",
-      filePath: null,
+      filePath: "/workspace/plan.md",
     };
     if (req.type === "createPlan") {
       expect(req.name).toBe("My Plan");
-      expect(req.filePath).toBeNull();
+      expect(req.filePath).toBe("/workspace/plan.md");
       expect(req.requestId).toBe("r3");
     }
   });
@@ -93,16 +116,37 @@ describe("protocol types", () => {
     }
   });
 
-  it("PanelRequest reorderTasks carries planId and orderedIds", () => {
+  it("PanelRequest removePlan carries id", () => {
     const req: PanelRequest = {
-      type: "reorderTasks",
-      requestId: "r6",
-      planId: 7,
-      orderedIds: [2, 1],
+      type: "removePlan",
+      requestId: "r-rem",
+      id: 10,
     };
-    if (req.type === "reorderTasks") {
-      expect(req.planId).toBe(7);
-      expect(req.orderedIds).toEqual([2, 1]);
+    if (req.type === "removePlan") {
+      expect(req.id).toBe(10);
+    }
+  });
+
+  it("PanelRequest restorePlan carries id and toStatus", () => {
+    const req: PanelRequest = {
+      type: "restorePlan",
+      requestId: "r-restore",
+      id: 11,
+      toStatus: "backlog",
+    };
+    if (req.type === "restorePlan") {
+      expect(req.id).toBe(11);
+      expect(req.toStatus).toBe("backlog");
+    }
+  });
+
+  it("PanelRequest pickPlanFile carries requestId", () => {
+    const req: PanelRequest = {
+      type: "pickPlanFile",
+      requestId: "r-pick",
+    };
+    if (req.type === "pickPlanFile") {
+      expect(req.requestId).toBe("r-pick");
     }
   });
 });

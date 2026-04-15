@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { bootstrapDb, type BootstrapOptions } from "./bootstrap";
 import * as integrity from "./integrity";
+import { migrateSchema } from "./migrateSchema";
 
 export interface OpenOptions {
   wasmPath: string;
@@ -39,6 +40,9 @@ export async function openDb(
     return { created: true, dbPath };
   }
   const integ = await integrity.checkIntegrity(dbPath, opts.wasmPath);
+  if (integ.ok) {
+    await migrateSchema(dbPath, { wasmPath: opts.wasmPath });
+  }
   if (!integ.ok) {
     try {
       const quarantined = await integrity.quarantineCorruptDb(dbPath);

@@ -8,6 +8,7 @@ const paths: CliPaths = {
   dbPath: "/tmp/fake/data.db",
   progressPath: "/tmp/fake/progress.json",
   wasmPath: "/tmp/fake/tools/sql-wasm.wasm",
+  configPath: "/tmp/fake/config.json",
 };
 
 describe("dispatch", () => {

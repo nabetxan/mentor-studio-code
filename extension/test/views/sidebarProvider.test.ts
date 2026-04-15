@@ -421,4 +421,19 @@ describe("SidebarProvider", () => {
       "/workspace/plans/new-plan.md",
     );
   });
+
+  it("clearFile with field:plan throws — plan is managed by Plan Panel", async () => {
+    const provider = new SidebarProvider(
+      vscodeMock.Uri.file("/ext") as unknown as ConstructorParameters<
+        typeof SidebarProvider
+      >[0],
+    );
+    const view = makeView();
+    provider.resolveWebviewView(
+      view as unknown as Parameters<typeof provider.resolveWebviewView>[0],
+    );
+    await expect(
+      view.__trigger({ type: "clearFile", field: "plan" }),
+    ).rejects.toThrow("mentorFiles.plan is managed by Plan Panel, not Sidebar");
+  });
 });

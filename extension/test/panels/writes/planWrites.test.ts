@@ -6,6 +6,8 @@ import {
   deactivatePlan,
   deletePlan,
   pausePlan,
+  removePlan,
+  restorePlan,
   updatePlan,
 } from "../../../src/panels/writes/planWrites";
 import {
@@ -75,7 +77,7 @@ describe("planWrites", () => {
       const p2 = await readPlan(env.paths.dbPath, b.id);
       expect(p1?.sortOrder).toBe(1);
       expect(p2?.sortOrder).toBe(2);
-      expect(p1?.status).toBe("queued");
+      expect(p1?.status).toBe("backlog");
     });
 
     it("filePath can be null", async () => {
@@ -309,6 +311,71 @@ describe("planWrites", () => {
       ).resolves.toBeUndefined();
       // Existing active plan unchanged.
       expect((await readPlan(env.paths.dbPath, 1))?.status).toBe("active");
+    });
+  });
+
+  describe("removePlan", () => {
+    beforeEach(async () => {
+      await seedPlans(env.paths.dbPath, [
+        {
+          name: "P1",
+          status: "backlog",
+          sortOrder: 1,
+          createdAt: "2026-04-01T00:00:00.000Z",
+        },
+        {
+          name: "P2",
+          status: "active",
+          sortOrder: 2,
+          createdAt: "2026-04-01T00:00:00.000Z",
+        },
+      ]);
+      await seedTasks(env.paths.dbPath, [
+        { planId: 2, name: "T1", status: "queued", sortOrder: 1 },
+      ]);
+    });
+
+    it("backlog plan becomes removed", async () => {
+      await removePlan(env.paths.dbPath, { id: 1 }, WASM);
+      expect((await readPlan(env.paths.dbPath, 1))?.status).toBe("removed");
+    });
+
+    it("active plan throws cannot remove active plan", async () => {
+      await expect(
+        removePlan(env.paths.dbPath, { id: 2 }, WASM),
+      ).rejects.toThrow("cannot remove active plan");
+      // Plan unchanged.
+      expect((await readPlan(env.paths.dbPath, 2))?.status).toBe("active");
+    });
+  });
+
+  describe("restorePlan", () => {
+    beforeEach(async () => {
+      await seedPlans(env.paths.dbPath, [
+        {
+          name: "P1",
+          status: "removed",
+          sortOrder: 1,
+          createdAt: "2026-04-01T00:00:00.000Z",
+        },
+        {
+          name: "P2",
+          status: "backlog",
+          sortOrder: 2,
+          createdAt: "2026-04-01T00:00:00.000Z",
+        },
+      ]);
+    });
+
+    it("removed plan is restored to queued", async () => {
+      await restorePlan(env.paths.dbPath, { id: 1, toStatus: "queued" }, WASM);
+      expect((await readPlan(env.paths.dbPath, 1))?.status).toBe("queued");
+    });
+
+    it("non-removed plan is a no-op (status unchanged)", async () => {
+      await restorePlan(env.paths.dbPath, { id: 2, toStatus: "queued" }, WASM);
+      // Row was not removed so WHERE status='removed' matches nothing — backlog unchanged.
+      expect((await readPlan(env.paths.dbPath, 2))?.status).toBe("backlog");
     });
   });
 });

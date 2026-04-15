@@ -44,6 +44,27 @@ export function autoAdvance(db: Database, planId: number): AdvanceResult {
   } finally {
     planUpd.free();
   }
+
+  const nextPlanStmt = db.prepare(
+    "SELECT id FROM plans WHERE status='queued' ORDER BY sortOrder ASC LIMIT 1",
+  );
+  let nextPlanId: number | null = null;
+  try {
+    if (nextPlanStmt.step()) {
+      nextPlanId = Number(nextPlanStmt.get()[0]);
+    }
+  } finally {
+    nextPlanStmt.free();
+  }
+  if (nextPlanId !== null) {
+    const promote = db.prepare("UPDATE plans SET status='active' WHERE id=?");
+    try {
+      promote.run([nextPlanId]);
+    } finally {
+      promote.free();
+    }
+  }
+
   assertStatusInvariants(db);
   return { nextTask: null, planCompleted: true };
 }

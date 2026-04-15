@@ -111,6 +111,33 @@ describe("SCHEMA_DDL", () => {
   it("sets user_version to 1", async () => {
     const db = await createDb();
     const version = db.exec("PRAGMA user_version")[0].values[0][0];
-    expect(version).toBe(1);
+    expect(version).toBe(SCHEMA_VERSION);
+  });
+
+  it("accepts backlog as a valid plans.status", async () => {
+    const db = await createDb();
+    expect(() =>
+      db.exec(
+        `INSERT INTO plans(name,status,sortOrder,createdAt) VALUES ('p1','backlog',1,'2026-01-01T00:00:00Z')`,
+      ),
+    ).not.toThrow();
+  });
+
+  it("accepts removed as a valid plans.status", async () => {
+    const db = await createDb();
+    expect(() =>
+      db.exec(
+        `INSERT INTO plans(name,status,sortOrder,createdAt) VALUES ('p1','removed',1,'2026-01-01T00:00:00Z')`,
+      ),
+    ).not.toThrow();
+  });
+
+  it("rejects unknown plans.status with SQLITE_CONSTRAINT", async () => {
+    const db = await createDb();
+    expect(() =>
+      db.exec(
+        `INSERT INTO plans(name,status,sortOrder,createdAt) VALUES ('p1','unknown_status',1,'2026-01-01T00:00:00Z')`,
+      ),
+    ).toThrow();
   });
 });

@@ -11,6 +11,8 @@ vi.mock("../../src/panels/writes/planWrites", () => ({
   createPlan: vi.fn().mockResolvedValue({ id: 1 }),
   updatePlan: vi.fn().mockResolvedValue(undefined),
   deletePlan: vi.fn().mockResolvedValue(undefined),
+  removePlan: vi.fn().mockResolvedValue(undefined),
+  restorePlan: vi.fn().mockResolvedValue(undefined),
   activatePlan: vi.fn().mockResolvedValue(undefined),
   deactivatePlan: vi.fn().mockResolvedValue(undefined),
   reorderPlans: vi.fn().mockResolvedValue(undefined),
@@ -297,12 +299,12 @@ describe("PlanPanel", () => {
       type: "createPlan",
       requestId: "req-abc",
       name: "New Plan",
-      filePath: null,
+      filePath: "/workspace/new-plan.md",
     });
 
     expect(planWritesMod.createPlan).toHaveBeenCalledWith(
       FAKE_PATHS.dbPath,
-      { name: "New Plan", filePath: null },
+      { name: "New Plan", filePath: "/workspace/new-plan.md" },
       FAKE_PATHS.wasmPath,
     );
     expect(panel.__posted).toContainEqual({
@@ -323,7 +325,7 @@ describe("PlanPanel", () => {
       type: "createPlan",
       requestId: "req-err",
       name: "Bad Plan",
-      filePath: null,
+      filePath: "/workspace/bad-plan.md",
     });
 
     expect(panel.__posted).toContainEqual({
@@ -333,26 +335,7 @@ describe("PlanPanel", () => {
     });
   });
 
-  it("'deletePlan' dispatches to planWrites.deletePlan and posts writeOk", async () => {
-    const { panel } = createPanel();
-    const planWritesMod = await import("../../src/panels/writes/planWrites.js");
-
-    await panel.webview.__triggerMessage({
-      type: "deletePlan",
-      requestId: "req-del",
-      id: 42,
-    });
-
-    expect(planWritesMod.deletePlan).toHaveBeenCalledWith(
-      FAKE_PATHS.dbPath,
-      { id: 42 },
-      FAKE_PATHS.wasmPath,
-    );
-    expect(panel.__posted).toContainEqual({
-      type: "writeOk",
-      requestId: "req-del",
-    });
-  });
+  // NOTE: 'deletePlan' was removed from PanelRequest in Task 3-2 (replaced by removePlan).
 
   it("'updatePlan' with status=active calls activatePlan", async () => {
     const { panel } = createPanel();
@@ -455,22 +438,7 @@ describe("PlanPanel", () => {
     });
   });
 
-  it("'updateTask' with status set throws and posts writeError", async () => {
-    const { panel } = createPanel();
-
-    await panel.webview.__triggerMessage({
-      type: "updateTask",
-      requestId: "req-taskstatus",
-      id: 1,
-      status: "completed",
-    });
-
-    expect(panel.__posted).toContainEqual({
-      type: "writeError",
-      requestId: "req-taskstatus",
-      error: "task status changes not supported via panel",
-    });
-  });
+  // NOTE: 'updateTask' was removed from PanelRequest in Task 3-2 (Task UI abolished).
 
   it("'reorderPlans' dispatches to planWrites.reorderPlans and posts writeOk", async () => {
     const { panel } = createPanel();
@@ -490,6 +458,95 @@ describe("PlanPanel", () => {
     expect(panel.__posted).toContainEqual({
       type: "writeOk",
       requestId: "req-rp",
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Task 3-2 new tests: removePlan / restorePlan / pickPlanFile
+  // -------------------------------------------------------------------------
+
+  it("'removePlan' dispatches to planWrites.removePlan and posts writeOk", async () => {
+    const { panel } = createPanel();
+    const planWritesMod = await import("../../src/panels/writes/planWrites.js");
+
+    await panel.webview.__triggerMessage({
+      type: "removePlan",
+      requestId: "req-remove",
+      id: 10,
+    });
+
+    expect(planWritesMod.removePlan).toHaveBeenCalledWith(
+      FAKE_PATHS.dbPath,
+      { id: 10 },
+      FAKE_PATHS.wasmPath,
+    );
+    expect(panel.__posted).toContainEqual({
+      type: "writeOk",
+      requestId: "req-remove",
+    });
+  });
+
+  it("'restorePlan' dispatches to planWrites.restorePlan and posts writeOk", async () => {
+    const { panel } = createPanel();
+    const planWritesMod = await import("../../src/panels/writes/planWrites.js");
+
+    await panel.webview.__triggerMessage({
+      type: "restorePlan",
+      requestId: "req-restore",
+      id: 11,
+      toStatus: "backlog",
+    });
+
+    expect(planWritesMod.restorePlan).toHaveBeenCalledWith(
+      FAKE_PATHS.dbPath,
+      { id: 11, toStatus: "backlog" },
+      FAKE_PATHS.wasmPath,
+    );
+    expect(panel.__posted).toContainEqual({
+      type: "writeOk",
+      requestId: "req-restore",
+    });
+  });
+
+  it("'pickPlanFile' with file selected posts pickPlanFileResult with fsPath", async () => {
+    const showOpenDialogSpy = vi
+      .spyOn(vscodeMock.window, "showOpenDialog")
+      .mockResolvedValueOnce([{ fsPath: "/workspace/myplan.md" }]);
+
+    const { panel } = createPanel();
+
+    await panel.webview.__triggerMessage({
+      type: "pickPlanFile",
+      requestId: "req-pick",
+    });
+
+    expect(showOpenDialogSpy).toHaveBeenCalledWith({
+      canSelectMany: false,
+      filters: { Markdown: ["md"] },
+    });
+    expect(panel.__posted).toContainEqual({
+      type: "pickPlanFileResult",
+      requestId: "req-pick",
+      filePath: "/workspace/myplan.md",
+    });
+  });
+
+  it("'pickPlanFile' with dialog cancelled posts pickPlanFileResult with null", async () => {
+    vi.spyOn(vscodeMock.window, "showOpenDialog").mockResolvedValueOnce(
+      undefined,
+    );
+
+    const { panel } = createPanel();
+
+    await panel.webview.__triggerMessage({
+      type: "pickPlanFile",
+      requestId: "req-pick-cancel",
+    });
+
+    expect(panel.__posted).toContainEqual({
+      type: "pickPlanFileResult",
+      requestId: "req-pick-cancel",
+      filePath: null,
     });
   });
 });

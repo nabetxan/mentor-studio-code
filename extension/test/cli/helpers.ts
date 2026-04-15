@@ -47,7 +47,7 @@ export interface SeedQuestion {
 export interface SeedPlan {
   name: string;
   filePath?: string | null;
-  status: "active" | "queued" | "completed" | "paused";
+  status: "active" | "queued" | "completed" | "paused" | "backlog" | "removed";
   sortOrder: number;
   createdAt: string;
 }

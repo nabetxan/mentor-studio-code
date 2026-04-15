@@ -85,6 +85,111 @@ describe("autoAdvance", () => {
     ).rejects.toBeInstanceOf(InvariantViolationError);
   });
 
+  it("auto-promotes next queued plan when current plan completes", async () => {
+    await seedPlans(env.paths.dbPath, [
+      {
+        name: "P1",
+        status: "active",
+        sortOrder: 0,
+        createdAt: "2026-04-01T00:00:00.000Z",
+      },
+      {
+        name: "P2",
+        status: "queued",
+        sortOrder: 1,
+        createdAt: "2026-04-01T00:00:00.000Z",
+      },
+    ]);
+    await seedTasks(env.paths.dbPath, [
+      { planId: 1, name: "T1", status: "completed", sortOrder: 0 },
+    ]);
+
+    let result: ReturnType<typeof autoAdvance> | null = null;
+    await mutateDb(env.paths.dbPath, (db) => {
+      result = autoAdvance(db, 1);
+    });
+
+    expect(result).toEqual({ nextTask: null, planCompleted: true });
+
+    const statuses = await withDb(env.paths.dbPath, (db) => {
+      const r = db.exec("SELECT id, status FROM plans ORDER BY id");
+      return r[0].values.map((v) => ({
+        id: Number(v[0]),
+        status: String(v[1]),
+      }));
+    });
+    expect(statuses).toEqual([
+      { id: 1, status: "completed" },
+      { id: 2, status: "active" },
+    ]);
+  });
+
+  it("leaves active=0 when no queued plan exists", async () => {
+    await seedPlans(env.paths.dbPath, [
+      {
+        name: "P1",
+        status: "active",
+        sortOrder: 0,
+        createdAt: "2026-04-01T00:00:00.000Z",
+      },
+    ]);
+    await seedTasks(env.paths.dbPath, [
+      { planId: 1, name: "T1", status: "completed", sortOrder: 0 },
+    ]);
+
+    let result: ReturnType<typeof autoAdvance> | null = null;
+    await mutateDb(env.paths.dbPath, (db) => {
+      result = autoAdvance(db, 1);
+    });
+
+    expect(result).toEqual({ nextTask: null, planCompleted: true });
+
+    const activePlans = await withDb(env.paths.dbPath, (db) => {
+      const r = db.exec("SELECT COUNT(*) FROM plans WHERE status = 'active'");
+      return Number(r[0].values[0][0]);
+    });
+    expect(activePlans).toBe(0);
+  });
+
+  it("ignores backlog plans for auto-promotion", async () => {
+    await seedPlans(env.paths.dbPath, [
+      {
+        name: "P1",
+        status: "active",
+        sortOrder: 0,
+        createdAt: "2026-04-01T00:00:00.000Z",
+      },
+      {
+        name: "P2",
+        status: "backlog",
+        sortOrder: 1,
+        createdAt: "2026-04-01T00:00:00.000Z",
+      },
+    ]);
+    await seedTasks(env.paths.dbPath, [
+      { planId: 1, name: "T1", status: "completed", sortOrder: 0 },
+    ]);
+
+    let result: ReturnType<typeof autoAdvance> | null = null;
+    await mutateDb(env.paths.dbPath, (db) => {
+      result = autoAdvance(db, 1);
+    });
+
+    expect(result).toEqual({ nextTask: null, planCompleted: true });
+
+    const statuses = await withDb(env.paths.dbPath, (db) => {
+      const r = db.exec("SELECT id, status FROM plans ORDER BY id");
+      return r[0].values.map((v) => ({
+        id: Number(v[0]),
+        status: String(v[1]),
+      }));
+    });
+    expect(statuses).toEqual([
+      { id: 1, status: "completed" },
+      { id: 2, status: "backlog" },
+    ]);
+  });
+
   it("leaves other plans untouched", async () => {
     await seedPlans(env.paths.dbPath, [
       {
