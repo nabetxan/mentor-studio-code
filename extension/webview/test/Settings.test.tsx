@@ -33,7 +33,6 @@ describe("Settings", () => {
   it("shows unset state when mentorFiles are not set", () => {
     const config: MentorStudioConfig = {
       repositoryName: "test",
-      topics: [],
     };
     render(<Settings {...defaultProps} config={config} />);
     const warnings = screen.getAllByText("⚠ 未設定");
@@ -43,10 +42,8 @@ describe("Settings", () => {
   it("shows spec file path when set", () => {
     const config: MentorStudioConfig = {
       repositoryName: "test",
-      topics: [],
       mentorFiles: {
         spec: "docs/app-design.md",
-        plan: null,
       },
     };
     render(<Settings {...defaultProps} config={config} />);
@@ -101,10 +98,8 @@ describe("Settings", () => {
     const { postMessage } = await import("../src/vscodeApi");
     const config: MentorStudioConfig = {
       repositoryName: "test",
-      topics: [],
       mentorFiles: {
         spec: "docs/app-design.md",
-        plan: null,
       },
     };
     render(<Settings {...defaultProps} config={config} />);

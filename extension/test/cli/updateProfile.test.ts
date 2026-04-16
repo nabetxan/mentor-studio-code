@@ -77,8 +77,6 @@ describe("update-profile", () => {
     expect(res).toEqual({ ok: true });
 
     const progress = readProgress(env.paths.progressPath);
-    expect(progress.current_task).toBeNull();
-    expect(progress.current_step).toBeNull();
     expect(progress.resume_context).toBeNull();
     const profile = progress.learner_profile as Record<string, unknown>;
     expect(profile.experience).toBe("3y");

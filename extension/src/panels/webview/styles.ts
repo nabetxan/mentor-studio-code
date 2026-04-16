@@ -13,8 +13,6 @@ export const colors = {
   errorFg: "var(--vscode-errorForeground, #e06c75)",
   badgeBg: "var(--vscode-badge-background)",
   badgeFg: "var(--vscode-badge-foreground)",
-  selectedBg: "var(--vscode-list-activeSelectionBackground)",
-  selectedFg: "var(--vscode-list-activeSelectionForeground)",
   descFg: "var(--vscode-descriptionForeground)",
 };
 
@@ -68,10 +66,6 @@ export const s: Record<string, CSSProperties> = {
     padding: "6px 4px",
     borderRadius: 3,
     borderBottom: `1px solid ${colors.border}`,
-  },
-  rowSelected: {
-    background: colors.selectedBg,
-    color: colors.selectedFg,
   },
   rowPending: {
     opacity: 0.6,

@@ -58,11 +58,15 @@ Shows your current task, correct answer rate, per-topic progress, and unresolved
 
 ### Settings
 
-| Setting           | Description                                   |
-| ----------------- | --------------------------------------------- |
-| Profile           | Register or update your learner profile       |
-| Plan / Spec files | Link the files your mentor session references |
-| Language          | Switch between Japanese and English           |
+| Setting     | Description                                                                |
+| ----------- | -------------------------------------------------------------------------- |
+| Profile     | Register or update your learner profile                                    |
+| Active Plan | Shows the currently active plan; change its file or pause it               |
+| Plan Panel  | Open the Plan Panel to manage plans (add from file, queue, complete, etc.) |
+| Spec file   | Link the spec file your mentor session references                          |
+| Language    | Switch between Japanese and English                                        |
+
+You can also open the Plan Panel via `Mentor Studio Code: Open Plan Panel` from the Command Palette, or right-click a markdown file in the Explorer and choose **Add to Mentor Plan** to register it.
 
 ## Uninstall
 

@@ -1,17 +1,8 @@
-import type { PlanDto, TaskDto } from "@mentor-studio/shared";
 import { useEffect, useMemo, useState } from "react";
 import { PlansBoard } from "./PlansBoard";
 import { s } from "./styles";
 import type { UiPlan } from "./types";
 import { useVsCodeBridge } from "./useVsCodeBridge";
-
-/** Merge server snapshots with any optimistic tentative items (negative id). */
-function mergeOptimistic<T extends { id: number }>(
-  server: T[],
-  tentative: T[],
-): T[] {
-  return [...server, ...tentative];
-}
 
 /** Extract a plan name from a filesystem path: strip directories and extension. */
 function basenameWithoutExt(filePath: string): string {
@@ -54,9 +45,9 @@ export function App(): JSX.Element {
     const visible: UiPlan[] = snapshot.plans
       .filter((p) => !hiddenPlanIds.has(p.id))
       .map((p) => ({ ...p, ...planOverrides[p.id] }));
-    let merged = mergeOptimistic<UiPlan>(visible, tentativePlans);
+    let merged: UiPlan[] = [...visible, ...tentativePlans];
     if (planOrderOverride) {
-      const byId = new Map(merged.map((p) => [p.id, p]));
+      const byId = new Map(merged.map((p: UiPlan) => [p.id, p]));
       const ordered = planOrderOverride
         .map((id) => byId.get(id))
         .filter((x): x is UiPlan => !!x);
@@ -76,6 +67,8 @@ export function App(): JSX.Element {
 
   // ---------- Plan handlers ----------
 
+  // Creates as backlog (no auto-activate). Sidebar's counterpart activates
+  // immediately — different UX roles, intentionally split.
   async function handleCreatePlanFromFile(): Promise<void> {
     setPlansError(null);
     let filePath: string | null;
@@ -255,6 +248,3 @@ function errMsg(e: unknown): string {
   if (e instanceof Error) return e.message;
   return String(e);
 }
-
-// Suppress unused-import warnings from types we re-export via hook types.
-export type { PlanDto, TaskDto };

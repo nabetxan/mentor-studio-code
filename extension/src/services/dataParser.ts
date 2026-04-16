@@ -1,10 +1,4 @@
-import type {
-  LearnerProfile,
-  MentorStudioConfig,
-  ProgressData,
-  SkippedTask,
-  UnresolvedGap,
-} from "@mentor-studio/shared";
+import type { LearnerProfile, MentorStudioConfig } from "@mentor-studio/shared";
 
 /**
  * Validates an unknown value (e.g. from globalState or raw JSON) as a LearnerProfile.
@@ -37,79 +31,6 @@ export function parseLearnerProfile(value: unknown): LearnerProfile | null {
   };
 }
 
-export function parseProgressData(raw: string): ProgressData | null {
-  try {
-    const data: unknown = JSON.parse(raw);
-    if (typeof data !== "object" || data === null) {
-      return null;
-    }
-    const obj = data as Record<string, unknown>;
-    if (
-      typeof obj.version !== "string" ||
-      (obj.current_task !== null && typeof obj.current_task !== "string") ||
-      !Array.isArray(obj.completed_tasks)
-    ) {
-      return null;
-    }
-    const completedTasks = (obj.completed_tasks as unknown[]).filter(
-      (item): item is { task: string; name: string; plan: string } =>
-        typeof item === "object" &&
-        item !== null &&
-        typeof (item as Record<string, unknown>).task === "string" &&
-        typeof (item as Record<string, unknown>).name === "string" &&
-        typeof (item as Record<string, unknown>).plan === "string",
-    );
-    const learnerProfile =
-      typeof obj.learner_profile === "object" && obj.learner_profile !== null
-        ? (parseLearnerProfile(obj.learner_profile) ?? undefined)
-        : undefined;
-    return {
-      version: obj.version,
-      current_plan:
-        typeof obj.current_plan === "string" ? obj.current_plan : null,
-      current_task:
-        typeof obj.current_task === "string" ? obj.current_task : null,
-      current_step:
-        typeof obj.current_step === "string" ||
-        typeof obj.current_step === "number"
-          ? obj.current_step
-          : null,
-      next_suggest:
-        typeof obj.next_suggest === "string" ? obj.next_suggest : null,
-      resume_context:
-        typeof obj.resume_context === "string" ? obj.resume_context : null,
-      completed_tasks: completedTasks,
-      learner_profile: learnerProfile,
-      skipped_tasks: Array.isArray(obj.skipped_tasks)
-        ? (obj.skipped_tasks as unknown[]).filter(
-            (item): item is SkippedTask =>
-              typeof item === "object" &&
-              item !== null &&
-              typeof (item as Record<string, unknown>).task === "string" &&
-              typeof (item as Record<string, unknown>).plan === "string",
-          )
-        : [],
-      unresolved_gaps: Array.isArray(obj.unresolved_gaps)
-        ? (obj.unresolved_gaps as unknown[]).filter(
-            (item): item is UnresolvedGap =>
-              typeof item === "object" &&
-              item !== null &&
-              typeof (item as Record<string, unknown>).questionId ===
-                "string" &&
-              typeof (item as Record<string, unknown>).concept === "string" &&
-              typeof (item as Record<string, unknown>).topic === "string" &&
-              typeof (item as Record<string, unknown>).last_missed ===
-                "string" &&
-              typeof (item as Record<string, unknown>).task === "string" &&
-              typeof (item as Record<string, unknown>).note === "string",
-          )
-        : [],
-    };
-  } catch {
-    return null;
-  }
-}
-
 export function parseConfig(raw: string): MentorStudioConfig | null {
   try {
     const data: unknown = JSON.parse(raw);
@@ -120,14 +41,6 @@ export function parseConfig(raw: string): MentorStudioConfig | null {
     if (typeof obj.repositoryName !== "string") {
       return null;
     }
-    const rawTopics = Array.isArray(obj.topics) ? obj.topics : [];
-    const topics = rawTopics.filter(
-      (item): item is { key: string; label: string } =>
-        typeof item === "object" &&
-        item !== null &&
-        typeof (item as Record<string, unknown>).key === "string" &&
-        typeof (item as Record<string, unknown>).label === "string",
-    );
     const mentorFiles =
       typeof obj.mentorFiles === "object" && obj.mentorFiles !== null
         ? {
@@ -135,11 +48,6 @@ export function parseConfig(raw: string): MentorStudioConfig | null {
               typeof (obj.mentorFiles as Record<string, unknown>).spec ===
               "string"
                 ? ((obj.mentorFiles as Record<string, unknown>).spec as string)
-                : null,
-            plan:
-              typeof (obj.mentorFiles as Record<string, unknown>).plan ===
-              "string"
-                ? ((obj.mentorFiles as Record<string, unknown>).plan as string)
                 : null,
           }
         : undefined;
@@ -152,7 +60,6 @@ export function parseConfig(raw: string): MentorStudioConfig | null {
     return {
       repositoryName: obj.repositoryName,
       workspacePath,
-      topics,
       mentorFiles,
       locale:
         obj.locale === "ja" || obj.locale === "en" ? obj.locale : undefined,

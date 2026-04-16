@@ -27,25 +27,22 @@ async function openReadOnly(
 }
 
 describe("parseMinimalProgress", () => {
-  it("extracts current_task and learner_profile.last_updated", () => {
+  it("extracts learner_profile.last_updated", () => {
     const raw = JSON.stringify({
-      current_task: 42,
       learner_profile: { last_updated: "2026-04-13T00:00:00Z" },
     });
     const p = parseMinimalProgress(raw);
-    expect(p.current_task).toBe(42);
     expect(p.learner_profile?.last_updated).toBe("2026-04-13T00:00:00Z");
   });
 
-  it("returns null current_task when missing or wrong type", () => {
-    expect(parseMinimalProgress("{}").current_task).toBeNull();
-    expect(
-      parseMinimalProgress('{"current_task":"3"}').current_task,
-    ).toBeNull();
+  it("returns empty object when learner_profile is missing", () => {
+    const p = parseMinimalProgress("{}");
+    expect(p.learner_profile).toBeNull();
   });
 
   it("tolerates invalid JSON", () => {
-    expect(parseMinimalProgress("not json").current_task).toBeNull();
+    const p = parseMinimalProgress("not json");
+    expect(p.learner_profile).toBeUndefined();
   });
 });
 
@@ -95,7 +92,6 @@ describe("computeDashboardDataFromDb", () => {
     const db = await openReadOnly(env.paths.dbPath);
     try {
       const out = computeDashboardDataFromDb(db, {
-        current_task: 2,
         learner_profile: { last_updated: "2026-04-13T00:00:00Z" },
       });
       expect(out.totalQuestions).toBe(3);
@@ -103,6 +99,10 @@ describe("computeDashboardDataFromDb", () => {
       expect(out.byTopic.map((t) => t.topic).sort()).toEqual(
         [topicIdToKey(1), topicIdToKey(2)].sort(),
       );
+      expect(out.allTopics).toEqual([
+        { key: topicIdToKey(1), label: "JS" },
+        { key: topicIdToKey(2), label: "CSS" },
+      ]);
       expect(out.topicsWithHistory).toContain(topicIdToKey(1));
       expect(out.topicsWithHistory).toContain(topicIdToKey(2));
       expect(out.unresolvedGaps).toHaveLength(2);
@@ -136,9 +136,10 @@ describe("computeDashboardDataFromDb", () => {
     const env = await makeEnvWithDb([]);
     const db = await openReadOnly(env.paths.dbPath);
     try {
-      const out = computeDashboardDataFromDb(db, { current_task: null });
+      const out = computeDashboardDataFromDb(db, {});
       expect(out.totalQuestions).toBe(0);
       expect(out.byTopic).toEqual([]);
+      expect(out.allTopics).toEqual([]);
       expect(out.topicsWithHistory).toEqual([]);
       expect(out.unresolvedGaps).toEqual([]);
       expect(out.completedTasks).toEqual([]);
@@ -177,7 +178,7 @@ describe("computeDashboardDataFromDb", () => {
 
     const db = await openReadOnly(env.paths.dbPath);
     try {
-      const out = computeDashboardDataFromDb(db, { current_task: null });
+      const out = computeDashboardDataFromDb(db, {});
       expect(out.plans.map((p) => p.name)).toEqual([
         "Phase 1",
         "Phase 2",

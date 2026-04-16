@@ -141,11 +141,6 @@ function ActivePlanSetting({
   );
 }
 
-// Populated after Plan Panel (B-2) sets sortOrder for queued plans
-function NextPlansSection() {
-  return null;
-}
-
 interface FileSettingProps {
   label: string;
   field: FileField;
@@ -419,7 +414,6 @@ export function Settings({
         locale={locale}
         planActionError={planActionError}
       />
-      <NextPlansSection />
       <div className="setting-item">
         <button
           className="btn-outlined"

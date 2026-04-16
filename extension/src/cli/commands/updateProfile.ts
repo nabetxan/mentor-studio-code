@@ -8,8 +8,6 @@ const ARRAY_KEYS = ["interests", "weak_areas"] as const;
 
 function defaultProgress(): Record<string, unknown> {
   return {
-    current_task: null,
-    current_step: null,
     resume_context: null,
     learner_profile: {},
   };

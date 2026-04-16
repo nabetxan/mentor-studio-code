@@ -8,7 +8,6 @@ import { shouldMigrate } from "./migration/shouldMigrate";
 import { PlanPanel } from "./panels/planPanel";
 import { BroadcastBus } from "./services/broadcastBus";
 import { FileWatcherService } from "./services/fileWatcher";
-import { selfHealProgress } from "./services/progressHealing";
 import { SidebarProvider } from "./views/sidebarProvider";
 
 let outputChannel: vscode.OutputChannel | undefined;
@@ -70,11 +69,6 @@ export function activate(context: vscode.ExtensionContext): void {
     mentorPath,
     "data.db",
   ).fsPath;
-  const progressPath = vscode.Uri.joinPath(
-    workspaceRoot,
-    mentorPath,
-    "progress.json",
-  ).fsPath;
   const wasmPath = vscode.Uri.joinPath(
     context.extensionUri,
     "dist",
@@ -117,13 +111,6 @@ export function activate(context: vscode.ExtensionContext): void {
     context.globalState,
     async () => {
       bus.broadcast({ type: "dbChanged" });
-      try {
-        await selfHealProgress(dbPath, progressPath, wasmPath);
-      } catch (err: unknown) {
-        getOutputChannel().appendLine(
-          `selfHealProgress failed: ${String(err)}`,
-        );
-      }
     },
     dbPath,
     wasmPath,
@@ -155,14 +142,6 @@ export function activate(context: vscode.ExtensionContext): void {
   const isVersionUpdated =
     previousVersion !== undefined && previousVersion !== currentVersion;
   void context.globalState.update("extensionVersion", currentVersion);
-
-  const runSelfHeal = async (): Promise<void> => {
-    try {
-      await selfHealProgress(dbPath, progressPath, wasmPath);
-    } catch (err) {
-      getOutputChannel().appendLine(`selfHealProgress failed: ${String(err)}`);
-    }
-  };
 
   const startWatcher = (): void => {
     void watcher
@@ -222,12 +201,11 @@ export function activate(context: vscode.ExtensionContext): void {
           `Migration threw: ${err instanceof Error ? err.message : String(err)}`,
         );
       } finally {
-        await runSelfHeal();
         startWatcher();
       }
     })();
   } else {
-    void runSelfHeal().finally(() => startWatcher());
+    startWatcher();
   }
 
   context.subscriptions.push(watcher);

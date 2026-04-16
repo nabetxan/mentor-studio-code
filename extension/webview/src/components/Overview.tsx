@@ -53,7 +53,7 @@ export function Overview({
   // Prune deleteSelected when topics or topicsWithHistory change
   useEffect(() => {
     if (deleteSelected.size === 0) return;
-    const allTopicKeys = new Set((config?.topics ?? []).map((tp) => tp.key));
+    const allTopicKeys = new Set((data?.allTopics ?? []).map((tp) => tp.key));
     const historySet = new Set(data?.topicsWithHistory ?? []);
     setDeleteSelected((prev) => {
       const next = new Set<string>();
@@ -65,7 +65,7 @@ export function Overview({
       if (next.size === prev.size) return prev;
       return next;
     });
-  }, [config?.topics, data?.topicsWithHistory]);
+  }, [data?.allTopics, data?.topicsWithHistory]);
 
   useEffect(() => {
     if (!deleteDropdownOpen) return;
@@ -241,7 +241,7 @@ export function Overview({
             const resolvedLabel =
               topic.label !== topic.topic
                 ? topic.label
-                : (config?.topics?.find((c) => c.key === topic.topic)?.label ??
+                : (data?.allTopics?.find((c) => c.key === topic.topic)?.label ??
                   topic.label);
             const displayLabel = stripKeyPrefix(resolvedLabel);
             const topicGaps = data.unresolvedGaps.filter(
@@ -392,7 +392,7 @@ export function Overview({
         </div>
       )}
 
-      {(config?.topics ?? []).length > 1 && (
+      {(data?.allTopics ?? []).length > 1 && (
         <div className="merge-topics-section">
           <div className="section-heading">
             {t("overview.topic.mergeSection", locale)}
@@ -415,7 +415,7 @@ export function Overview({
                 <option value="">
                   {t("overview.topic.mergeSelectSource", locale)}
                 </option>
-                {[...(config?.topics ?? [])]
+                {[...(data?.allTopics ?? [])]
                   .sort((a, b) =>
                     a.label.localeCompare(b.label, undefined, {
                       numeric: true,
@@ -434,7 +434,7 @@ export function Overview({
               </div>
               <div className="form-row">
                 <TopicSelect
-                  options={(config?.topics ?? []).filter(
+                  options={(data?.allTopics ?? []).filter(
                     (c) => c.key !== mergeSource,
                   )}
                   value={mergeTarget}
@@ -465,13 +465,13 @@ export function Overview({
         </div>
       )}
 
-      {(config?.topics ?? []).length > 0 && (
+      {(data?.allTopics ?? []).length > 0 && (
         <div className="delete-topics-section">
           <div className="section-heading">
             {t("overview.topic.deleteSection", locale)}
           </div>
           {(() => {
-            const allTopics = config?.topics ?? [];
+            const allTopics = data?.allTopics ?? [];
             const historySet = new Set(data.topicsWithHistory);
             const hasDisabled = allTopics.some((tp) => historySet.has(tp.key));
             const allDisabled = allTopics.every((tp) => historySet.has(tp.key));

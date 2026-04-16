@@ -17,6 +17,7 @@ const mockData: DashboardData = {
   totalQuestions: 10,
   correctRate: 0.7,
   byTopic: [],
+  allTopics: [],
   unresolvedGaps: [],
   completedTasks: [],
   currentTask: "3",
@@ -104,6 +105,7 @@ describe("Overview", () => {
           rate: 0,
         },
       ],
+      allTopics: [{ key: "javascript", label: "JavaScript" }],
       unresolvedGaps: [
         {
           questionId: "q1",
@@ -121,16 +123,7 @@ describe("Overview", () => {
       plans: [],
       activePlan: null,
     };
-    render(
-      <Overview
-        {...defaultProps}
-        data={data}
-        config={{
-          repositoryName: "test",
-          topics: [{ key: "javascript", label: "JavaScript" }],
-        }}
-      />,
-    );
+    render(<Overview {...defaultProps} data={data} />);
     // Expand the topic
     fireEvent.click(screen.getByText("JavaScript"));
     expect(screen.getByText("closures")).toBeTruthy();
@@ -188,6 +181,7 @@ describe("Overview", () => {
         { topic: "ts", label: "TypeScript", total: 3, correct: 2, rate: 0.667 },
         { topic: "react", label: "React", total: 2, correct: 1, rate: 0.5 },
       ],
+      allTopics: [],
       unresolvedGaps: [],
       completedTasks: [],
       currentTask: "2",
@@ -206,9 +200,9 @@ describe("Overview", () => {
   });
 
   describe("Delete Topics section", () => {
-    const configWithTopics = {
-      repositoryName: "test",
-      topics: [
+    const dataWithTopics: DashboardData = {
+      ...mockData,
+      allTopics: [
         { key: "ts", label: "TypeScript" },
         { key: "react", label: "React" },
         { key: "css", label: "CSS" },
@@ -216,28 +210,21 @@ describe("Overview", () => {
     };
 
     it("renders delete section when topics exist", () => {
-      render(<Overview {...defaultProps} config={configWithTopics} />);
+      render(<Overview {...defaultProps} data={dataWithTopics} />);
       expect(screen.getByText("トピックの削除")).toBeTruthy();
     });
 
     it("does not render delete section when no topics", () => {
-      render(
-        <Overview
-          {...defaultProps}
-          config={{ repositoryName: "test", topics: [] }}
-        />,
-      );
+      render(<Overview {...defaultProps} />);
       expect(screen.queryByText("トピックの削除")).toBeNull();
     });
 
     it("disables topics that have history", () => {
       const data = {
-        ...mockData,
+        ...dataWithTopics,
         topicsWithHistory: ["ts"],
       };
-      render(
-        <Overview {...defaultProps} data={data} config={configWithTopics} />,
-      );
+      render(<Overview {...defaultProps} data={data} />);
       fireEvent.click(screen.getByText("削除するトピックを選択"));
       const checkboxes = screen.getAllByRole("checkbox");
       const tsCheckbox = checkboxes.find((cb) =>
@@ -248,12 +235,10 @@ describe("Overview", () => {
 
     it("shows 'no topics available' when all topics have history", () => {
       const data = {
-        ...mockData,
+        ...dataWithTopics,
         topicsWithHistory: ["ts", "react", "css"],
       };
-      render(
-        <Overview {...defaultProps} data={data} config={configWithTopics} />,
-      );
+      render(<Overview {...defaultProps} data={data} />);
       expect(
         screen.getByText(
           "すべてのトピックに学習データがあるため削除できません",
@@ -264,7 +249,7 @@ describe("Overview", () => {
     it("posts deleteTopics message with selected keys", async () => {
       const { postMessage } = await import("../src/vscodeApi");
       (postMessage as ReturnType<typeof vi.fn>).mockClear();
-      render(<Overview {...defaultProps} config={configWithTopics} />);
+      render(<Overview {...defaultProps} data={dataWithTopics} />);
       fireEvent.click(screen.getByText("削除するトピックを選択"));
       const checkboxes = screen.getAllByRole("checkbox");
       const reactCheckbox = checkboxes.find((cb) =>
@@ -288,7 +273,7 @@ describe("Overview", () => {
       render(
         <Overview
           {...defaultProps}
-          config={configWithTopics}
+          data={dataWithTopics}
           deleteTopicErrors={errors}
           onClearDeleteTopicErrors={onClear}
         />,
@@ -300,16 +285,16 @@ describe("Overview", () => {
   });
 
   describe("Merge Topics section", () => {
-    const configWithTopics = {
-      repositoryName: "test",
-      topics: [
+    const dataWithTopics: DashboardData = {
+      ...mockData,
+      allTopics: [
         { key: "ts", label: "TypeScript" },
         { key: "react", label: "React" },
       ],
     };
 
     it("renders merge section when 2+ topics exist", () => {
-      render(<Overview {...defaultProps} config={configWithTopics} />);
+      render(<Overview {...defaultProps} data={dataWithTopics} />);
       expect(screen.getByText("トピックの統合")).toBeTruthy();
     });
 
@@ -317,9 +302,9 @@ describe("Overview", () => {
       render(
         <Overview
           {...defaultProps}
-          config={{
-            repositoryName: "test",
-            topics: [{ key: "ts", label: "TypeScript" }],
+          data={{
+            ...mockData,
+            allTopics: [{ key: "ts", label: "TypeScript" }],
           }}
         />,
       );
@@ -330,7 +315,7 @@ describe("Overview", () => {
       const { postMessage } = await import("../src/vscodeApi");
       (postMessage as ReturnType<typeof vi.fn>).mockClear();
       const { container } = render(
-        <Overview {...defaultProps} config={configWithTopics} />,
+        <Overview {...defaultProps} data={dataWithTopics} />,
       );
       // Select source via the native <select> inside the merge section
       const mergeSection = container.querySelector(

@@ -242,7 +242,7 @@ export async function migrate(
     await atomicWriteFile(dbPath, bytes);
 
     try {
-      const newProgress = rewriteProgress({ progress, taskMap: taskIdMap });
+      const newProgress = rewriteProgress({ progress });
       await atomicWriteFile(
         join(mentorDir, "progress.json"),
         Buffer.from(`${JSON.stringify(newProgress, null, 2)}\n`),

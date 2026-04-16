@@ -262,7 +262,7 @@ GATE: feedback given AND user confirmed → proceed to (i)
 ### (i) RECORD ← BLOCKING
 → Follow teaching-cycle-reference.md (e) RECORD procedure.
 Additionally after RECORD:
-1. Update progress: \`node .mentor/tools/mentor-cli.js update-progress '{"current_step":"...","resume_context":"..."}'\`
+1. Update progress: \`node .mentor/tools/mentor-cli.js update-progress '{"resume_context":"..."}'\`
 2. Tell user progress saved.
 GATE: steps complete → check current task steps.
 - More steps remain → start next step from (a)
@@ -286,14 +286,14 @@ Run in order, never skip:
    \`\`\`bash
    node .mentor/tools/mentor-cli.js update-task '{"id":<currentTask.id>,"status":"completed"}'
    \`\`\`
-   Response shape: \`{"ok":true,"nextTask":{"id":N,"name":"...","planId":N}|null,"planCompleted":bool}\`. The CLI auto-advances the next queued task to \`active\` and writes \`current_task\` in \`progress.json\`.
+   Response shape: \`{"ok":true,"nextTask":{"id":N,"name":"...","planId":N}|null,"planCompleted":bool}\`. The CLI auto-advances the next queued task to \`active\`.
 2. Handle the response:
    - \`nextTask\` is not null → tell the user the next task (\`nextTask.name\`) has been activated. Offer to start it now, or let them stop and resume later.
    - \`nextTask\` is null AND \`planCompleted\` is true → congratulate the learner on finishing the plan. Ask them to pick the next plan from the Plan Panel (\`Mentor Studio Code: Open Plan Panel\`), then stop.
    - \`nextTask\` is null AND \`planCompleted\` is false → the plan has no queued tasks left but is not marked complete. Tell the user to open the Plan Panel to add or reorder tasks.
 3. Update resume context:
    \`\`\`bash
-   node .mentor/tools/mentor-cli.js update-progress '{"current_step":null,"resume_context":"<short hint for the next session>"}'
+   node .mentor/tools/mentor-cli.js update-progress '{"resume_context":"<short hint for the next session>"}'
    \`\`\`
 
 Plan/Task additions, renames, reordering, and deletions are done in the Plan Panel — there are no CLI commands for them.
@@ -522,15 +522,7 @@ When the AI creates a new spec file, write it to \`.mentor/spec/<slug>.md\` (cre
 
 export const PROGRESS_JSON = JSON.stringify(
   {
-    version: "1.0",
-    current_plan: null,
-    current_task: null,
-    current_step: null,
-    next_suggest: null,
     resume_context: null,
-    completed_tasks: [],
-    skipped_tasks: [],
-    unresolved_gaps: [],
     learner_profile: {
       experience: "",
       level: "",

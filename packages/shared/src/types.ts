@@ -29,37 +29,6 @@ export interface LearnerProfile {
   last_updated: string | null;
 }
 
-export interface ProgressData {
-  version: string;
-  current_plan: string | null;
-  current_task: string | null;
-  current_step: string | number | null;
-  next_suggest: string | null;
-  resume_context: string | null;
-  completed_tasks: CompletedTask[];
-  skipped_tasks: SkippedTask[];
-  unresolved_gaps: UnresolvedGap[];
-  learner_profile?: LearnerProfile;
-}
-
-// === Question history (matches .mentor/question-history.json) ===
-
-export interface QuestionHistoryEntry {
-  id: string;
-  reviewOf: string | null;
-  answeredAt: string;
-  taskId: string;
-  topic: string;
-  concept: string;
-  question: string;
-  userAnswer: string;
-  isCorrect: boolean;
-}
-
-export interface QuestionHistory {
-  history: QuestionHistoryEntry[];
-}
-
 // === Project config (matches .mentor/config.json) ===
 
 export interface TopicConfig {
@@ -69,13 +38,11 @@ export interface TopicConfig {
 
 export interface MentorFiles {
   spec: string | null;
-  plan: string | null;
 }
 
 export interface MentorStudioConfig {
   repositoryName: string;
   workspacePath?: string;
-  topics: TopicConfig[];
   mentorFiles?: MentorFiles;
   locale?: Locale;
   enableMentor?: boolean;
@@ -128,6 +95,7 @@ export interface DashboardData {
   totalQuestions: number;
   correctRate: number;
   byTopic: TopicStats[];
+  allTopics: TopicConfig[];
   unresolvedGaps: UnresolvedGap[];
   completedTasks: CompletedTask[];
   currentTask: string | null;

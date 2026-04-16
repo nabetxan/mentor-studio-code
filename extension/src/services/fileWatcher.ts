@@ -17,7 +17,6 @@ import {
   dbAddTopic,
   dbDeleteTopics,
   dbMergeTopic,
-  dbReadTopics,
   dbUpdateTopicLabel,
   parseMinimalProgress,
 } from "./dbDashboard";
@@ -135,19 +134,7 @@ export class FileWatcherService implements vscode.Disposable {
       this.onConfigChanged?.(null);
       return;
     }
-    await this.hydrateTopicsFromDb();
     this.onConfigChanged?.(this.config);
-  }
-
-  private async hydrateTopicsFromDb(): Promise<void> {
-    if (!this.config || !this.dbPath || !this.wasmPath) return;
-    if (!existsSync(this.dbPath)) return;
-    try {
-      const topics = await dbReadTopics(this.dbPath, this.wasmPath);
-      this.config = { ...this.config, topics };
-    } catch (err) {
-      this.log?.(`hydrateTopicsFromDb failed: ${String(err)}`);
-    }
   }
 
   async refresh(): Promise<void> {
@@ -163,9 +150,7 @@ export class FileWatcherService implements vscode.Disposable {
     } catch {
       progressRaw = null;
     }
-    const progress = progressRaw
-      ? parseMinimalProgress(progressRaw)
-      : { current_task: null };
+    const progress = progressRaw ? parseMinimalProgress(progressRaw) : {};
 
     if (!this.dbPath || !this.wasmPath || !existsSync(this.dbPath)) {
       // DB not yet created (pre-migration or fresh setup) — emit empty dashboard
@@ -173,6 +158,7 @@ export class FileWatcherService implements vscode.Disposable {
         totalQuestions: 0,
         correctRate: 0,
         byTopic: [],
+        allTopics: [],
         unresolvedGaps: [],
         completedTasks: [],
         currentTask: null,
@@ -183,8 +169,6 @@ export class FileWatcherService implements vscode.Disposable {
       });
       return;
     }
-
-    await this.hydrateTopicsFromDb();
 
     try {
       const SQL = await loadSqlJs(this.wasmPath);

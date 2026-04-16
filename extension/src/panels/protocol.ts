@@ -23,7 +23,7 @@ export type PanelRequest =
       id: number;
       name?: string;
       filePath?: string | null;
-      status?: PlanStatus;
+      status?: "active" | "queued";
     }
   | { type: "removePlan"; requestId: string; id: number }
   | {

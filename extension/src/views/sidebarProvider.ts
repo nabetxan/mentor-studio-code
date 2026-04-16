@@ -98,7 +98,9 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
           }
         } else if (message.type === "selectFile") {
           if (message.field === "plan") {
-            // New DB flow: create + activate a plan from the chosen file
+            // Sidebar sets the one active plan, so create + activate in one
+            // step. Plan Panel's createPlan is separate on purpose — it
+            // manages multiple plans and must not auto-activate.
             const uris = await vscode.window.showOpenDialog({
               canSelectFiles: true,
               canSelectMany: false,
@@ -525,11 +527,8 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
       throw new Error("mentorFiles.plan is managed by Plan Panel, not Sidebar");
     }
     await this.updateConfig((config) => {
-      const mentorFiles = config.mentorFiles ?? {
-        spec: null,
-        plan: null,
-      };
-      mentorFiles[field] = value;
+      const mentorFiles = config.mentorFiles ?? { spec: null };
+      mentorFiles.spec = value;
       config.mentorFiles = mentorFiles;
     });
   }

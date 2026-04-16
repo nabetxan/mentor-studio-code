@@ -33,7 +33,6 @@ export interface Bridge {
   sendRequest: (req: BridgeRequest) => Promise<void>;
   pickPlanFile: () => Promise<string | null>;
   openFile: (filePath: string) => void;
-  refetch: () => void;
 }
 
 let requestIdCounter = 0;
@@ -84,10 +83,6 @@ export function useVsCodeBridge(): Bridge {
   const post = useCallback((msg: PanelRequest) => {
     apiRef.current?.postMessage(msg);
   }, []);
-
-  const refetch = useCallback(() => {
-    post({ type: "ready" });
-  }, [post]);
 
   useEffect(() => {
     function handle(ev: MessageEvent<PanelMessage>): void {
@@ -173,7 +168,7 @@ export function useVsCodeBridge(): Bridge {
   );
 
   return useMemo(
-    () => ({ ready, snapshot, sendRequest, pickPlanFile, openFile, refetch }),
-    [ready, snapshot, sendRequest, pickPlanFile, openFile, refetch],
+    () => ({ ready, snapshot, sendRequest, pickPlanFile, openFile }),
+    [ready, snapshot, sendRequest, pickPlanFile, openFile],
   );
 }

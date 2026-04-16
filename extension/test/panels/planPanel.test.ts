@@ -381,40 +381,6 @@ describe("PlanPanel", () => {
     });
   });
 
-  it("'updatePlan' with status=paused throws and posts writeError", async () => {
-    const { panel } = createPanel();
-
-    await panel.webview.__triggerMessage({
-      type: "updatePlan",
-      requestId: "req-paused",
-      id: 8,
-      status: "paused",
-    });
-
-    expect(panel.__posted).toContainEqual({
-      type: "writeError",
-      requestId: "req-paused",
-      error: "plan status 'paused' not supported via panel",
-    });
-  });
-
-  it("'updatePlan' with status=completed throws and posts writeError", async () => {
-    const { panel } = createPanel();
-
-    await panel.webview.__triggerMessage({
-      type: "updatePlan",
-      requestId: "req-completed",
-      id: 9,
-      status: "completed",
-    });
-
-    expect(panel.__posted).toContainEqual({
-      type: "writeError",
-      requestId: "req-completed",
-      error: "plan status 'completed' not supported via panel",
-    });
-  });
-
   it("'updatePlan' without status calls updatePlan with name/filePath", async () => {
     const { panel } = createPanel();
     const planWritesMod = await import("../../src/panels/writes/planWrites.js");

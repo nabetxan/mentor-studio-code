@@ -86,7 +86,6 @@ describe("session-brief (integration)", () => {
         mentorStyle: "",
         lastUpdated: null,
       });
-      expect(res.currentStep).toBeNull();
       expect(res.resumeContext).toBeNull();
       expect(res).toHaveProperty("currentTask");
       expect(res).toHaveProperty("relevantGaps");
@@ -103,7 +102,6 @@ describe("session-brief (integration)", () => {
           mentor_style: "socratic",
           last_updated: "2026-04-12T00:00:00Z",
         },
-        current_step: "s",
         resume_context: "r",
       });
 
@@ -117,7 +115,6 @@ describe("session-brief (integration)", () => {
         mentorStyle: "socratic",
         lastUpdated: "2026-04-12T00:00:00Z",
       });
-      expect(res.currentStep).toBe("s");
       expect(res.resumeContext).toBe("r");
     });
 

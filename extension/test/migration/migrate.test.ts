@@ -156,7 +156,9 @@ describe("migrate", () => {
     expect(newProgress).not.toHaveProperty("unresolved_gaps");
     expect(newProgress).not.toHaveProperty("completed_tasks");
     expect(newProgress).not.toHaveProperty("version");
-    expect(typeof newProgress.current_task).toBe("number");
+    expect(newProgress).not.toHaveProperty("current_task");
+    expect(newProgress).not.toHaveProperty("current_step");
+    expect(newProgress).toHaveProperty("resume_context");
     expect(newProgress.learner_profile).toEqual({ name: "kaori" });
 
     const newConfig = JSON.parse(

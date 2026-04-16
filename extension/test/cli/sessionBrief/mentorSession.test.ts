@@ -25,14 +25,13 @@ describe("mentorSessionBrief", () => {
     );
     expect(out).toEqual({
       currentTask: null,
-      currentStep: null,
       resumeContext: null,
       relevantGaps: [],
       gapCount: { total: 0, filtered: 0 },
     });
   });
 
-  it("maps active task, current step, resume context, and unresolved gaps", async () => {
+  it("maps active task, resume context, and unresolved gaps", async () => {
     await seedPlans(env.paths.dbPath, [
       {
         name: "Plan A",
@@ -81,7 +80,6 @@ describe("mentorSessionBrief", () => {
     ]);
 
     const progress = {
-      current_step: "step-2",
       resume_context: "resuming after break",
     };
 
@@ -89,7 +87,6 @@ describe("mentorSessionBrief", () => {
       mentorSessionBrief(db, progress),
     );
     expect(out.currentTask).toEqual({ id: 1, name: "Task1", planId: 1 });
-    expect(out.currentStep).toBe("step-2");
     expect(out.resumeContext).toBe("resuming after break");
     expect(out.relevantGaps.length).toBe(3);
     expect(out.relevantGaps.map((g) => g.concept)).toEqual(["c3", "c2", "c1"]);

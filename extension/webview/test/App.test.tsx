@@ -41,7 +41,6 @@ function simulateMessage(msg: unknown) {
 
 const mockConfig: MentorStudioConfig = {
   repositoryName: "test-repo",
-  topics: [{ key: "ts", label: "TypeScript" }],
 };
 
 const mockData: DashboardData = {
@@ -50,6 +49,7 @@ const mockData: DashboardData = {
   byTopic: [
     { topic: "ts", label: "TypeScript", total: 5, correct: 4, rate: 0.8 },
   ],
+  allTopics: [{ key: "ts", label: "TypeScript" }],
   unresolvedGaps: [],
   completedTasks: [{ task: "1", name: "Setup", plan: "phase1.md" }],
   currentTask: "2",

@@ -1,7 +1,6 @@
 import { existsSync } from "node:fs";
 import { bootstrapDb, type BootstrapOptions } from "./bootstrap";
 import * as integrity from "./integrity";
-import { migrateSchema } from "./migrateSchema";
 
 export interface OpenOptions {
   wasmPath: string;
@@ -41,27 +40,24 @@ export async function openDb(
   }
   const integ = await integrity.checkIntegrity(dbPath, opts.wasmPath);
   if (integ.ok) {
-    await migrateSchema(dbPath, { wasmPath: opts.wasmPath });
+    return { created: false, dbPath };
   }
-  if (!integ.ok) {
-    try {
-      const quarantined = await integrity.quarantineCorruptDb(dbPath);
-      throw new DbCorruptError(quarantined, integ.reason);
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException).code === "ENOENT") {
-        if (!opts.bootstrap) {
-          throw new Error(
-            `DB not found at ${dbPath} and no bootstrap option provided`,
-          );
-        }
-        await bootstrapDb(dbPath, {
-          wasmPath: opts.wasmPath,
-          topics: opts.bootstrap.topics,
-        });
-        return { created: true, dbPath };
+  try {
+    const quarantined = await integrity.quarantineCorruptDb(dbPath);
+    throw new DbCorruptError(quarantined, integ.reason);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      if (!opts.bootstrap) {
+        throw new Error(
+          `DB not found at ${dbPath} and no bootstrap option provided`,
+        );
       }
-      throw err;
+      await bootstrapDb(dbPath, {
+        wasmPath: opts.wasmPath,
+        topics: opts.bootstrap.topics,
+      });
+      return { created: true, dbPath };
     }
+    throw err;
   }
-  return { created: false, dbPath };
 }

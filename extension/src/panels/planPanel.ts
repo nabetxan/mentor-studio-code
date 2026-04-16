@@ -36,13 +36,8 @@ async function handleWrite(
       if (req.status === "active") {
         await planWrites.activatePlan(dbPath, { id: req.id }, wasmPath);
       } else if (req.status === "queued") {
-        // deactivatePlan sets status back to 'queued'
         await planWrites.deactivatePlan(dbPath, { id: req.id }, wasmPath);
-      } else if (req.status !== undefined) {
-        // paused / completed / backlog / removed — not supported via panel
-        throw new Error(`plan status '${req.status}' not supported via panel`);
       } else {
-        // status is undefined — name/filePath-only update
         await planWrites.updatePlan(
           dbPath,
           { id: req.id, name: req.name, filePath: req.filePath },
