@@ -2,7 +2,11 @@ import type { Database } from "sql.js";
 
 import { assertStatusInvariants, withWriteTransaction } from "../../db";
 
-function rowExists(db: Database, table: string, id: number): boolean {
+function rowExists(
+  db: Database,
+  table: "plans" | "tasks",
+  id: number,
+): boolean {
   const r = db.exec(`SELECT 1 FROM ${table} WHERE id = ${id}`);
   return Boolean(r[0]?.values?.length);
 }
@@ -155,6 +159,15 @@ export async function activateTask(
   await withWriteTransaction(dbPath, { wasmPath, purpose: "normal" }, (db) => {
     if (!rowExists(db, "tasks", args.id)) {
       throw new Error(`task not found: ${args.id}`);
+    }
+    const planStatusRes = db.exec(
+      `SELECT p.status FROM plans p JOIN tasks t ON t.planId = p.id WHERE t.id = ${args.id}`,
+    );
+    const planStatus = String(planStatusRes[0]?.values?.[0]?.[0] ?? "");
+    if (planStatus !== "active") {
+      throw new Error(
+        `cannot activate task ${args.id}: parent plan is not active (status=${planStatus})`,
+      );
     }
     db.exec("UPDATE tasks SET status = 'queued' WHERE status = 'active'");
     const stmt = db.prepare("UPDATE tasks SET status = 'active' WHERE id = ?");

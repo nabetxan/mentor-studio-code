@@ -30,6 +30,9 @@ export const activateTask: Command = async (rawArgs, paths) => {
     if (msg.startsWith("task not found")) {
       return { ok: false, error: "not_found", detail: msg };
     }
+    if (msg.startsWith("cannot activate task")) {
+      return { ok: false, error: "invalid_state", detail: msg };
+    }
     return { ok: false, error: "unexpected", detail: msg };
   }
 };

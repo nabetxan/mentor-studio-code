@@ -95,7 +95,7 @@ describe("activate-task", () => {
       const res = await activateTask({ id: 3 }, env.paths);
       expect(res).toMatchObject({
         ok: false,
-        error: "invariant_violation",
+        error: "invalid_state",
       });
 
       const rows = await withDb(env.paths.dbPath, (db) => {

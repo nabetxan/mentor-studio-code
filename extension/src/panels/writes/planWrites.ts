@@ -4,7 +4,11 @@ import type { PlanStatus } from "@mentor-studio/shared";
 
 import { assertStatusInvariants, withWriteTransaction } from "../../db";
 
-function rowExists(db: Database, table: string, id: number): boolean {
+function rowExists(
+  db: Database,
+  table: "plans" | "tasks",
+  id: number,
+): boolean {
   const r = db.exec(`SELECT 1 FROM ${table} WHERE id = ${id}`);
   return Boolean(r[0]?.values?.length);
 }

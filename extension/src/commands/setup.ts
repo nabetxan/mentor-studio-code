@@ -1,4 +1,4 @@
-import { promises as fsp } from "node:fs";
+import { existsSync, promises as fsp } from "node:fs";
 import { join } from "node:path";
 import * as vscode from "vscode";
 import { openDb } from "../db";
@@ -298,10 +298,11 @@ export async function runSetup(
   createdFiles.push("tools/mentor-cli.js");
   createdFiles.push("tools/sql-wasm.wasm");
 
-  // Bootstrap fresh DB with default topics
-  if (!existingConfig) {
-    const dbPath = vscode.Uri.joinPath(mentorDirUri, "data.db").fsPath;
-    const wasmPath = vscode.Uri.joinPath(toolsDirUri, "sql-wasm.wasm").fsPath;
+  // Bootstrap DB when data.db is missing (independent of config presence,
+  // so re-running Setup after a manual DB deletion recreates the file).
+  const dbPath = vscode.Uri.joinPath(mentorDirUri, "data.db").fsPath;
+  const wasmPath = vscode.Uri.joinPath(toolsDirUri, "sql-wasm.wasm").fsPath;
+  if (!existsSync(dbPath)) {
     await openDb(dbPath, { wasmPath, bootstrap: { topics: DEFAULT_TOPICS } });
     createdFiles.push("data.db");
   }
