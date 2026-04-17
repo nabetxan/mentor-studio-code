@@ -1,6 +1,8 @@
+import { promises as fsp } from "node:fs";
+import { join } from "node:path";
 import * as vscode from "vscode";
+import { openDb } from "../db";
 import { findMentorRef, promptAndAddMentorRef } from "../services/claudeMd";
-import { MENTOR_CLI_JS } from "../templates/mentorCli";
 import {
   COMPREHENSION_CHECK_SKILL_MD,
   CREATE_PLAN_MD,
@@ -15,8 +17,29 @@ import {
   REVIEW_SKILL_MD,
   SHARED_RULES_MD,
   TEACHING_CYCLE_REFERENCE_MD,
-  TRACKER_FORMAT_MD,
 } from "../templates/mentorFiles";
+
+const DEFAULT_TOPICS: { label: string }[] = [
+  { label: "HTML" },
+  { label: "CSS" },
+  { label: "JavaScript" },
+  { label: "TypeScript" },
+];
+
+export async function copyCliArtifacts(
+  distDir: string,
+  targetToolsDir: string,
+): Promise<void> {
+  await fsp.mkdir(targetToolsDir, { recursive: true });
+  await fsp.copyFile(
+    join(distDir, "mentor-cli.js"),
+    join(targetToolsDir, "mentor-cli.js"),
+  );
+  await fsp.copyFile(
+    join(distDir, "sql-wasm.wasm"),
+    join(targetToolsDir, "sql-wasm.wasm"),
+  );
+}
 
 async function writeIfMissing(
   uri: vscode.Uri,
@@ -171,13 +194,7 @@ export async function runSetup(
         {
           repositoryName: folderName,
           enableMentor: true,
-          topics: [
-            { key: "a-html", label: "HTML" },
-            { key: "a-css", label: "CSS" },
-            { key: "a-javascript", label: "JavaScript" },
-            { key: "a-typescript", label: "TypeScript" },
-          ],
-          mentorFiles: { spec: null, plan: null },
+          mentorFiles: { spec: null },
           locale: detectedLocale,
           extensionVersion,
           workspacePath: wsRoot.fsPath,
@@ -232,12 +249,6 @@ export async function runSetup(
     MENTOR_SESSION_SKILL_MD,
     "skills/mentor-session/SKILL.md",
   );
-  await writeTemplate(
-    vscode.Uri.joinPath(mentorSessionDirUri, "tracker-format.md"),
-    TRACKER_FORMAT_MD,
-    "skills/mentor-session/tracker-format.md",
-  );
-
   // Review skill
   const reviewDirUri = vscode.Uri.joinPath(skillsDirUri, "review");
   await vscode.workspace.fs.createDirectory(reviewDirUri);
@@ -280,12 +291,20 @@ export async function runSetup(
     "skills/intake/SKILL.md",
   );
 
-  // CLI tool — always overwrite so updates take effect
-  await writeTemplate(
-    vscode.Uri.joinPath(toolsDirUri, "mentor-cli.js"),
-    MENTOR_CLI_JS,
-    "tools/mentor-cli.js",
-  );
+  // CLI tool — always overwrite bundled mentor-cli.js and sql-wasm.wasm
+  // so updates to the extension's bundled CLI take effect on setup.
+  const distDir = vscode.Uri.joinPath(context.extensionUri, "dist").fsPath;
+  await copyCliArtifacts(distDir, toolsDirUri.fsPath);
+  createdFiles.push("tools/mentor-cli.js");
+  createdFiles.push("tools/sql-wasm.wasm");
+
+  // Bootstrap fresh DB with default topics
+  if (!existingConfig) {
+    const dbPath = vscode.Uri.joinPath(mentorDirUri, "data.db").fsPath;
+    const wasmPath = vscode.Uri.joinPath(toolsDirUri, "sql-wasm.wasm").fsPath;
+    await openDb(dbPath, { wasmPath, bootstrap: { topics: DEFAULT_TOPICS } });
+    createdFiles.push("data.db");
+  }
 
   // Data files — only write if missing
   await writeDataIfMissing(

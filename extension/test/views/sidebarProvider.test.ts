@@ -1,0 +1,489 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { SidebarProvider } from "../../src/views/sidebarProvider";
+import * as vscodeMock from "../__mocks__/vscode";
+
+// Convenience: full set of no-op plan handlers
+function noopPlanHandlers() {
+  return {
+    activatePlan: () => Promise.resolve(),
+    deactivatePlan: () => Promise.resolve(),
+    pauseActivePlan: () => Promise.resolve(),
+    changeActivePlanFile: () => Promise.resolve(),
+    createAndActivatePlan: () => Promise.resolve(),
+  };
+}
+
+type MessageHandler = (msg: unknown) => void | Promise<void>;
+
+interface FakeWebviewView {
+  webview: {
+    options: unknown;
+    html: string;
+    cspSource: string;
+    onDidReceiveMessage: (h: MessageHandler) => vscodeMock.Disposable;
+    postMessage: (msg: unknown) => Promise<boolean>;
+    asWebviewUri: (u: vscodeMock.MockUri) => vscodeMock.MockUri;
+  };
+  onDidDispose: (h: () => void) => vscodeMock.Disposable;
+  __trigger: (msg: unknown) => Promise<void>;
+  __posted: unknown[];
+}
+
+function makeView(): FakeWebviewView {
+  const posted: unknown[] = [];
+  let handler: MessageHandler | null = null;
+  return {
+    webview: {
+      options: undefined,
+      html: "",
+      cspSource: "vscode-resource:",
+      onDidReceiveMessage: (h) => {
+        handler = h;
+        return new vscodeMock.Disposable();
+      },
+      postMessage: (msg) => {
+        posted.push(msg);
+        return Promise.resolve(true);
+      },
+      asWebviewUri: (u) => u,
+    },
+    onDidDispose: () => new vscodeMock.Disposable(),
+    __trigger: async (msg) => {
+      if (handler) await handler(msg);
+    },
+    __posted: posted,
+  };
+}
+
+describe("SidebarProvider", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    (
+      vscodeMock.workspace as unknown as {
+        workspaceFolders: { uri: vscodeMock.MockUri }[] | undefined;
+      }
+    ).workspaceFolders = [{ uri: vscodeMock.Uri.file("/workspace") }];
+  });
+
+  it("getSubscriber() forwards messages to the webview", () => {
+    const provider = new SidebarProvider(
+      vscodeMock.Uri.file("/ext") as unknown as ConstructorParameters<
+        typeof SidebarProvider
+      >[0],
+    );
+    const view = makeView();
+    provider.resolveWebviewView(
+      view as unknown as Parameters<typeof provider.resolveWebviewView>[0],
+    );
+    const sub = provider.getSubscriber();
+    sub.postMessage({ type: "dbChanged" });
+    expect(view.__posted).toContainEqual({ type: "dbChanged" });
+  });
+
+  it("getSubscriber() is a no-op when view is not yet resolved", () => {
+    const provider = new SidebarProvider(
+      vscodeMock.Uri.file("/ext") as unknown as ConstructorParameters<
+        typeof SidebarProvider
+      >[0],
+    );
+    const sub = provider.getSubscriber();
+    expect(() => sub.postMessage({ type: "dbChanged" })).not.toThrow();
+  });
+
+  it("mergeTopic message calls the registered handler", async () => {
+    const provider = new SidebarProvider(
+      vscodeMock.Uri.file("/ext") as unknown as ConstructorParameters<
+        typeof SidebarProvider
+      >[0],
+    );
+    const view = makeView();
+    provider.resolveWebviewView(
+      view as unknown as Parameters<typeof provider.resolveWebviewView>[0],
+    );
+    const mergeTopic = vi.fn(() => Promise.resolve());
+    provider.setTopicHandlers({
+      mergeTopic,
+      updateTopicLabel: () => Promise.resolve(),
+      addTopic: () => Promise.resolve({ ok: true, key: "t_1" }),
+      deleteTopics: () => Promise.resolve([]),
+    });
+    await view.__trigger({
+      type: "mergeTopic",
+      fromKey: "t_1",
+      toKey: "t_2",
+    });
+    expect(mergeTopic).toHaveBeenCalledWith("t_1", "t_2");
+  });
+
+  it("mergeTopic handler throw → showErrorMessage", async () => {
+    const provider = new SidebarProvider(
+      vscodeMock.Uri.file("/ext") as unknown as ConstructorParameters<
+        typeof SidebarProvider
+      >[0],
+    );
+    const view = makeView();
+    provider.resolveWebviewView(
+      view as unknown as Parameters<typeof provider.resolveWebviewView>[0],
+    );
+    const showError = vi
+      .spyOn(vscodeMock.window, "showErrorMessage")
+      .mockResolvedValue(undefined);
+    provider.setTopicHandlers({
+      mergeTopic: () => Promise.reject(new Error("boom")),
+      updateTopicLabel: () => Promise.resolve(),
+      addTopic: () => Promise.resolve({ ok: true, key: "t_1" }),
+      deleteTopics: () => Promise.resolve([]),
+    });
+    await view.__trigger({
+      type: "mergeTopic",
+      fromKey: "t_1",
+      toKey: "t_2",
+    });
+    expect(showError).toHaveBeenCalledTimes(1);
+  });
+
+  it("deleteTopics posts deleteTopicsResult with handler results", async () => {
+    const provider = new SidebarProvider(
+      vscodeMock.Uri.file("/ext") as unknown as ConstructorParameters<
+        typeof SidebarProvider
+      >[0],
+    );
+    const view = makeView();
+    provider.resolveWebviewView(
+      view as unknown as Parameters<typeof provider.resolveWebviewView>[0],
+    );
+    provider.setTopicHandlers({
+      mergeTopic: () => Promise.resolve(),
+      updateTopicLabel: () => Promise.resolve(),
+      addTopic: () => Promise.resolve({ ok: true, key: "t_1" }),
+      deleteTopics: (keys) =>
+        Promise.resolve(keys.map((key) => ({ key, ok: true }))),
+    });
+    await view.__trigger({ type: "deleteTopics", keys: ["t_1", "t_2"] });
+    expect(view.__posted).toContainEqual({
+      type: "deleteTopicsResult",
+      results: [
+        { key: "t_1", ok: true },
+        { key: "t_2", ok: true },
+      ],
+    });
+  });
+
+  it("activatePlan calls handler and posts success result", async () => {
+    const provider = new SidebarProvider(
+      vscodeMock.Uri.file("/ext") as unknown as ConstructorParameters<
+        typeof SidebarProvider
+      >[0],
+    );
+    const view = makeView();
+    provider.resolveWebviewView(
+      view as unknown as Parameters<typeof provider.resolveWebviewView>[0],
+    );
+    const activatePlan = vi.fn(() => Promise.resolve());
+    provider.setPlanHandlers({ ...noopPlanHandlers(), activatePlan });
+    await view.__trigger({ type: "activatePlan", id: 5 });
+    expect(activatePlan).toHaveBeenCalledWith(5);
+    expect(view.__posted).toContainEqual({
+      type: "activatePlanResult",
+      id: 5,
+      ok: true,
+    });
+  });
+
+  it("activatePlan handler throw → posts failure with error message", async () => {
+    const provider = new SidebarProvider(
+      vscodeMock.Uri.file("/ext") as unknown as ConstructorParameters<
+        typeof SidebarProvider
+      >[0],
+    );
+    const view = makeView();
+    provider.resolveWebviewView(
+      view as unknown as Parameters<typeof provider.resolveWebviewView>[0],
+    );
+    provider.setPlanHandlers({
+      ...noopPlanHandlers(),
+      activatePlan: () => Promise.reject(new Error("no open tasks")),
+    });
+    await view.__trigger({ type: "activatePlan", id: 9 });
+    expect(view.__posted).toContainEqual({
+      type: "activatePlanResult",
+      id: 9,
+      ok: false,
+      error: "no open tasks",
+    });
+  });
+
+  it("deactivatePlan calls handler and posts success result", async () => {
+    const provider = new SidebarProvider(
+      vscodeMock.Uri.file("/ext") as unknown as ConstructorParameters<
+        typeof SidebarProvider
+      >[0],
+    );
+    const view = makeView();
+    provider.resolveWebviewView(
+      view as unknown as Parameters<typeof provider.resolveWebviewView>[0],
+    );
+    const deactivatePlan = vi.fn(() => Promise.resolve());
+    provider.setPlanHandlers({ ...noopPlanHandlers(), deactivatePlan });
+    await view.__trigger({ type: "deactivatePlan", id: 2 });
+    expect(deactivatePlan).toHaveBeenCalledWith(2);
+    expect(view.__posted).toContainEqual({
+      type: "deactivatePlanResult",
+      id: 2,
+      ok: true,
+    });
+  });
+
+  it("activatePlan without handler posts no_handler error", async () => {
+    const provider = new SidebarProvider(
+      vscodeMock.Uri.file("/ext") as unknown as ConstructorParameters<
+        typeof SidebarProvider
+      >[0],
+    );
+    const view = makeView();
+    provider.resolveWebviewView(
+      view as unknown as Parameters<typeof provider.resolveWebviewView>[0],
+    );
+    await view.__trigger({ type: "activatePlan", id: 1 });
+    expect(view.__posted).toContainEqual({
+      type: "activatePlanResult",
+      id: 1,
+      ok: false,
+      error: "no_handler",
+    });
+  });
+
+  it("openPlanPanel message executes mentor-studio.openPlanPanel command", async () => {
+    const provider = new SidebarProvider(
+      vscodeMock.Uri.file("/ext") as unknown as ConstructorParameters<
+        typeof SidebarProvider
+      >[0],
+    );
+    const view = makeView();
+    provider.resolveWebviewView(
+      view as unknown as Parameters<typeof provider.resolveWebviewView>[0],
+    );
+    const executeCommand = vi
+      .spyOn(vscodeMock.commands, "executeCommand")
+      .mockResolvedValue(undefined);
+    await view.__trigger({ type: "openPlanPanel" });
+    expect(executeCommand).toHaveBeenCalledTimes(1);
+    expect(executeCommand).toHaveBeenCalledWith("mentor-studio.openPlanPanel");
+  });
+
+  it("deleteTopics handler throw → posts per-key error results", async () => {
+    const provider = new SidebarProvider(
+      vscodeMock.Uri.file("/ext") as unknown as ConstructorParameters<
+        typeof SidebarProvider
+      >[0],
+    );
+    const view = makeView();
+    provider.resolveWebviewView(
+      view as unknown as Parameters<typeof provider.resolveWebviewView>[0],
+    );
+    provider.setTopicHandlers({
+      mergeTopic: () => Promise.resolve(),
+      updateTopicLabel: () => Promise.resolve(),
+      addTopic: () => Promise.resolve({ ok: true, key: "t_1" }),
+      deleteTopics: () => Promise.reject(new Error("boom")),
+    });
+    await view.__trigger({ type: "deleteTopics", keys: ["t_1"] });
+    expect(view.__posted).toContainEqual({
+      type: "deleteTopicsResult",
+      results: [{ key: "t_1", ok: false, error: "delete_failed" }],
+    });
+  });
+
+  it("pauseActivePlan calls handler and posts success result", async () => {
+    const provider = new SidebarProvider(
+      vscodeMock.Uri.file("/ext") as unknown as ConstructorParameters<
+        typeof SidebarProvider
+      >[0],
+    );
+    const view = makeView();
+    provider.resolveWebviewView(
+      view as unknown as Parameters<typeof provider.resolveWebviewView>[0],
+    );
+    const pauseActivePlan = vi.fn(() => Promise.resolve());
+    provider.setPlanHandlers({ ...noopPlanHandlers(), pauseActivePlan });
+    await view.__trigger({ type: "pauseActivePlan", id: 3 });
+    expect(pauseActivePlan).toHaveBeenCalledWith(3);
+    expect(view.__posted).toContainEqual({
+      type: "pauseActivePlanResult",
+      id: 3,
+      ok: true,
+    });
+  });
+
+  it("pauseActivePlan handler throw → posts failure with error message", async () => {
+    const provider = new SidebarProvider(
+      vscodeMock.Uri.file("/ext") as unknown as ConstructorParameters<
+        typeof SidebarProvider
+      >[0],
+    );
+    const view = makeView();
+    provider.resolveWebviewView(
+      view as unknown as Parameters<typeof provider.resolveWebviewView>[0],
+    );
+    provider.setPlanHandlers({
+      ...noopPlanHandlers(),
+      pauseActivePlan: () => Promise.reject(new Error("pause_failed")),
+    });
+    await view.__trigger({ type: "pauseActivePlan", id: 7 });
+    expect(view.__posted).toContainEqual({
+      type: "pauseActivePlanResult",
+      id: 7,
+      ok: false,
+      error: "pause_failed",
+    });
+  });
+
+  it("changeActivePlanFile dialog cancelled → handler NOT called, ok:true result posted", async () => {
+    const provider = new SidebarProvider(
+      vscodeMock.Uri.file("/ext") as unknown as ConstructorParameters<
+        typeof SidebarProvider
+      >[0],
+    );
+    const view = makeView();
+    provider.resolveWebviewView(
+      view as unknown as Parameters<typeof provider.resolveWebviewView>[0],
+    );
+    const changeActivePlanFile = vi.fn(() => Promise.resolve());
+    provider.setPlanHandlers({ ...noopPlanHandlers(), changeActivePlanFile });
+    vi.spyOn(vscodeMock.window, "showOpenDialog").mockResolvedValue(undefined);
+    await view.__trigger({ type: "changeActivePlanFile", id: 4 });
+    expect(changeActivePlanFile).not.toHaveBeenCalled();
+    expect(view.__posted).toContainEqual({
+      type: "changeActivePlanFileResult",
+      id: 4,
+      ok: true,
+    });
+  });
+
+  it("changeActivePlanFile dialog picks file → handler called with relPath, success posted", async () => {
+    const provider = new SidebarProvider(
+      vscodeMock.Uri.file("/ext") as unknown as ConstructorParameters<
+        typeof SidebarProvider
+      >[0],
+    );
+    const view = makeView();
+    provider.resolveWebviewView(
+      view as unknown as Parameters<typeof provider.resolveWebviewView>[0],
+    );
+    const changeActivePlanFile = vi.fn(() => Promise.resolve());
+    provider.setPlanHandlers({ ...noopPlanHandlers(), changeActivePlanFile });
+    const fakeUri = vscodeMock.Uri.file("/workspace/plans/chapter1.md");
+    vi.spyOn(vscodeMock.window, "showOpenDialog").mockResolvedValue([fakeUri]);
+    await view.__trigger({ type: "changeActivePlanFile", id: 4 });
+    expect(changeActivePlanFile).toHaveBeenCalledOnce();
+    expect(changeActivePlanFile).toHaveBeenCalledWith(4, "plans/chapter1.md");
+    expect(view.__posted).toContainEqual({
+      type: "changeActivePlanFileResult",
+      id: 4,
+      ok: true,
+    });
+  });
+
+  it("selectFile with field:plan dialog cancelled → no handler call, no crash", async () => {
+    const provider = new SidebarProvider(
+      vscodeMock.Uri.file("/ext") as unknown as ConstructorParameters<
+        typeof SidebarProvider
+      >[0],
+    );
+    const view = makeView();
+    provider.resolveWebviewView(
+      view as unknown as Parameters<typeof provider.resolveWebviewView>[0],
+    );
+    const createAndActivatePlan = vi.fn(() => Promise.resolve());
+    provider.setPlanHandlers({ ...noopPlanHandlers(), createAndActivatePlan });
+    vi.spyOn(vscodeMock.window, "showOpenDialog").mockResolvedValue(undefined);
+    await expect(
+      view.__trigger({ type: "selectFile", field: "plan" }),
+    ).resolves.not.toThrow();
+    expect(createAndActivatePlan).not.toHaveBeenCalled();
+  });
+
+  it("selectFile with field:plan dialog picks file → createAndActivatePlan called with relPath", async () => {
+    const provider = new SidebarProvider(
+      vscodeMock.Uri.file("/ext") as unknown as ConstructorParameters<
+        typeof SidebarProvider
+      >[0],
+    );
+    const view = makeView();
+    provider.resolveWebviewView(
+      view as unknown as Parameters<typeof provider.resolveWebviewView>[0],
+    );
+    const createAndActivatePlan = vi.fn(() => Promise.resolve());
+    provider.setPlanHandlers({ ...noopPlanHandlers(), createAndActivatePlan });
+    const fakeUri = vscodeMock.Uri.file("/workspace/plans/new-plan.md");
+    vi.spyOn(vscodeMock.window, "showOpenDialog").mockResolvedValue([fakeUri]);
+    await view.__trigger({ type: "selectFile", field: "plan" });
+    expect(createAndActivatePlan).toHaveBeenCalledOnce();
+    expect(createAndActivatePlan).toHaveBeenCalledWith("plans/new-plan.md");
+  });
+
+  it("selectFile with field:plan rejects file outside workspace → handler NOT called, error shown", async () => {
+    const provider = new SidebarProvider(
+      vscodeMock.Uri.file("/ext") as unknown as ConstructorParameters<
+        typeof SidebarProvider
+      >[0],
+    );
+    const view = makeView();
+    provider.resolveWebviewView(
+      view as unknown as Parameters<typeof provider.resolveWebviewView>[0],
+    );
+    const createAndActivatePlan = vi.fn(() => Promise.resolve());
+    provider.setPlanHandlers({ ...noopPlanHandlers(), createAndActivatePlan });
+    const outsideUri = vscodeMock.Uri.file("/elsewhere/plans/new-plan.md");
+    vi.spyOn(vscodeMock.window, "showOpenDialog").mockResolvedValue([
+      outsideUri,
+    ]);
+    const errSpy = vi.spyOn(vscodeMock.window, "showErrorMessage");
+    await view.__trigger({ type: "selectFile", field: "plan" });
+    expect(createAndActivatePlan).not.toHaveBeenCalled();
+    expect(errSpy).toHaveBeenCalledOnce();
+  });
+
+  it("changeActivePlanFile rejects file outside workspace → handler NOT called, ok:false posted", async () => {
+    const provider = new SidebarProvider(
+      vscodeMock.Uri.file("/ext") as unknown as ConstructorParameters<
+        typeof SidebarProvider
+      >[0],
+    );
+    const view = makeView();
+    provider.resolveWebviewView(
+      view as unknown as Parameters<typeof provider.resolveWebviewView>[0],
+    );
+    const changeActivePlanFile = vi.fn(() => Promise.resolve());
+    provider.setPlanHandlers({ ...noopPlanHandlers(), changeActivePlanFile });
+    const outsideUri = vscodeMock.Uri.file("/elsewhere/plans/chapter1.md");
+    vi.spyOn(vscodeMock.window, "showOpenDialog").mockResolvedValue([
+      outsideUri,
+    ]);
+    const errSpy = vi.spyOn(vscodeMock.window, "showErrorMessage");
+    await view.__trigger({ type: "changeActivePlanFile", id: 4 });
+    expect(changeActivePlanFile).not.toHaveBeenCalled();
+    expect(errSpy).toHaveBeenCalledOnce();
+    expect(view.__posted).toContainEqual({
+      type: "changeActivePlanFileResult",
+      id: 4,
+      ok: false,
+      error: "outside_workspace",
+    });
+  });
+
+  it("clearFile with field:plan throws — plan is managed by Plan Panel", async () => {
+    const provider = new SidebarProvider(
+      vscodeMock.Uri.file("/ext") as unknown as ConstructorParameters<
+        typeof SidebarProvider
+      >[0],
+    );
+    const view = makeView();
+    provider.resolveWebviewView(
+      view as unknown as Parameters<typeof provider.resolveWebviewView>[0],
+    );
+    await expect(
+      view.__trigger({ type: "clearFile", field: "plan" }),
+    ).rejects.toThrow("mentorFiles.plan is managed by Plan Panel, not Sidebar");
+  });
+});

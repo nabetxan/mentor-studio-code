@@ -2,6 +2,57 @@
 
 All notable changes to "Mentor Studio Code" will be documented in this file.
 
+## [0.6.0] - 2026-04-17
+
+This release migrates the runtime data store from JSON files to SQLite, and rebuilds the Plan Panel around a richer plan lifecycle.
+
+### ⚠️ Breaking Changes / Migration Notes
+
+On first activation of v0.6.0, the extension automatically migrates existing workspaces:
+
+- `.mentor/question-history.json` and parts of `.mentor/progress.json` are migrated into a new SQLite database at `.mentor/data.db`. Legacy files are preserved as `.bak`.
+- `config.json` no longer stores `topics` or `mentorFiles.plan` — topics live in the DB, and the active plan is implied by the single plan row with `status = 'active'`. Writes to `mentorFiles.plan` from the Sidebar or `update-config` CLI are now rejected.
+- `progress.json` is slimmed to `resume_context` and `learner_profile`. All task state (active task, completed/skipped tasks, unresolved gaps) now lives in the SQLite DB. Topic identifiers are auto-increment integers instead of string keys.
+- Orphan history and pre-schema string tasks are bucketed under a synthesized "Legacy" plan so nothing is dropped.
+- If you have external tooling reading these JSON files directly, switch to `mentor-cli` commands.
+
+### Added
+
+- **SQLite-backed runtime store** (`.mentor/data.db`) — topics, plans, tasks, and question history now live in a single database with foreign-key integrity, status invariants (unique active plan / active task), and integer IDs.
+- **Plan Panel redesign** — single Plans pane (Tasks pane removed) with a 6-status lifecycle (`backlog`, `queued`, `active`, `completed`, `paused`, `removed`):
+  - Plans are split into 6 collapsible status groups (Active → Queued → Paused → Backlog → Completed → Removed). Active / Queued / Paused / Backlog open by default; Completed / Removed are collapsed by default. Empty groups render dimmed and disabled.
+  - Status changes consolidated into a single badge button + dropdown (the old Activate / Deactivate / Remove / Restore buttons are gone).
+  - Drag-and-drop reorder is limited to the Queued / Paused / Backlog groups; the drag handle is hidden inside Active / Completed / Removed.
+  - Added an active-plan conflict confirmation dialog (`vscode.window.showInformationMessage`) when the user activates a second plan.
+  - Added i18n (Japanese / English). `initData.locale` flows through a React Context to every Plan Panel component.
+  - "Add Plan from File…" uses the VS Code file picker; plan name is auto-derived from the markdown filename.
+  - When the active plan completes, the next `queued` plan is auto-promoted (sortOrder ascending); `backlog` plans are never auto-promoted.
+  - mentor-session skill detects `active` plans with `taskCount === 0` and offers to regenerate the plan file with a task breakdown.
+- **Rebuilt mentor-cli** (`.mentor/tools/mentor-cli.js`) talking to SQLite:
+  - `session-brief` — flow-specific filtered bundle (learner profile, current task, relevant gaps).
+  - `list-unresolved`, `list-topics`, `list-plans` (returns `taskCount`; `removed` / `completed` hidden unless opted in).
+  - `add-topic`, `record-answer`, `update-task` (auto-activates next queued task), `update-profile`, `update-progress`, `update-config`.
+- **DB foundation** (`src/db/`) — DDL, `sql.js` loader, atomic writes, cross-process advisory lock, write transactions, integrity checks, status invariant assertions.
+- **DB-backed dashboard** (`services/dbDashboard.ts`) and a broadcast bus (`services/broadcastBus.ts`) for coalescing DB-change notifications to the webview.
+- **Test infrastructure** — mock VS Code file system watcher, end-to-end smoke tests for mentor-cli, and extensive unit coverage across DB, migration, CLI, and session-brief layers. Template validation tests for SKILL.md files.
+
+### Changed
+
+- `FileWatcher` rewritten around DB change events (legacy JSON parsing retained only for `progress.json` / `config.json` metadata).
+- `setup` command copies the new `mentor-cli.js` bundle and bootstraps an empty `data.db` when none exists.
+- `remove-mentor` cleanup also removes SQLite runtime artifacts (`data.db`, `data.db.lock`, `data.db.bak`, `sql-wasm.wasm`, bundled CLI).
+- Sidebar **Settings** plan UI consolidated into a single **Plan** card that shows the active plan (with Change / Detach) and the next queued plan (file link only; Activate button appears only when no active plan). The "Open Plan Panel" button moves into a separate inline **Plan Panel** card. `DashboardData` gains a `nextPlan` field (the queued plan with the smallest `sortOrder`).
+
+### Removed
+
+- Direct AI reads and writes to `question-history.json` — all question I/O goes through mentor-cli.
+- Legacy `mentorCli` test suite (superseded by per-command and e2e tests).
+
+### Fixed
+
+- Active-task invariant enforced at the schema level (partial unique index on `tasks.status = 'active'`), preventing the long-standing "two active tasks" drift when advancing from a queued task.
+- Plan Panel now reflects sidebar-initiated plan changes (change/activate/deactivate/pause) immediately instead of waiting for a file-system event that could be delayed or missed for atomic-rename writes.
+
 ## [0.5.0] - 2026-04-11
 
 ### Added

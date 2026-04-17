@@ -53,7 +53,7 @@ export function Overview({
   // Prune deleteSelected when topics or topicsWithHistory change
   useEffect(() => {
     if (deleteSelected.size === 0) return;
-    const allTopicKeys = new Set((config?.topics ?? []).map((tp) => tp.key));
+    const allTopicKeys = new Set((data?.allTopics ?? []).map((tp) => tp.key));
     const historySet = new Set(data?.topicsWithHistory ?? []);
     setDeleteSelected((prev) => {
       const next = new Set<string>();
@@ -65,7 +65,7 @@ export function Overview({
       if (next.size === prev.size) return prev;
       return next;
     });
-  }, [config?.topics, data?.topicsWithHistory]);
+  }, [data?.allTopics, data?.topicsWithHistory]);
 
   useEffect(() => {
     if (!deleteDropdownOpen) return;
@@ -188,9 +188,17 @@ export function Overview({
               </a>
             )}
           </div>
-          {config?.mentorFiles?.plan != null &&
-            (() => {
-              const planPath = config.mentorFiles.plan;
+          {(() => {
+            const activePlan = data.activePlan ?? null;
+            if (!activePlan) {
+              return (
+                <div className="stat-sub stat-sub--warning">
+                  {t("overview.activePlan.none", locale)}
+                </div>
+              );
+            }
+            const { name, filePath } = activePlan;
+            if (filePath) {
               return (
                 <div className="stat-sub">
                   <a
@@ -199,16 +207,23 @@ export function Overview({
                       e.preventDefault();
                       postMessage({
                         type: "openFile",
-                        relativePath: planPath,
+                        relativePath: filePath,
                       });
                     }}
                     className="file-path-link"
+                    title={filePath}
                   >
-                    {planPath}
+                    {name}
                   </a>
                 </div>
               );
-            })()}
+            }
+            return (
+              <div className="stat-sub">
+                {name} {t("overview.activePlan.uiOnly", locale)}
+              </div>
+            );
+          })()}
         </div>
       </div>
 
@@ -226,7 +241,7 @@ export function Overview({
             const resolvedLabel =
               topic.label !== topic.topic
                 ? topic.label
-                : (config?.topics?.find((c) => c.key === topic.topic)?.label ??
+                : (data?.allTopics?.find((c) => c.key === topic.topic)?.label ??
                   topic.label);
             const displayLabel = stripKeyPrefix(resolvedLabel);
             const topicGaps = data.unresolvedGaps.filter(
@@ -377,7 +392,7 @@ export function Overview({
         </div>
       )}
 
-      {(config?.topics ?? []).length > 1 && (
+      {(data?.allTopics ?? []).length > 1 && (
         <div className="merge-topics-section">
           <div className="section-heading">
             {t("overview.topic.mergeSection", locale)}
@@ -387,31 +402,19 @@ export function Overview({
               <div className="detail-lbl">
                 {t("overview.topic.mergeSource", locale)}
               </div>
-              <select
-                className="form-select"
+              <TopicSelect
+                options={data?.allTopics ?? []}
                 value={mergeSource}
-                onChange={(e) => {
-                  setMergeSource(e.target.value);
-                  if (e.target.value === mergeTarget) {
+                onChange={(key) => {
+                  setMergeSource(key);
+                  if (key === mergeTarget) {
                     setMergeTarget("");
                   }
                 }}
-              >
-                <option value="">
-                  {t("overview.topic.mergeSelectSource", locale)}
-                </option>
-                {[...(config?.topics ?? [])]
-                  .sort((a, b) =>
-                    a.label.localeCompare(b.label, undefined, {
-                      numeric: true,
-                    }),
-                  )
-                  .map((tp) => (
-                    <option key={tp.key} value={tp.key}>
-                      {stripKeyPrefix(tp.label)}
-                    </option>
-                  ))}
-              </select>
+                locale={locale}
+                placeholder={t("overview.topic.mergeSelectSource", locale)}
+                ariaLabel={t("overview.topic.mergeSource", locale)}
+              />
             </div>
             <div className="merge-topics-field">
               <div className="detail-lbl">
@@ -419,7 +422,7 @@ export function Overview({
               </div>
               <div className="form-row">
                 <TopicSelect
-                  options={(config?.topics ?? []).filter(
+                  options={(data?.allTopics ?? []).filter(
                     (c) => c.key !== mergeSource,
                   )}
                   value={mergeTarget}
@@ -450,13 +453,13 @@ export function Overview({
         </div>
       )}
 
-      {(config?.topics ?? []).length > 0 && (
+      {(data?.allTopics ?? []).length > 0 && (
         <div className="delete-topics-section">
           <div className="section-heading">
             {t("overview.topic.deleteSection", locale)}
           </div>
           {(() => {
-            const allTopics = config?.topics ?? [];
+            const allTopics = data?.allTopics ?? [];
             const historySet = new Set(data.topicsWithHistory);
             const hasDisabled = allTopics.some((tp) => historySet.has(tp.key));
             const allDisabled = allTopics.every((tp) => historySet.has(tp.key));
