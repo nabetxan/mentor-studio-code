@@ -30,6 +30,7 @@ export function App() {
   const [deleteTopicErrors, setDeleteTopicErrors] = useState<
     Map<string, string>
   >(new Map());
+  const [planActionError, setPlanActionError] = useState<string | null>(null);
   const appRef = useRef<HTMLDivElement>(null);
   const localeRef = useRef(locale);
 
@@ -47,8 +48,7 @@ export function App() {
     return () => ro.disconnect();
   }, []);
 
-  const settingsHasWarning =
-    !config?.mentorFiles?.plan || !data?.profileLastUpdated;
+  const settingsHasWarning = !data?.activePlan || !data?.profileLastUpdated;
 
   useEffect(() => {
     const cleanup = onMessage((message: ExtensionMessage) => {
@@ -75,6 +75,32 @@ export function App() {
           } else {
             setAddTopicError(message.error ?? t("app.addTopicFailed", locale));
             setLastAddedTopicKey(null);
+          }
+          break;
+        case "activatePlanResult":
+          if (message.ok) {
+            setPlanActionError(null);
+          } else {
+            const base = t(
+              "settings.activePlan.activateFailed",
+              localeRef.current,
+            );
+            setPlanActionError(
+              message.error ? `${base}: ${message.error}` : base,
+            );
+          }
+          break;
+        case "deactivatePlanResult":
+          if (message.ok) {
+            setPlanActionError(null);
+          } else {
+            const base = t(
+              "settings.activePlan.deactivateFailed",
+              localeRef.current,
+            );
+            setPlanActionError(
+              message.error ? `${base}: ${message.error}` : base,
+            );
           }
           break;
         case "deleteTopicsResult": {
@@ -287,6 +313,9 @@ export function App() {
             locale={locale}
             onLocaleChange={handleLocaleChange}
             profileLastUpdated={data?.profileLastUpdated ?? null}
+            activePlan={data?.activePlan ?? null}
+            nextPlan={data?.nextPlan ?? null}
+            planActionError={planActionError}
           />
         )}
       </main>

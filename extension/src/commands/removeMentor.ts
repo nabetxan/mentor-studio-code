@@ -1,7 +1,34 @@
 import type { CleanupOptions } from "@mentor-studio/shared";
+import { promises as fsp } from "node:fs";
+import { join } from "node:path";
 import * as vscode from "vscode";
 import { findMentorRef, removeMentorRef } from "../services/claudeMd";
 import { parseConfig } from "../services/dataParser";
+
+export async function cleanupRuntimeArtifacts(
+  mentorDirPath: string,
+): Promise<void> {
+  const targets: { path: string; kind: "file" | "dir" }[] = [
+    { path: "data.db", kind: "file" },
+    { path: "data.db.lock", kind: "dir" },
+    { path: "data.db.bak", kind: "file" },
+    { path: "sql-wasm.wasm", kind: "file" },
+    { path: "tools/mentor-cli.js", kind: "file" },
+    { path: "tools/sql-wasm.wasm", kind: "file" },
+  ];
+  for (const t of targets) {
+    const target = join(mentorDirPath, t.path);
+    try {
+      if (t.kind === "dir") {
+        await fsp.rm(target, { recursive: true, force: true });
+      } else {
+        await fsp.rm(target, { force: true });
+      }
+    } catch {
+      // idempotent: ignore missing/inaccessible
+    }
+  }
+}
 
 async function readIsJaFromConfig(wsRoot: vscode.Uri): Promise<boolean> {
   try {
@@ -53,6 +80,10 @@ export async function runRemoveMentor(
 
   // Remove @ref from both CLAUDE.md locations
   await removeMentorRef(wsRoot);
+
+  // Clean up SQLite-era runtime artifacts (idempotent; leaves user-owned files alone)
+  await cleanupRuntimeArtifacts(join(wsRoot.fsPath, ".mentor"));
+  outputChannel.appendLine("Cleaned up SQLite runtime artifacts");
 
   // Update config.json: enableMentor=false, remove extensionUninstalled
   {

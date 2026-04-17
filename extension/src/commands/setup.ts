@@ -1,6 +1,8 @@
+import { existsSync, promises as fsp } from "node:fs";
+import { join } from "node:path";
 import * as vscode from "vscode";
+import { openDb } from "../db";
 import { findMentorRef, promptAndAddMentorRef } from "../services/claudeMd";
-import { MENTOR_CLI_JS } from "../templates/mentorCli";
 import {
   COMPREHENSION_CHECK_SKILL_MD,
   CREATE_PLAN_MD,
@@ -10,13 +12,49 @@ import {
   INTAKE_SKILL_MD,
   MENTOR_RULES_MD,
   MENTOR_SESSION_SKILL_MD,
+  PLAN_HEALTH_MD,
   PROGRESS_JSON,
-  QUESTION_HISTORY_JSON,
   REVIEW_SKILL_MD,
   SHARED_RULES_MD,
   TEACHING_CYCLE_REFERENCE_MD,
-  TRACKER_FORMAT_MD,
 } from "../templates/mentorFiles";
+
+const DEFAULT_TOPICS: { label: string }[] = [
+  { label: "HTML" },
+  { label: "CSS" },
+  { label: "JavaScript" },
+  { label: "TypeScript" },
+];
+
+export async function copyCliArtifacts(
+  distDir: string,
+  targetToolsDir: string,
+): Promise<void> {
+  await fsp.mkdir(targetToolsDir, { recursive: true });
+  await fsp.copyFile(
+    join(distDir, "mentor-cli.js"),
+    join(targetToolsDir, "mentor-cli.js"),
+  );
+  await fsp.copyFile(
+    join(distDir, "sql-wasm.wasm"),
+    join(targetToolsDir, "sql-wasm.wasm"),
+  );
+}
+
+export async function cleanupLegacyTemplates(
+  mentorSessionDir: string,
+): Promise<boolean> {
+  const legacyTrackerFormat = join(mentorSessionDir, "tracker-format.md");
+  try {
+    await fsp.unlink(legacyTrackerFormat);
+    return true;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      return false;
+    }
+    throw err;
+  }
+}
 
 async function writeIfMissing(
   uri: vscode.Uri,
@@ -171,13 +209,7 @@ export async function runSetup(
         {
           repositoryName: folderName,
           enableMentor: true,
-          topics: [
-            { key: "a-html", label: "HTML" },
-            { key: "a-css", label: "CSS" },
-            { key: "a-javascript", label: "JavaScript" },
-            { key: "a-typescript", label: "TypeScript" },
-          ],
-          mentorFiles: { spec: null, plan: null },
+          mentorFiles: { spec: null },
           locale: detectedLocale,
           extensionVersion,
           workspacePath: wsRoot.fsPath,
@@ -233,11 +265,16 @@ export async function runSetup(
     "skills/mentor-session/SKILL.md",
   );
   await writeTemplate(
-    vscode.Uri.joinPath(mentorSessionDirUri, "tracker-format.md"),
-    TRACKER_FORMAT_MD,
-    "skills/mentor-session/tracker-format.md",
+    vscode.Uri.joinPath(mentorSessionDirUri, "plan-health.md"),
+    PLAN_HEALTH_MD,
+    "skills/mentor-session/plan-health.md",
   );
-
+  // v0.5.0 shipped tracker-format.md; v0.6.0 dropped it. Remove if still on disk.
+  if (await cleanupLegacyTemplates(mentorSessionDirUri.fsPath)) {
+    outputChannel.appendLine(
+      "Removed legacy skills/mentor-session/tracker-format.md",
+    );
+  }
   // Review skill
   const reviewDirUri = vscode.Uri.joinPath(skillsDirUri, "review");
   await vscode.workspace.fs.createDirectory(reviewDirUri);
@@ -280,23 +317,27 @@ export async function runSetup(
     "skills/intake/SKILL.md",
   );
 
-  // CLI tool — always overwrite so updates take effect
-  await writeTemplate(
-    vscode.Uri.joinPath(toolsDirUri, "mentor-cli.js"),
-    MENTOR_CLI_JS,
-    "tools/mentor-cli.js",
-  );
+  // CLI tool — always overwrite bundled mentor-cli.js and sql-wasm.wasm
+  // so updates to the extension's bundled CLI take effect on setup.
+  const distDir = vscode.Uri.joinPath(context.extensionUri, "dist").fsPath;
+  await copyCliArtifacts(distDir, toolsDirUri.fsPath);
+  createdFiles.push("tools/mentor-cli.js");
+  createdFiles.push("tools/sql-wasm.wasm");
+
+  // Bootstrap DB when data.db is missing (independent of config presence,
+  // so re-running Setup after a manual DB deletion recreates the file).
+  const dbPath = vscode.Uri.joinPath(mentorDirUri, "data.db").fsPath;
+  const wasmPath = vscode.Uri.joinPath(toolsDirUri, "sql-wasm.wasm").fsPath;
+  if (!existsSync(dbPath)) {
+    await openDb(dbPath, { wasmPath, bootstrap: { topics: DEFAULT_TOPICS } });
+    createdFiles.push("data.db");
+  }
 
   // Data files — only write if missing
   await writeDataIfMissing(
     vscode.Uri.joinPath(mentorDirUri, "progress.json"),
     PROGRESS_JSON + "\n",
     "progress.json",
-  );
-  await writeDataIfMissing(
-    vscode.Uri.joinPath(mentorDirUri, "question-history.json"),
-    QUESTION_HISTORY_JSON + "\n",
-    "question-history.json",
   );
   await writeDataIfMissing(
     vscode.Uri.joinPath(mentorDirUri, "current-task.md"),
