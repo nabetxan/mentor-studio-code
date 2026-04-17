@@ -105,14 +105,15 @@ description: Feedback and RECORD procedure shared by all mentor flows.
 # Teaching Cycle Reference
 
 ## (d) Feedback
-Affirm effort, then judge and respond:
+Affirm effort, then judge and respond. Let \`learner.mentorStyle\` shape tone and how patiently you withhold the answer:
 - **Correct** → affirm and reinforce with example.
 - **Close / partial** → affirm what's right, give hint or rephrase.
   Do NOT reveal the answer. WAIT for retry.
-  Repeat until correct or user gives up.
+  Repeat until correct or user gives up — "hints only" styles should stay on hints longer; "fast-paced guided" styles may reveal sooner.
 - **Wrong** → acknowledge without judgment, try a simpler sub-question,
   concrete example, or different angle. Do NOT immediately give the full
-  answer. WAIT for retry. If stuck after 2 attempts, explain the answer.
+  answer. WAIT for retry. If stuck after 2 attempts, explain the answer —
+  sooner if \`learner.mentorStyle\` prefers direct guidance.
 
 When user answers correctly after hints, or when you explain → give feedback.
 
@@ -222,7 +223,9 @@ Mandatory for every concept step:
 ### (a) Explain
 Explain the concept with a project-relevant example.
 - Match depth and analogies to \`learner.level\`
+- Draw analogies from languages/tech in \`learner.experience\` when it helps
 - Tie examples to \`learner.interests\` where relevant
+- Adjust explanation depth to \`learner.mentorStyle\` (terse hints vs. thorough walkthrough)
 GATE: explanation given → proceed to (b)
 
 ### (b) Ask
@@ -231,6 +234,8 @@ Check \`relevantGaps\` from session-brief output:
 - No relevant gaps → ask 1 question about the concept needed for this step.
   - Calibrate difficulty to \`learner.level\`.
   - Prioritize \`learner.weakAreas\` topics when a related concept appears.
+  - Frame scenarios using \`learner.interests\` when it fits naturally.
+  - Phrase the question according to \`learner.mentorStyle\` (open-ended hint vs. direct guided prompt).
 - **Context rule**: when the question involves code, ALWAYS include:
   - The relevant code snippet (inline or fenced block).
   - The file path where the code lives (e.g. \`extension/src/services/foo.ts\`).
@@ -326,7 +331,7 @@ Triggered when the user asks to review / practice previously missed concepts.
 **Scope**: when a topic is specified, only \`gaps\` for that topic are returned. Otherwise, all gaps across topics.
 
 1. If \`gapCount.filtered\` is 0 → tell the user there are no review items (mention the topic if scoped) and stop.
-2. Use \`learner\` from session-brief to calibrate difficulty.
+2. Use \`learner\` from session-brief to calibrate difficulty and follow \`learner.mentorStyle\` for question framing and hint depth.
 3. Select a gap to review from \`gaps\`:
    - Prioritize the oldest \`lastAnsweredAt\` first (session-brief already orders them that way).
    - Ask the concept in a **different context** — not a re-phrasing of the original question.
@@ -371,6 +376,7 @@ Session-brief output fields: \`learner\`, \`allTopics\` (\`[{id, label}]\`), \`c
    - Prioritize \`learner.weakAreas\`.
    - Cover all topics with variety — avoid repeating the same topic consecutively.
    - Ask **new** concepts — prefer concepts NOT listed in \`coveredConcepts\` for that topic.
+   - Frame scenarios using \`learner.interests\` when it fits naturally, and follow \`learner.mentorStyle\` for question framing and hint depth.
 2. Ask 1 question (same rules as Teaching Cycle (b) Ask — include code snippet and file path when relevant, calibrate to learner level).
    GATE: question asked → WAIT for user
 3. WAIT for user response, then follow teaching-cycle-reference.md (d) Feedback → (e) RECORD.
@@ -413,8 +419,9 @@ Triggered when the user asks to review the current task's implementation.
    - Does the code satisfy each requirement?
    - Code quality, readability, and potential issues.
    - Suggestions for improvement (if any).
-3. Give feedback on the implementation.
-4. Ask 1 question about the implementation choices (same rules as Teaching Cycle (b) Ask — include code snippet and file path).
+   - Calibrate the depth and granularity of feedback to \`learner.level\`.
+3. Give feedback on the implementation, following \`learner.mentorStyle\` for tone (hints vs. direct guidance).
+4. Ask 1 question about the implementation choices (same rules as Teaching Cycle (b) Ask — include code snippet and file path). Prioritize concepts in \`learner.weakAreas\` when relevant.
    GATE: question asked → WAIT for user
 5. WAIT for user response, then follow teaching-cycle-reference.md (d) Feedback → (e) RECORD. Use \`currentTask.id\` as \`taskId\`.
 6. After recording, update progress:
