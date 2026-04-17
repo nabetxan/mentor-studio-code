@@ -13,6 +13,7 @@ import {
 } from "../../../src/panels/writes/planWrites";
 import {
   makeEnvWithDb,
+  mutateDb,
   seedPlans,
   seedTasks,
   WASM,
@@ -271,6 +272,23 @@ describe("planWrites", () => {
       ).resolves.toBeUndefined();
       expect((await readPlan(env.paths.dbPath, 1))?.status).toBe("paused");
     });
+
+    it("demotes the active task when pausing its active plan", async () => {
+      await mutateDb(env.paths.dbPath, (db) => {
+        db.exec("UPDATE tasks SET status = 'active' WHERE id = 1");
+      });
+
+      await expect(
+        pausePlan(env.paths.dbPath, 1, WASM),
+      ).resolves.toBeUndefined();
+
+      const t1Status = await withDb(env.paths.dbPath, (db) => {
+        const r = db.exec("SELECT status FROM tasks WHERE id = 1");
+        return r[0]?.values[0][0];
+      });
+      expect(t1Status).toBe("queued");
+      expect((await readPlan(env.paths.dbPath, 1))?.status).toBe("paused");
+    });
   });
 
   describe("deactivatePlan", () => {
@@ -492,6 +510,31 @@ describe("planWrites", () => {
       await expect(
         changeStatus(env.paths.dbPath, { id: 999, toStatus: "queued" }, WASM),
       ).rejects.toThrow("plan not found: 999");
+    });
+
+    it("demotes active task when moving its active plan to paused", async () => {
+      await seedPlans(env.paths.dbPath, [
+        {
+          name: "P-active",
+          status: "active",
+          sortOrder: 6,
+          createdAt: "2026-04-01T00:00:00.000Z",
+        },
+      ]);
+      await seedTasks(env.paths.dbPath, [
+        { planId: 6, name: "T1", status: "active", sortOrder: 1 },
+      ]);
+
+      await expect(
+        changeStatus(env.paths.dbPath, { id: 6, toStatus: "paused" }, WASM),
+      ).resolves.toBeUndefined();
+
+      const taskStatus = await withDb(env.paths.dbPath, (db) => {
+        const r = db.exec("SELECT status FROM tasks WHERE planId = 6");
+        return r[0]?.values[0][0];
+      });
+      expect(taskStatus).toBe("queued");
+      expect((await readPlan(env.paths.dbPath, 6))?.status).toBe("paused");
     });
   });
 });

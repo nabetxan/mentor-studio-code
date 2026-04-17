@@ -2,7 +2,11 @@ import type { Database } from "sql.js";
 
 import { assertStatusInvariants, withWriteTransaction } from "../../db";
 
-function rowExists(db: Database, table: string, id: number): boolean {
+function rowExists(
+  db: Database,
+  table: "plans" | "tasks",
+  id: number,
+): boolean {
   const r = db.exec(`SELECT 1 FROM ${table} WHERE id = ${id}`);
   return Boolean(r[0]?.values?.length);
 }
@@ -11,9 +15,17 @@ export async function createTask(
   dbPath: string,
   args: { planId: number; name: string },
   wasmPath: string,
-): Promise<{ id: number }> {
+): Promise<{ id: number; activated: boolean }> {
   return withWriteTransaction(dbPath, { wasmPath, purpose: "normal" }, (db) => {
-    if (!rowExists(db, "plans", args.planId)) {
+    const planStmt = db.prepare("SELECT status FROM plans WHERE id = ?");
+    let planStatus: string | null = null;
+    try {
+      planStmt.bind([args.planId]);
+      if (planStmt.step()) planStatus = String(planStmt.get()[0]);
+    } finally {
+      planStmt.free();
+    }
+    if (planStatus === null) {
       throw new Error(`plan not found: ${args.planId}`);
     }
 
@@ -40,8 +52,27 @@ export async function createTask(
     }
     const idRes = db.exec("SELECT last_insert_rowid()");
     const id = Number(idRes[0].values[0][0]);
+
+    let activated = false;
+    if (planStatus === "active") {
+      const hasActive = db.exec(
+        "SELECT 1 FROM tasks WHERE status = 'active' LIMIT 1",
+      );
+      if (!hasActive[0]?.values?.length) {
+        const upd = db.prepare(
+          "UPDATE tasks SET status = 'active' WHERE id = ?",
+        );
+        try {
+          upd.run([id]);
+        } finally {
+          upd.free();
+        }
+        activated = true;
+      }
+    }
+
     assertStatusInvariants(db);
-    return { id };
+    return { id, activated };
   });
 }
 
@@ -128,6 +159,15 @@ export async function activateTask(
   await withWriteTransaction(dbPath, { wasmPath, purpose: "normal" }, (db) => {
     if (!rowExists(db, "tasks", args.id)) {
       throw new Error(`task not found: ${args.id}`);
+    }
+    const planStatusRes = db.exec(
+      `SELECT p.status FROM plans p JOIN tasks t ON t.planId = p.id WHERE t.id = ${args.id}`,
+    );
+    const planStatus = String(planStatusRes[0]?.values?.[0]?.[0] ?? "");
+    if (planStatus !== "active") {
+      throw new Error(
+        `cannot activate task ${args.id}: parent plan is not active (status=${planStatus})`,
+      );
     }
     db.exec("UPDATE tasks SET status = 'queued' WHERE status = 'active'");
     const stmt = db.prepare("UPDATE tasks SET status = 'active' WHERE id = ?");

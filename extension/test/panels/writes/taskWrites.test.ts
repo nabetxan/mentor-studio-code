@@ -331,5 +331,25 @@ describe("taskWrites", () => {
       // Original active task unchanged (rolled back).
       expect((await readTask(env.paths.dbPath, 1))?.status).toBe("active");
     });
+
+    it("throws a specific error when parent plan is not active", async () => {
+      await seedPlans(env.paths.dbPath, [
+        {
+          name: "P2",
+          status: "queued",
+          sortOrder: 2,
+          createdAt: "2026-04-02T00:00:00.000Z",
+        },
+      ]);
+      await seedTasks(env.paths.dbPath, [
+        { planId: 2, name: "T3", status: "queued", sortOrder: 1 },
+      ]);
+      await expect(
+        activateTask(env.paths.dbPath, { id: 3 }, WASM),
+      ).rejects.toThrow(/parent plan .* not active/);
+      // Rolled back: original active unchanged, target still queued.
+      expect((await readTask(env.paths.dbPath, 1))?.status).toBe("active");
+      expect((await readTask(env.paths.dbPath, 3))?.status).toBe("queued");
+    });
   });
 });

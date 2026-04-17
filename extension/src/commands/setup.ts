@@ -1,4 +1,4 @@
-import { promises as fsp } from "node:fs";
+import { existsSync, promises as fsp } from "node:fs";
 import { join } from "node:path";
 import * as vscode from "vscode";
 import { openDb } from "../db";
@@ -12,6 +12,7 @@ import {
   INTAKE_SKILL_MD,
   MENTOR_RULES_MD,
   MENTOR_SESSION_SKILL_MD,
+  PLAN_HEALTH_MD,
   PROGRESS_JSON,
   QUESTION_HISTORY_JSON,
   REVIEW_SKILL_MD,
@@ -39,6 +40,21 @@ export async function copyCliArtifacts(
     join(distDir, "sql-wasm.wasm"),
     join(targetToolsDir, "sql-wasm.wasm"),
   );
+}
+
+export async function cleanupLegacyTemplates(
+  mentorSessionDir: string,
+): Promise<boolean> {
+  const legacyTrackerFormat = join(mentorSessionDir, "tracker-format.md");
+  try {
+    await fsp.unlink(legacyTrackerFormat);
+    return true;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      return false;
+    }
+    throw err;
+  }
 }
 
 async function writeIfMissing(
@@ -249,6 +265,17 @@ export async function runSetup(
     MENTOR_SESSION_SKILL_MD,
     "skills/mentor-session/SKILL.md",
   );
+  await writeTemplate(
+    vscode.Uri.joinPath(mentorSessionDirUri, "plan-health.md"),
+    PLAN_HEALTH_MD,
+    "skills/mentor-session/plan-health.md",
+  );
+  // v0.5.0 shipped tracker-format.md; v0.6.0 dropped it. Remove if still on disk.
+  if (await cleanupLegacyTemplates(mentorSessionDirUri.fsPath)) {
+    outputChannel.appendLine(
+      "Removed legacy skills/mentor-session/tracker-format.md",
+    );
+  }
   // Review skill
   const reviewDirUri = vscode.Uri.joinPath(skillsDirUri, "review");
   await vscode.workspace.fs.createDirectory(reviewDirUri);
@@ -298,10 +325,11 @@ export async function runSetup(
   createdFiles.push("tools/mentor-cli.js");
   createdFiles.push("tools/sql-wasm.wasm");
 
-  // Bootstrap fresh DB with default topics
-  if (!existingConfig) {
-    const dbPath = vscode.Uri.joinPath(mentorDirUri, "data.db").fsPath;
-    const wasmPath = vscode.Uri.joinPath(toolsDirUri, "sql-wasm.wasm").fsPath;
+  // Bootstrap DB when data.db is missing (independent of config presence,
+  // so re-running Setup after a manual DB deletion recreates the file).
+  const dbPath = vscode.Uri.joinPath(mentorDirUri, "data.db").fsPath;
+  const wasmPath = vscode.Uri.joinPath(toolsDirUri, "sql-wasm.wasm").fsPath;
+  if (!existsSync(dbPath)) {
     await openDb(dbPath, { wasmPath, bootstrap: { topics: DEFAULT_TOPICS } });
     createdFiles.push("data.db");
   }

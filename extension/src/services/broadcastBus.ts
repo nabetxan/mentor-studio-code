@@ -16,8 +16,10 @@ export class BroadcastBus {
     for (const s of this.subs) {
       try {
         s.postMessage(msg);
-      } catch {
-        // drop — subscriber may have disposed
+      } catch (err) {
+        // Subscriber may have disposed; keep delivering to others,
+        // but surface the failure so silent breakage is debuggable.
+        console.error("BroadcastBus: subscriber threw during postMessage", err);
       }
     }
   }

@@ -1,7 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { BroadcastBus } from "../../src/services/broadcastBus";
 
 describe("BroadcastBus", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("broadcasts to registered subscribers", () => {
     const bus = new BroadcastBus();
     const a: unknown[] = [];
@@ -20,5 +24,22 @@ describe("BroadcastBus", () => {
     unsub();
     bus.broadcast(1);
     expect(got).toEqual([]);
+  });
+
+  it("logs when a subscriber throws and still delivers to others", () => {
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const bus = new BroadcastBus();
+    const got: unknown[] = [];
+    const boom = new Error("boom");
+    bus.register({
+      postMessage: () => {
+        throw boom;
+      },
+    });
+    bus.register({ postMessage: (m) => got.push(m) });
+    bus.broadcast({ type: "ping" });
+    expect(got).toEqual([{ type: "ping" }]);
+    expect(errSpy).toHaveBeenCalledTimes(1);
+    expect(errSpy.mock.calls[0]?.[1]).toBe(boom);
   });
 });

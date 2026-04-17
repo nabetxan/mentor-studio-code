@@ -7,6 +7,7 @@ import type {
   MentorStudioConfig,
   WebviewMessage,
 } from "@mentor-studio/shared";
+import * as path from "node:path";
 import * as vscode from "vscode";
 import { findMentorRef, promptAndAddMentorRef } from "../services/claudeMd";
 import { parseConfig } from "../services/dataParser";
@@ -160,8 +161,12 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
           }
         } else if (message.type === "openFile") {
           const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
-          if (wsRoot) {
-            const fileUri = vscode.Uri.joinPath(wsRoot, message.relativePath);
+          const fileUri = path.isAbsolute(message.relativePath)
+            ? vscode.Uri.file(message.relativePath)
+            : wsRoot
+              ? vscode.Uri.joinPath(wsRoot, message.relativePath)
+              : null;
+          if (fileUri) {
             try {
               await vscode.window.showTextDocument(fileUri, { preview: true });
             } catch {

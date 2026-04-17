@@ -1,4 +1,5 @@
 import { activatePlan } from "./activatePlan";
+import { activateTask } from "./activateTask";
 import { addPlan } from "./addPlan";
 import { addTask } from "./addTask";
 import { addTopic } from "./addTopic";
@@ -19,6 +20,7 @@ export * from "./types";
 
 export const COMMANDS: CommandMap = {
   "activate-plan": activatePlan,
+  "activate-task": activateTask,
   "add-plan": addPlan,
   "add-task": addTask,
   "add-topic": addTopic,
