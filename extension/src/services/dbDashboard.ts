@@ -1,6 +1,8 @@
 import type {
   CompletedTask,
   DashboardData,
+  PlanDto,
+  PlanStatus,
   TopicConfig,
   TopicStats,
   UnresolvedGap,
@@ -19,7 +21,6 @@ export function topicKeyToId(key: string): number | null {
 }
 
 export interface MinimalProgress {
-  current_task: number | null;
   learner_profile?: { last_updated?: string | null } | null;
 }
 
@@ -27,11 +28,8 @@ export function parseMinimalProgress(raw: string): MinimalProgress {
   try {
     const obj = JSON.parse(raw) as Record<string, unknown>;
     if (typeof obj !== "object" || obj === null) {
-      return { current_task: null };
+      return {};
     }
-    const rawTask = obj.current_task;
-    const current_task =
-      typeof rawTask === "number" && Number.isFinite(rawTask) ? rawTask : null;
     const lp =
       typeof obj.learner_profile === "object" && obj.learner_profile !== null
         ? (obj.learner_profile as Record<string, unknown>)
@@ -39,11 +37,10 @@ export function parseMinimalProgress(raw: string): MinimalProgress {
     const lastUpdated =
       lp && typeof lp.last_updated === "string" ? lp.last_updated : null;
     return {
-      current_task,
       learner_profile: lp ? { last_updated: lastUpdated } : null,
     };
   } catch {
-    return { current_task: null };
+    return {};
   }
 }
 
@@ -116,6 +113,8 @@ export function computeDashboardDataFromDb(
   }
   byTopic.sort((a, b) => a.rate - b.rate);
 
+  const allTopics = readTopicsFromDb(db);
+
   // Unresolved gaps = questions where isCorrect = 0 (latest per concept? keep simple: all rows)
   const gapsRes = exec(
     db,
@@ -150,14 +149,15 @@ export function computeDashboardDataFromDb(
     }),
   );
 
-  // Current task: look up name from DB if current_task is a numeric id
+  // Current task: query DB for the single active task
   let currentTask: string | null = null;
-  if (typeof progress.current_task === "number") {
-    const r = exec(db, "SELECT name FROM tasks WHERE id = ?", [
-      progress.current_task,
-    ])[0];
-    const name = r?.values[0]?.[0];
-    currentTask = name ? String(name) : String(progress.current_task);
+  const activeRow = exec(
+    db,
+    "SELECT name FROM tasks WHERE status = 'active' LIMIT 1",
+  )[0];
+  const activeName = activeRow?.values[0]?.[0];
+  if (activeName !== null && activeName !== undefined) {
+    currentTask = String(activeName);
   }
 
   const profileLastUpdated =
@@ -167,15 +167,37 @@ export function computeDashboardDataFromDb(
       progress.learner_profile.last_updated) ||
     null;
 
+  // Plans
+  const plansRes = exec(
+    db,
+    "SELECT id, name, filePath, status, sortOrder FROM plans ORDER BY sortOrder ASC",
+  )[0];
+  const plans: PlanDto[] = (plansRes?.values ?? []).map((r) => ({
+    id: Number(r[0]),
+    name: String(r[1] ?? ""),
+    filePath: r[2] === null || r[2] === undefined ? null : String(r[2]),
+    status: String(r[3]) as PlanStatus,
+    sortOrder: Number(r[4]),
+  }));
+  const activePlan = plans.find((p) => p.status === "active") ?? null;
+  const nextPlan =
+    plans
+      .filter((p) => p.status === "queued")
+      .sort((a, b) => a.sortOrder - b.sortOrder)[0] ?? null;
+
   return {
     totalQuestions,
     correctRate,
     byTopic,
+    allTopics,
     unresolvedGaps,
     completedTasks,
     currentTask,
     profileLastUpdated,
     topicsWithHistory,
+    plans,
+    activePlan,
+    nextPlan,
   };
 }
 

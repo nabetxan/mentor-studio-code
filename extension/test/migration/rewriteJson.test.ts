@@ -5,8 +5,7 @@ import {
 } from "../../src/migration/rewriteJson";
 
 describe("rewriteProgress", () => {
-  it("retains only current_task (int), current_step, resume_context, learner_profile", () => {
-    const taskMap = new Map([["legacy-7", 42]]);
+  it("retains only resume_context and learner_profile, discards legacy fields", () => {
     const out = rewriteProgress({
       progress: {
         version: "1.0",
@@ -20,44 +19,38 @@ describe("rewriteProgress", () => {
         resume_context: "ctx",
         learner_profile: { name: "k" },
       },
-      taskMap,
     });
     expect(out).toEqual({
-      current_task: 42,
-      current_step: "step",
       resume_context: "ctx",
       learner_profile: { name: "k" },
     });
   });
 
-  it("maps unknown current_task to null", () => {
+  it("sets resume_context to null when absent", () => {
     const out = rewriteProgress({
       progress: { current_task: "unknown" },
-      taskMap: new Map(),
     });
-    expect(out.current_task).toBeNull();
+    expect(out.resume_context).toBeNull();
   });
 
-  it("preserves numeric current_task (post-migration value) as-is", () => {
+  it("discards current_task even when present as number", () => {
     const out = rewriteProgress({
-      progress: { current_task: 42 },
-      taskMap: new Map([["legacy-7", 99]]),
+      progress: { current_task: 42, resume_context: "r" },
     });
-    expect(out.current_task).toBe(42);
+    expect(out).not.toHaveProperty("current_task");
+    expect(out.resume_context).toBe("r");
   });
 
-  it("null current_task stays null", () => {
+  it("discards current_step even when present", () => {
     const out = rewriteProgress({
-      progress: { current_task: null },
-      taskMap: new Map(),
+      progress: { current_step: "step-1", resume_context: null },
     });
-    expect(out.current_task).toBeNull();
+    expect(out).not.toHaveProperty("current_step");
   });
 
   it("defaults learner_profile to empty object when absent", () => {
     const out = rewriteProgress({
       progress: {},
-      taskMap: new Map(),
     });
     expect(out.learner_profile).toEqual({});
   });

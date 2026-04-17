@@ -3,12 +3,10 @@ import { existsSync, readFileSync } from "node:fs";
 import { atomicWriteFile } from "../../db";
 import type { Command } from "./types";
 
-const MUTABLE_KEYS = ["current_step", "resume_context"] as const;
+const MUTABLE_KEYS = ["resume_context"] as const;
 
 function defaultProgress(): Record<string, unknown> {
   return {
-    current_task: null,
-    current_step: null,
     resume_context: null,
     learner_profile: {},
   };

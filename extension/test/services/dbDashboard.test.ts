@@ -27,25 +27,22 @@ async function openReadOnly(
 }
 
 describe("parseMinimalProgress", () => {
-  it("extracts current_task and learner_profile.last_updated", () => {
+  it("extracts learner_profile.last_updated", () => {
     const raw = JSON.stringify({
-      current_task: 42,
       learner_profile: { last_updated: "2026-04-13T00:00:00Z" },
     });
     const p = parseMinimalProgress(raw);
-    expect(p.current_task).toBe(42);
     expect(p.learner_profile?.last_updated).toBe("2026-04-13T00:00:00Z");
   });
 
-  it("returns null current_task when missing or wrong type", () => {
-    expect(parseMinimalProgress("{}").current_task).toBeNull();
-    expect(
-      parseMinimalProgress('{"current_task":"3"}').current_task,
-    ).toBeNull();
+  it("returns empty object when learner_profile is missing", () => {
+    const p = parseMinimalProgress("{}");
+    expect(p.learner_profile).toBeNull();
   });
 
   it("tolerates invalid JSON", () => {
-    expect(parseMinimalProgress("not json").current_task).toBeNull();
+    const p = parseMinimalProgress("not json");
+    expect(p.learner_profile).toBeUndefined();
   });
 });
 
@@ -95,7 +92,6 @@ describe("computeDashboardDataFromDb", () => {
     const db = await openReadOnly(env.paths.dbPath);
     try {
       const out = computeDashboardDataFromDb(db, {
-        current_task: 2,
         learner_profile: { last_updated: "2026-04-13T00:00:00Z" },
       });
       expect(out.totalQuestions).toBe(3);
@@ -103,6 +99,10 @@ describe("computeDashboardDataFromDb", () => {
       expect(out.byTopic.map((t) => t.topic).sort()).toEqual(
         [topicIdToKey(1), topicIdToKey(2)].sort(),
       );
+      expect(out.allTopics).toEqual([
+        { key: topicIdToKey(1), label: "JS" },
+        { key: topicIdToKey(2), label: "CSS" },
+      ]);
       expect(out.topicsWithHistory).toContain(topicIdToKey(1));
       expect(out.topicsWithHistory).toContain(topicIdToKey(2));
       expect(out.unresolvedGaps).toHaveLength(2);
@@ -111,6 +111,23 @@ describe("computeDashboardDataFromDb", () => {
       ]);
       expect(out.currentTask).toBe("Build");
       expect(out.profileLastUpdated).toBe("2026-04-13T00:00:00Z");
+      expect(out.plans).toEqual([
+        {
+          id: 1,
+          name: "Phase 1",
+          filePath: null,
+          status: "active",
+          sortOrder: 1,
+        },
+      ]);
+      expect(out.activePlan).toEqual({
+        id: 1,
+        name: "Phase 1",
+        filePath: null,
+        status: "active",
+        sortOrder: 1,
+      });
+      expect(out.nextPlan).toBeNull();
     } finally {
       db.close();
     }
@@ -120,13 +137,124 @@ describe("computeDashboardDataFromDb", () => {
     const env = await makeEnvWithDb([]);
     const db = await openReadOnly(env.paths.dbPath);
     try {
-      const out = computeDashboardDataFromDb(db, { current_task: null });
+      const out = computeDashboardDataFromDb(db, {});
       expect(out.totalQuestions).toBe(0);
       expect(out.byTopic).toEqual([]);
+      expect(out.allTopics).toEqual([]);
       expect(out.topicsWithHistory).toEqual([]);
       expect(out.unresolvedGaps).toEqual([]);
       expect(out.completedTasks).toEqual([]);
       expect(out.currentTask).toBeNull();
+      expect(out.plans).toEqual([]);
+      expect(out.activePlan).toBeNull();
+      expect(out.nextPlan).toBeNull();
+    } finally {
+      db.close();
+    }
+  });
+
+  it("returns all plans sorted by sortOrder with mixed statuses", async () => {
+    const env = await makeEnvWithDb([]);
+    await seedPlans(env.paths.dbPath, [
+      {
+        name: "Phase 2",
+        filePath: "docs/p2.md",
+        status: "queued",
+        sortOrder: 2,
+        createdAt: "2026-04-13T00:00:00Z",
+      },
+      {
+        name: "Phase 1",
+        filePath: "docs/p1.md",
+        status: "completed",
+        sortOrder: 1,
+        createdAt: "2026-04-12T00:00:00Z",
+      },
+      {
+        name: "Phase 3",
+        status: "active",
+        sortOrder: 3,
+        createdAt: "2026-04-14T00:00:00Z",
+      },
+    ]);
+
+    const db = await openReadOnly(env.paths.dbPath);
+    try {
+      const out = computeDashboardDataFromDb(db, {});
+      expect(out.plans.map((p) => p.name)).toEqual([
+        "Phase 1",
+        "Phase 2",
+        "Phase 3",
+      ]);
+      expect(out.plans[0].filePath).toBe("docs/p1.md");
+      expect(out.plans[2].filePath).toBeNull();
+      expect(out.activePlan?.name).toBe("Phase 3");
+      expect(out.activePlan?.status).toBe("active");
+      expect(out.nextPlan?.name).toBe("Phase 2");
+      expect(out.nextPlan?.status).toBe("queued");
+    } finally {
+      db.close();
+    }
+  });
+
+  it("nextPlan picks the queued plan with the smallest sortOrder", async () => {
+    const env = await makeEnvWithDb([]);
+    await seedPlans(env.paths.dbPath, [
+      {
+        name: "Queued B",
+        filePath: "docs/b.md",
+        status: "queued",
+        sortOrder: 5,
+        createdAt: "2026-04-13T00:00:00Z",
+      },
+      {
+        name: "Queued A",
+        filePath: "docs/a.md",
+        status: "queued",
+        sortOrder: 2,
+        createdAt: "2026-04-12T00:00:00Z",
+      },
+      {
+        name: "Queued C",
+        filePath: "docs/c.md",
+        status: "queued",
+        sortOrder: 8,
+        createdAt: "2026-04-14T00:00:00Z",
+      },
+    ]);
+
+    const db = await openReadOnly(env.paths.dbPath);
+    try {
+      const out = computeDashboardDataFromDb(db, {});
+      expect(out.activePlan).toBeNull();
+      expect(out.nextPlan?.name).toBe("Queued A");
+      expect(out.nextPlan?.sortOrder).toBe(2);
+    } finally {
+      db.close();
+    }
+  });
+
+  it("nextPlan is null when no queued plans exist", async () => {
+    const env = await makeEnvWithDb([]);
+    await seedPlans(env.paths.dbPath, [
+      {
+        name: "Only backlog",
+        status: "backlog",
+        sortOrder: 1,
+        createdAt: "2026-04-13T00:00:00Z",
+      },
+      {
+        name: "Only paused",
+        status: "paused",
+        sortOrder: 2,
+        createdAt: "2026-04-13T00:00:00Z",
+      },
+    ]);
+
+    const db = await openReadOnly(env.paths.dbPath);
+    try {
+      const out = computeDashboardDataFromDb(db, {});
+      expect(out.nextPlan).toBeNull();
     } finally {
       db.close();
     }

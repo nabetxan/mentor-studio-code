@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS plans (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
   filePath TEXT,
-  status TEXT NOT NULL CHECK (status IN ('active','queued','completed','paused')),
+  status TEXT NOT NULL CHECK (status IN ('active','queued','completed','paused','backlog','removed')),
   sortOrder INTEGER NOT NULL,
   createdAt TEXT NOT NULL
 );

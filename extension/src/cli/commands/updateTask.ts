@@ -1,7 +1,6 @@
 import { existsSync } from "node:fs";
 
 import { InvariantViolationError, withWriteTransaction } from "../../db";
-import { syncCurrentTask } from "../progress/syncCurrentTask";
 import type { Command } from "./types";
 import { autoAdvance, type AdvanceResult } from "./updateTask/advance";
 
@@ -119,20 +118,6 @@ export const updateTask: Command = async (rawArgs, paths) => {
       return { ok: false, error: "invariant_violation", detail: e.message };
     }
     throw e;
-  }
-
-  try {
-    await syncCurrentTask(
-      paths.progressPath,
-      advance.nextTask ? advance.nextTask.id : null,
-    );
-  } catch (e) {
-    return {
-      ok: false,
-      error: "progress_write_failed",
-      recoverable: true,
-      detail: (e as Error).message,
-    };
   }
 
   return {

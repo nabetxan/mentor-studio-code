@@ -1,6 +1,3 @@
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
-
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { updateTask } from "../../src/cli/commands/updateTask";
@@ -67,7 +64,7 @@ describe("update-task", () => {
     expect(res).toEqual({ ok: false, error: "not_found" });
   });
 
-  it("advances to next queued task and updates progress.json", async () => {
+  it("advances to next queued task", async () => {
     const res = await updateTask({ id: 1, status: "completed" }, env.paths);
     expect(res).toEqual({
       ok: true,
@@ -77,12 +74,6 @@ describe("update-task", () => {
 
     expect(await readTaskStatus(env.paths.dbPath, 1)).toBe("completed");
     expect(await readTaskStatus(env.paths.dbPath, 2)).toBe("active");
-
-    const progress = JSON.parse(
-      readFileSync(env.paths.progressPath, "utf-8"),
-    ) as Record<string, unknown>;
-    expect(progress.current_task).toBe(2);
-    expect(progress.other).toBe("keep");
   });
 
   it("skipped status also advances", async () => {
@@ -102,35 +93,6 @@ describe("update-task", () => {
     expect(res).toEqual({ ok: true, nextTask: null, planCompleted: true });
 
     expect(await readPlanStatus(env.paths.dbPath, 1)).toBe("completed");
-    const progress = JSON.parse(
-      readFileSync(env.paths.progressPath, "utf-8"),
-    ) as Record<string, unknown>;
-    expect(progress.current_task).toBeNull();
-  });
-
-  it("creates progress.json when missing", async () => {
-    const env2 = await makeEnvWithDb();
-    await seedPlans(env2.paths.dbPath, [
-      {
-        name: "P1",
-        status: "active",
-        sortOrder: 0,
-        createdAt: "2026-04-01T00:00:00.000Z",
-      },
-    ]);
-    await seedTasks(env2.paths.dbPath, [
-      { planId: 1, name: "T1", status: "active", sortOrder: 0 },
-      { planId: 1, name: "T2", status: "queued", sortOrder: 1 },
-    ]);
-    expect(existsSync(env2.paths.progressPath)).toBe(false);
-
-    const res = await updateTask({ id: 1, status: "completed" }, env2.paths);
-    expect(res).toMatchObject({ ok: true });
-
-    const progress = JSON.parse(
-      readFileSync(env2.paths.progressPath, "utf-8"),
-    ) as Record<string, unknown>;
-    expect(progress.current_task).toBe(2);
   });
 
   it("is a no-op on an already-completed task, reporting current active task", async () => {
@@ -143,11 +105,6 @@ describe("update-task", () => {
     });
     expect(await readTaskStatus(env.paths.dbPath, 1)).toBe("completed");
     expect(await readTaskStatus(env.paths.dbPath, 2)).toBe("active");
-
-    const progress = JSON.parse(
-      readFileSync(env.paths.progressPath, "utf-8"),
-    ) as Record<string, unknown>;
-    expect(progress.current_task).toBe(2);
   });
 
   it("is a no-op when all tasks are done and plan is already completed", async () => {
@@ -188,22 +145,5 @@ describe("update-task", () => {
     // Rolled back: task1 remains active, task2 remains queued.
     expect(await readTaskStatus(env2.paths.dbPath, 1)).toBe("active");
     expect(await readTaskStatus(env2.paths.dbPath, 2)).toBe("queued");
-  });
-
-  // see: P4-3-2 selfHealProgress — when progress.json write fails, the DB is
-  // already committed and recovery is left to the extension's self-heal pass.
-  it("returns progress_write_failed when progress.json cannot be written", async () => {
-    const badPaths = {
-      ...env.paths,
-      progressPath: join(env.paths.mentorRoot, "no-such-dir", "progress.json"),
-    };
-    const res = await updateTask({ id: 1, status: "completed" }, badPaths);
-    expect(res).toMatchObject({
-      ok: false,
-      error: "progress_write_failed",
-      recoverable: true,
-    });
-    expect(await readTaskStatus(env.paths.dbPath, 1)).toBe("completed");
-    expect(await readTaskStatus(env.paths.dbPath, 2)).toBe("active");
   });
 });

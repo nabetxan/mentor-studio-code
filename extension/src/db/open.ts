@@ -39,25 +39,25 @@ export async function openDb(
     return { created: true, dbPath };
   }
   const integ = await integrity.checkIntegrity(dbPath, opts.wasmPath);
-  if (!integ.ok) {
-    try {
-      const quarantined = await integrity.quarantineCorruptDb(dbPath);
-      throw new DbCorruptError(quarantined, integ.reason);
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException).code === "ENOENT") {
-        if (!opts.bootstrap) {
-          throw new Error(
-            `DB not found at ${dbPath} and no bootstrap option provided`,
-          );
-        }
-        await bootstrapDb(dbPath, {
-          wasmPath: opts.wasmPath,
-          topics: opts.bootstrap.topics,
-        });
-        return { created: true, dbPath };
-      }
-      throw err;
-    }
+  if (integ.ok) {
+    return { created: false, dbPath };
   }
-  return { created: false, dbPath };
+  try {
+    const quarantined = await integrity.quarantineCorruptDb(dbPath);
+    throw new DbCorruptError(quarantined, integ.reason);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      if (!opts.bootstrap) {
+        throw new Error(
+          `DB not found at ${dbPath} and no bootstrap option provided`,
+        );
+      }
+      await bootstrapDb(dbPath, {
+        wasmPath: opts.wasmPath,
+        topics: opts.bootstrap.topics,
+      });
+      return { created: true, dbPath };
+    }
+    throw err;
+  }
 }

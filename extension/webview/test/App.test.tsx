@@ -41,7 +41,6 @@ function simulateMessage(msg: unknown) {
 
 const mockConfig: MentorStudioConfig = {
   repositoryName: "test-repo",
-  topics: [{ key: "ts", label: "TypeScript" }],
 };
 
 const mockData: DashboardData = {
@@ -50,11 +49,15 @@ const mockData: DashboardData = {
   byTopic: [
     { topic: "ts", label: "TypeScript", total: 5, correct: 4, rate: 0.8 },
   ],
+  allTopics: [{ key: "ts", label: "TypeScript" }],
   unresolvedGaps: [],
   completedTasks: [{ task: "1", name: "Setup", plan: "phase1.md" }],
   currentTask: "2",
   profileLastUpdated: null,
   topicsWithHistory: [],
+  plans: [],
+  activePlan: null,
+  nextPlan: null,
 };
 
 describe("App", () => {
@@ -92,7 +95,7 @@ describe("App", () => {
     render(<App />);
     simulateMessage({ type: "config", data: mockConfig });
     fireEvent.click(screen.getByText("Settings"));
-    expect(screen.getByText("実装プラン (必須)")).toBeTruthy();
+    expect(screen.getByText("プラン")).toBeTruthy();
   });
 
   it("sends ready message on mount", () => {

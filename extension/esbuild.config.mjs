@@ -50,14 +50,33 @@ const cliOptions = {
   banner: { js: "#!/usr/bin/env node" },
 };
 
+/** @type {import('esbuild').BuildOptions} */
+const panelOptions = {
+  entryPoints: ["src/panels/webview/main.tsx"],
+  bundle: true,
+  outfile: "dist/plan-panel.js",
+  format: "iife",
+  platform: "browser",
+  target: "es2020",
+  loader: { ".tsx": "tsx", ".ts": "ts" },
+  sourcemap: isWatch ? "inline" : false,
+  minify: !isWatch,
+  jsx: "automatic",
+};
+
 if (isWatch) {
-  const [extCtx, cliCtx] = await Promise.all([
+  const [extCtx, cliCtx, panelCtx] = await Promise.all([
     context(extensionOptions),
     context(cliOptions),
+    context(panelOptions),
   ]);
-  await Promise.all([extCtx.watch(), cliCtx.watch()]);
+  await Promise.all([extCtx.watch(), cliCtx.watch(), panelCtx.watch()]);
   console.log("Watching for changes...");
 } else {
-  await Promise.all([build(extensionOptions), build(cliOptions)]);
+  await Promise.all([
+    build(extensionOptions),
+    build(cliOptions),
+    build(panelOptions),
+  ]);
   console.log("Build complete");
 }

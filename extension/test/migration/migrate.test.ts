@@ -8,6 +8,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { SCHEMA_VERSION } from "../../src/db/schema";
 import { loadSqlJs } from "../../src/db/sqlJsLoader";
 import { migrate } from "../../src/migration/migrate";
 
@@ -144,7 +145,9 @@ describe("migrate", () => {
       3,
     );
     // PRAGMA user_version
-    expect(Number(db.exec("PRAGMA user_version")[0].values[0][0])).toBe(1);
+    expect(Number(db.exec("PRAGMA user_version")[0].values[0][0])).toBe(
+      SCHEMA_VERSION,
+    );
     db.close();
 
     const newProgress = JSON.parse(
@@ -153,7 +156,9 @@ describe("migrate", () => {
     expect(newProgress).not.toHaveProperty("unresolved_gaps");
     expect(newProgress).not.toHaveProperty("completed_tasks");
     expect(newProgress).not.toHaveProperty("version");
-    expect(typeof newProgress.current_task).toBe("number");
+    expect(newProgress).not.toHaveProperty("current_task");
+    expect(newProgress).not.toHaveProperty("current_step");
+    expect(newProgress).toHaveProperty("resume_context");
     expect(newProgress.learner_profile).toEqual({ name: "kaori" });
 
     const newConfig = JSON.parse(
@@ -233,20 +238,15 @@ describe("migrate", () => {
     expect(result.error).toBe("legacy_read_failed");
   });
 
-  it("rolls back and deletes data.db if invariants fail", async () => {
+  it("rolls back and deletes data.db if migration throws mid-transaction", async () => {
     const mentor = mkMentor();
-    // current_task references a task that doesn't exist → it will stay null, but no invariant break.
-    // Force an invariant break: make mentorFiles.plan active, but no open tasks under it.
-    seedFixture(mentor, {
-      progress: {
-        completed_tasks: [{ id: "t1", name: "T1", plan: "plans/phase-1.md" }],
-        skipped_tasks: [],
-        current_task: null,
-        learner_profile: {},
-      },
-      // config with active plan referencing only-completed tasks
+    // Use a readPlanFileHeading that throws during the transaction to force
+    // the migration rollback path (data.db deleted, backups preserved).
+    seedFixture(mentor);
+    const result = await migrate(mentor, WASM, {
+      readPlanFileHeading: () =>
+        Promise.reject(new Error("simulated_heading_read_failure")),
     });
-    const result = await migrate(mentor, WASM);
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error).toBe("migration_failed");

@@ -5,9 +5,9 @@ import { runCleanupMentor, runRemoveMentor } from "./commands/removeMentor";
 import { runSetup } from "./commands/setup";
 import { migrate } from "./migration/migrate";
 import { shouldMigrate } from "./migration/shouldMigrate";
+import { PlanPanel } from "./panels/planPanel";
 import { BroadcastBus } from "./services/broadcastBus";
 import { FileWatcherService } from "./services/fileWatcher";
-import { selfHealProgress } from "./services/progressHealing";
 import { SidebarProvider } from "./views/sidebarProvider";
 
 let outputChannel: vscode.OutputChannel | undefined;
@@ -69,11 +69,6 @@ export function activate(context: vscode.ExtensionContext): void {
     mentorPath,
     "data.db",
   ).fsPath;
-  const progressPath = vscode.Uri.joinPath(
-    workspaceRoot,
-    mentorPath,
-    "progress.json",
-  ).fsPath;
   const wasmPath = vscode.Uri.joinPath(
     context.extensionUri,
     "dist",
@@ -83,6 +78,36 @@ export function activate(context: vscode.ExtensionContext): void {
   const bus = new BroadcastBus();
   const unregisterSidebar = bus.register(sidebarProvider.getSubscriber());
   context.subscriptions.push({ dispose: () => unregisterSidebar() });
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("mentor-studio.openPlanPanel", () => {
+      const workspaceRoot =
+        vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? "";
+      // Every Plan Panel write refreshes the sidebar dashboard and broadcasts
+      // dbChanged so the panel's own webview re-fetches a fresh snapshot.
+      // Mirrors what FileWatcherService runs for sidebar-initiated writes.
+      const onAfterWrite = async (): Promise<void> => {
+        await watcher.refresh();
+        bus.broadcast({ type: "dbChanged" });
+      };
+      PlanPanel.createOrShow(
+        context,
+        bus,
+        { dbPath, wasmPath, workspaceRoot },
+        onAfterWrite,
+      );
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "mentor-studio.addFilesToPlan",
+      async (uri: vscode.Uri, uris?: vscode.Uri[]) => {
+        const targets = uris && uris.length > 0 ? uris : [uri];
+        await watcher.addFilesToPlan(targets);
+      },
+    ),
+  );
 
   // File watcher
   const watcher = new FileWatcherService(
@@ -95,18 +120,15 @@ export function activate(context: vscode.ExtensionContext): void {
       } else {
         sidebarProvider.sendNoConfig();
       }
+      // Reuse dbChanged so the Plan Panel re-fetches initData — that's where
+      // locale lives, so a config-file edit (e.g. locale flipped in Settings)
+      // propagates to an open panel without needing its own message type.
+      bus.broadcast({ type: "dbChanged" });
     },
     (msg) => getOutputChannel().appendLine(msg),
     context.globalState,
     async () => {
       bus.broadcast({ type: "dbChanged" });
-      try {
-        await selfHealProgress(dbPath, progressPath, wasmPath);
-      } catch (err: unknown) {
-        getOutputChannel().appendLine(
-          `selfHealProgress failed: ${String(err)}`,
-        );
-      }
     },
     dbPath,
     wasmPath,
@@ -120,6 +142,15 @@ export function activate(context: vscode.ExtensionContext): void {
     deleteTopics: (keys) => watcher.deleteTopics(keys),
   });
 
+  sidebarProvider.setPlanHandlers({
+    activatePlan: (id) => watcher.activatePlan(id),
+    deactivatePlan: (id) => watcher.deactivatePlan(id),
+    pauseActivePlan: (id) => watcher.pauseActivePlan(id),
+    changeActivePlanFile: (id, relPath) =>
+      watcher.changeActivePlanFile(id, relPath),
+    createAndActivatePlan: (relPath) => watcher.createAndActivatePlan(relPath),
+  });
+
   const currentPkg = context.extension.packageJSON as Record<string, unknown>;
   const currentVersion =
     typeof currentPkg.version === "string" ? currentPkg.version : "0.0.0";
@@ -129,14 +160,6 @@ export function activate(context: vscode.ExtensionContext): void {
   const isVersionUpdated =
     previousVersion !== undefined && previousVersion !== currentVersion;
   void context.globalState.update("extensionVersion", currentVersion);
-
-  const runSelfHeal = async (): Promise<void> => {
-    try {
-      await selfHealProgress(dbPath, progressPath, wasmPath);
-    } catch (err) {
-      getOutputChannel().appendLine(`selfHealProgress failed: ${String(err)}`);
-    }
-  };
 
   const startWatcher = (): void => {
     void watcher
@@ -196,12 +219,11 @@ export function activate(context: vscode.ExtensionContext): void {
           `Migration threw: ${err instanceof Error ? err.message : String(err)}`,
         );
       } finally {
-        await runSelfHeal();
         startWatcher();
       }
     })();
   } else {
-    void runSelfHeal().finally(() => startWatcher());
+    startWatcher();
   }
 
   context.subscriptions.push(watcher);

@@ -24,18 +24,18 @@ describe("update-config", () => {
     writeConfig(env.paths.configPath, {
       repositoryName: "demo",
       locale: "ja",
-      mentorFiles: { plan: "old.md", spec: "spec.md" },
+      mentorFiles: { plan: "old.md", spec: "old-spec.md" },
     });
 
     const res = await updateConfig(
-      { mentorFiles: { plan: "new.md" } },
+      { mentorFiles: { spec: "new-spec.md" } },
       env.paths,
     );
     expect(res).toEqual({ ok: true });
 
     const config = readConfig(env.paths.configPath);
     expect(config.repositoryName).toBe("demo");
-    expect(config.mentorFiles).toEqual({ plan: "new.md", spec: "spec.md" });
+    expect(config.mentorFiles).toEqual({ plan: "old.md", spec: "new-spec.md" });
   });
 
   it("accepts null to clear a mentorFiles field", async () => {
@@ -82,8 +82,23 @@ describe("update-config", () => {
 
   it("writes config.json with trailing newline", async () => {
     writeConfig(env.paths.configPath, { mentorFiles: {} });
-    await updateConfig({ mentorFiles: { plan: "p.md" } }, env.paths);
+    await updateConfig({ mentorFiles: { spec: "p.md" } }, env.paths);
     const raw = readFileSync(env.paths.configPath, "utf-8");
     expect(raw.endsWith("\n")).toBe(true);
+  });
+
+  it("returns invalid_args when mentorFiles.plan is a string (plan is DB-managed)", async () => {
+    writeConfig(env.paths.configPath, { mentorFiles: {} });
+    const res = await updateConfig(
+      { mentorFiles: { plan: "new.md" } },
+      env.paths,
+    );
+    expect(res).toMatchObject({ ok: false, error: "invalid_args" });
+  });
+
+  it("returns invalid_args when mentorFiles.plan is null (plan is DB-managed)", async () => {
+    writeConfig(env.paths.configPath, { mentorFiles: { plan: "old.md" } });
+    const res = await updateConfig({ mentorFiles: { plan: null } }, env.paths);
+    expect(res).toMatchObject({ ok: false, error: "invalid_args" });
   });
 });

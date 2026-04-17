@@ -18,9 +18,7 @@ const FLOWS: readonly Flow[] = [
 
 const DEFAULT_PROGRESS: Record<string, unknown> = {
   learner_profile: {},
-  current_step: null,
   resume_context: null,
-  current_task: null,
 };
 
 function isFlow(value: unknown): value is Flow {

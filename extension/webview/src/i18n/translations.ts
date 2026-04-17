@@ -140,6 +140,14 @@ const translations = {
     en: "Failed to read progress data",
   },
   "overview.topic.newTopic": { ja: "新しいトピック", en: "New topic" },
+  "overview.activePlan.none": {
+    ja: "アクティブなプランがありません — `add-plan` CLI またはプランパネルで作成してください",
+    en: "No active plan — create one via `add-plan` CLI or the Plan Panel",
+  },
+  "overview.activePlan.uiOnly": {
+    ja: "(UIのみのプラン)",
+    en: "(UI-only plan)",
+  },
   "overview.topic.reviewPrompt": {
     ja: "@.mentor/rules/MENTOR_RULES.md [flow:review] {label} の復習を始めましょう。",
     en: "@.mentor/rules/MENTOR_RULES.md [flow:review] Start reviewing {label}.",
@@ -150,6 +158,35 @@ const translations = {
   "settings.plan": {
     ja: "実装プラン (必須)",
     en: "Implementation Plan (required)",
+  },
+  "settings.plan.section": {
+    ja: "プラン",
+    en: "Plan",
+  },
+  "settings.plan.activeLabel": {
+    ja: "Active:",
+    en: "Active:",
+  },
+  "settings.plan.nextLabel": {
+    ja: "Next:",
+    en: "Next:",
+  },
+  "settings.planPanel.openButton": {
+    ja: "パネルを開く",
+    en: "Open Panel",
+  },
+  "settings.activePlan.uiOnly": {
+    ja: "(UIのみのプラン)",
+    en: "(UI-only plan)",
+  },
+  "settings.activePlan.activate": { ja: "有効化", en: "Activate" },
+  "settings.activePlan.activateFailed": {
+    ja: "プランの有効化に失敗しました",
+    en: "Failed to activate plan",
+  },
+  "settings.activePlan.deactivateFailed": {
+    ja: "プランの無効化に失敗しました",
+    en: "Failed to deactivate plan",
   },
   "settings.unset": { ja: "⚠ 未設定", en: "⚠ Not set" },
   "settings.unsetGuide": {

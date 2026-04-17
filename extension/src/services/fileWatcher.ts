@@ -1,16 +1,22 @@
 import type { DashboardData, MentorStudioConfig } from "@mentor-studio/shared";
 import { readFile, writeFile } from "fs/promises";
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "path";
+import { basename, join } from "path";
 import * as vscode from "vscode";
 import { loadSqlJs } from "../db";
+import {
+  activatePlan as dbActivatePlan,
+  createPlan as dbCreatePlan,
+  deactivatePlan as dbDeactivatePlan,
+  pausePlan as dbPausePlan,
+  updatePlan as dbUpdatePlan,
+} from "../panels/writes/planWrites";
 import { parseConfig, parseLearnerProfile } from "./dataParser";
 import {
   computeDashboardDataFromDb,
   dbAddTopic,
   dbDeleteTopics,
   dbMergeTopic,
-  dbReadTopics,
   dbUpdateTopicLabel,
   parseMinimalProgress,
 } from "./dbDashboard";
@@ -128,19 +134,21 @@ export class FileWatcherService implements vscode.Disposable {
       this.onConfigChanged?.(null);
       return;
     }
-    await this.hydrateTopicsFromDb();
     this.onConfigChanged?.(this.config);
   }
 
-  private async hydrateTopicsFromDb(): Promise<void> {
-    if (!this.config || !this.dbPath || !this.wasmPath) return;
-    if (!existsSync(this.dbPath)) return;
+  // Extension-initiated writes use atomic rename (see atomicWriteFile), which
+  // VSCode's FileSystemWatcher does not reliably detect — Plan Panel would
+  // stay stale until the next unrelated event. Broadcast directly here and
+  // refresh sidebar data. Safe if the watcher also fires later: both paths
+  // are idempotent.
+  private async notifyWrite(): Promise<void> {
     try {
-      const topics = await dbReadTopics(this.dbPath, this.wasmPath);
-      this.config = { ...this.config, topics };
+      await this.onDbChanged?.();
     } catch (err) {
-      this.log?.(`hydrateTopicsFromDb failed: ${String(err)}`);
+      this.log?.(`onDbChanged failed: ${String(err)}`);
     }
+    await this.refresh();
   }
 
   async refresh(): Promise<void> {
@@ -156,9 +164,7 @@ export class FileWatcherService implements vscode.Disposable {
     } catch {
       progressRaw = null;
     }
-    const progress = progressRaw
-      ? parseMinimalProgress(progressRaw)
-      : { current_task: null };
+    const progress = progressRaw ? parseMinimalProgress(progressRaw) : {};
 
     if (!this.dbPath || !this.wasmPath || !existsSync(this.dbPath)) {
       // DB not yet created (pre-migration or fresh setup) — emit empty dashboard
@@ -166,16 +172,18 @@ export class FileWatcherService implements vscode.Disposable {
         totalQuestions: 0,
         correctRate: 0,
         byTopic: [],
+        allTopics: [],
         unresolvedGaps: [],
         completedTasks: [],
         currentTask: null,
         profileLastUpdated: progress.learner_profile?.last_updated ?? null,
         topicsWithHistory: [],
+        plans: [],
+        activePlan: null,
+        nextPlan: null,
       });
       return;
     }
-
-    await this.hydrateTopicsFromDb();
 
     try {
       const SQL = await loadSqlJs(this.wasmPath);
@@ -201,7 +209,7 @@ export class FileWatcherService implements vscode.Disposable {
   async mergeTopic(fromKey: string, toKey: string): Promise<void> {
     if (!this.dbPath || !this.wasmPath) return;
     await dbMergeTopic(this.dbPath, fromKey, toKey, this.wasmPath);
-    await this.refresh();
+    await this.notifyWrite();
   }
 
   async deleteTopics(
@@ -211,7 +219,7 @@ export class FileWatcherService implements vscode.Disposable {
       return keys.map((key) => ({ key, ok: false, error: "db_not_ready" }));
     }
     const results = await dbDeleteTopics(this.dbPath, keys, this.wasmPath);
-    await this.refresh();
+    await this.notifyWrite();
     return results;
   }
 
@@ -222,14 +230,129 @@ export class FileWatcherService implements vscode.Disposable {
       return { ok: false, error: "db_not_ready" };
     }
     const res = await dbAddTopic(this.dbPath, label, this.wasmPath);
-    if (res.ok) await this.refresh();
+    if (res.ok) await this.notifyWrite();
     return res;
   }
 
   async updateTopicLabel(key: string, newLabel: string): Promise<void> {
     if (!this.dbPath || !this.wasmPath) return;
     await dbUpdateTopicLabel(this.dbPath, key, newLabel, this.wasmPath);
-    await this.refresh();
+    await this.notifyWrite();
+  }
+
+  async activatePlan(id: number): Promise<void> {
+    if (!this.dbPath || !this.wasmPath) {
+      throw new Error("db_not_ready");
+    }
+    await dbActivatePlan(this.dbPath, { id }, this.wasmPath);
+    await this.notifyWrite();
+  }
+
+  async deactivatePlan(id: number): Promise<void> {
+    if (!this.dbPath || !this.wasmPath) {
+      throw new Error("db_not_ready");
+    }
+    await dbDeactivatePlan(this.dbPath, { id }, this.wasmPath);
+    await this.notifyWrite();
+  }
+
+  async pauseActivePlan(id: number): Promise<void> {
+    if (!this.dbPath || !this.wasmPath) {
+      throw new Error("db_not_ready");
+    }
+    await dbPausePlan(this.dbPath, id, this.wasmPath);
+    await this.notifyWrite();
+  }
+
+  async changeActivePlanFile(id: number, relPath: string): Promise<void> {
+    if (!this.dbPath || !this.wasmPath) {
+      throw new Error("db_not_ready");
+    }
+    await dbUpdatePlan(this.dbPath, { id, filePath: relPath }, this.wasmPath);
+    await this.notifyWrite();
+  }
+
+  async createAndActivatePlan(relPath: string): Promise<void> {
+    if (!this.dbPath || !this.wasmPath) throw new Error("db_not_ready");
+    const name = basename(relPath, ".md");
+    const { id } = await dbCreatePlan(
+      this.dbPath,
+      { name, filePath: relPath },
+      this.wasmPath,
+    );
+    await dbActivatePlan(this.dbPath, { id }, this.wasmPath);
+    await this.notifyWrite();
+  }
+
+  async addFilesToPlan(uris: vscode.Uri[]): Promise<void> {
+    if (!this.dbPath || !this.wasmPath) return;
+    if (uris.length === 0) return;
+
+    const dbPath = this.dbPath;
+    const wasmPath = this.wasmPath;
+
+    let added = 0;
+    let skipped = 0;
+
+    for (const uri of uris) {
+      if (!uri.fsPath.endsWith(".md")) continue;
+
+      const relPath = vscode.workspace.asRelativePath(uri, false);
+      const name = basename(relPath, ".md");
+
+      // Check for existing plan with this filePath (NULL rows must not match)
+      const SQL = await loadSqlJs(wasmPath);
+      const db = new SQL.Database(readFileSync(dbPath));
+      let count = 0;
+      try {
+        const res = db.exec("SELECT COUNT(*) FROM plans WHERE filePath = ?", [
+          relPath,
+        ]);
+        count = Number(res[0]?.values?.[0]?.[0] ?? 0);
+      } finally {
+        db.close();
+      }
+
+      if (count > 0) {
+        skipped++;
+        continue;
+      }
+
+      await dbCreatePlan(dbPath, { name, filePath: relPath }, wasmPath);
+      added++;
+    }
+
+    // No .md files at all — do nothing
+    if (added === 0 && skipped === 0) return;
+
+    await this.notifyWrite();
+
+    const openPlanPanel = "Open Plan Panel";
+
+    if (added === 0) {
+      // All skipped
+      await vscode.window.showWarningMessage(
+        `${skipped} file(s) already exist in the Mentor Plan and were skipped.`,
+      );
+    } else if (skipped === 0) {
+      // All added
+      const choice = await vscode.window.showInformationMessage(
+        `Added ${added} file(s) to the Mentor Plan.`,
+        openPlanPanel,
+      );
+      if (choice === openPlanPanel) {
+        await vscode.commands.executeCommand("mentor-studio.openPlanPanel");
+      }
+    } else {
+      // Mixed
+      const choice = await vscode.window.showInformationMessage(
+        `Added ${added} file(s) to the Mentor Plan. ${skipped} file(s) already existed and were skipped.`,
+        openPlanPanel,
+      );
+      if (choice === openPlanPanel) {
+        await vscode.commands.executeCommand("mentor-studio.openPlanPanel");
+      }
+    }
   }
 
   private async syncLearnerProfile(progressPath: string): Promise<void> {

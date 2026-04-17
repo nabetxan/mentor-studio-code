@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import { bootstrapDb } from "../../src/db/bootstrap";
+import { SCHEMA_VERSION } from "../../src/db/schema";
 import { loadSqlJs } from "../../src/db/sqlJsLoader";
 
 const WASM = join(__dirname, "..", "..", "dist", "sql-wasm.wasm");
@@ -29,12 +30,12 @@ describe("bootstrapDb", () => {
     );
   });
 
-  it("sets user_version = 1", async () => {
+  it("sets user_version = SCHEMA_VERSION", async () => {
     const dbPath = join(dir, "data.db");
     await bootstrapDb(dbPath, { wasmPath: WASM, topics: [] });
     const SQL = await loadSqlJs(WASM);
     const db = new SQL.Database(readFileSync(dbPath));
-    expect(db.exec("PRAGMA user_version")[0].values[0][0]).toBe(1);
+    expect(db.exec("PRAGMA user_version")[0].values[0][0]).toBe(SCHEMA_VERSION);
   });
 
   it("seeds initial topics when provided", async () => {

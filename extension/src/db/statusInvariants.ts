@@ -23,21 +23,6 @@ export function assertStatusInvariants(db: Database): void {
     );
   }
 
-  const r2 = db.exec(`
-    SELECT p.id FROM plans p
-    WHERE p.status = 'active'
-      AND NOT EXISTS (
-        SELECT 1 FROM tasks t
-        WHERE t.planId = p.id AND t.status IN ('active','queued')
-      )
-  `);
-  if (r2[0]?.values?.length) {
-    throw new InvariantViolationError(
-      "active_plan_without_open_tasks",
-      `active plan(s) with no open tasks: ids=${r2[0].values.map((v) => v[0]).join(",")}`,
-    );
-  }
-
   const r3 = db.exec(`
     SELECT p.id FROM plans p
     WHERE p.status = 'completed'

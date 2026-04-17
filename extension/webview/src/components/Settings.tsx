@@ -3,19 +3,239 @@ import type {
   FileField,
   Locale,
   MentorStudioConfig,
+  PlanDto,
 } from "@mentor-studio/shared";
 import { useState } from "react";
 import { useCopyFeedback } from "../hooks/useCopyFeedback";
 import type { TranslationKey } from "../i18n";
 import { t } from "../i18n";
 import { postMessage } from "../vscodeApi";
-import { CheckIcon, CopyIcon, SparkleIcon } from "./icons";
+import { CheckIcon, CopyIcon, OpenPanelIcon, SparkleIcon } from "./icons";
 
 interface SettingsProps {
   config: MentorStudioConfig | null;
   locale: Locale;
   onLocaleChange: (locale: Locale) => void;
   profileLastUpdated: string | null;
+  activePlan: PlanDto | null;
+  nextPlan: PlanDto | null;
+  planActionError: string | null;
+}
+
+interface ActivePlanRowProps {
+  activePlan: PlanDto | null;
+  locale: Locale;
+  planActionError: string | null;
+}
+
+function ActivePlanRow({
+  activePlan,
+  locale,
+  planActionError,
+}: ActivePlanRowProps) {
+  const [copiedKey, triggerCopy] = useCopyFeedback();
+  const copied = copiedKey !== null;
+
+  const handleCopyPrompt = () => {
+    postMessage({ type: "copy", text: t("settings.prompt.plan", locale) });
+    triggerCopy("copied");
+  };
+
+  if (!activePlan) {
+    return (
+      <div className="plan-row">
+        <div className="setting-label-row">
+          <div className="plan-row-prefix">
+            {t("settings.plan.activeLabel", locale)}
+          </div>
+          <span className="setting-warning">{t("settings.unset", locale)}</span>
+        </div>
+        <div className="plan-row-body setting-unset">
+          <div className="setting-actions-vertical">
+            <button
+              className="btn-primary"
+              onClick={() => postMessage({ type: "selectFile", field: "plan" })}
+            >
+              {t("settings.selectFile", locale)}
+            </button>
+            <button
+              className="snippet-btn"
+              onClick={handleCopyPrompt}
+              data-tooltip={t("settings.copyCreatePrompt.plan", locale)}
+            >
+              <span className="snippet-title">
+                {t("settings.createPrompt.plan", locale)}
+              </span>
+              <span className="snippet-icon" aria-live="polite">
+                {copied ? (
+                  <>
+                    <CheckIcon />
+                    <span className="snippet-copied-text">
+                      {t("actions.copied", locale)}
+                    </span>
+                  </>
+                ) : (
+                  <SparkleIcon />
+                )}
+              </span>
+            </button>
+          </div>
+          {planActionError && (
+            <p className="setting-warning" role="alert">
+              {planActionError}
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  const { id, filePath } = activePlan;
+
+  return (
+    <div className="plan-row">
+      <div className="plan-row-prefix">
+        {t("settings.plan.activeLabel", locale)}
+      </div>
+      <div className="plan-row-body setting-value">
+        {filePath ? (
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              postMessage({ type: "openFile", relativePath: filePath });
+            }}
+            className="file-path-link"
+            title={filePath}
+          >
+            {filePath}
+          </a>
+        ) : (
+          <span className="file-path-link muted">
+            {t("settings.activePlan.uiOnly", locale)}
+          </span>
+        )}
+        <div className="setting-actions">
+          <button
+            className="btn-primary"
+            onClick={() => postMessage({ type: "changeActivePlanFile", id })}
+          >
+            {t("settings.change", locale)}
+          </button>
+          <button
+            className="btn-outlined"
+            onClick={() => postMessage({ type: "pauseActivePlan", id })}
+          >
+            {t("settings.detach", locale)}
+          </button>
+        </div>
+        {planActionError && (
+          <p className="setting-warning" role="alert">
+            {planActionError}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface NextPlanRowProps {
+  nextPlan: PlanDto;
+  showActivateButton: boolean;
+  locale: Locale;
+}
+
+function NextPlanRow({
+  nextPlan,
+  showActivateButton,
+  locale,
+}: NextPlanRowProps) {
+  const { id, filePath } = nextPlan;
+  return (
+    <div className="plan-row">
+      <div className="plan-row-prefix">
+        {t("settings.plan.nextLabel", locale)}
+      </div>
+      <div className="plan-row-body setting-value">
+        {filePath ? (
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              postMessage({ type: "openFile", relativePath: filePath });
+            }}
+            className="file-path-link"
+            title={filePath}
+          >
+            {filePath}
+          </a>
+        ) : (
+          <span className="file-path-link muted">
+            {t("settings.activePlan.uiOnly", locale)}
+          </span>
+        )}
+        {showActivateButton && (
+          <div className="setting-actions">
+            <button
+              className="btn-primary"
+              onClick={() => postMessage({ type: "activatePlan", id })}
+            >
+              {t("settings.activePlan.activate", locale)}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface PlanSectionProps {
+  activePlan: PlanDto | null;
+  nextPlan: PlanDto | null;
+  locale: Locale;
+  planActionError: string | null;
+}
+
+function PlanSection({
+  activePlan,
+  nextPlan,
+  locale,
+  planActionError,
+}: PlanSectionProps) {
+  const warning = !activePlan;
+  return (
+    <div className={`setting-item${warning ? " setting-item--warning" : ""}`}>
+      {warning && (
+        <span className="setting-warning-badge" aria-hidden="true">
+          !
+        </span>
+      )}
+      <div className="plan-section-header">
+        <div className="setting-label">
+          {t("settings.plan.section", locale)}
+        </div>
+        <button
+          className="btn-outlined btn-with-icon"
+          onClick={() => postMessage({ type: "openPlanPanel" })}
+        >
+          {t("settings.planPanel.openButton", locale)}
+          <OpenPanelIcon />
+        </button>
+      </div>
+      <ActivePlanRow
+        activePlan={activePlan}
+        locale={locale}
+        planActionError={planActionError}
+      />
+      {nextPlan && (
+        <NextPlanRow
+          nextPlan={nextPlan}
+          showActivateButton={!activePlan}
+          locale={locale}
+        />
+      )}
+    </div>
+  );
 }
 
 interface FileSettingProps {
@@ -274,6 +494,9 @@ export function Settings({
   locale,
   onLocaleChange,
   profileLastUpdated,
+  activePlan,
+  nextPlan,
+  planActionError,
 }: SettingsProps) {
   const mentorFiles = config?.mentorFiles ?? {
     spec: null,
@@ -284,15 +507,11 @@ export function Settings({
     <div className="settings">
       <ProfileSection profileLastUpdated={profileLastUpdated} locale={locale} />
       <p className="setting-guide">{t("settings.unsetGuide", locale)}</p>
-      <FileSetting
-        label={t("settings.plan", locale)}
-        field="plan"
-        value={mentorFiles.plan}
-        createPrompt={t("settings.prompt.plan", locale)}
-        buttonLabel={t("settings.createPrompt.plan", locale)}
-        tooltipKey="settings.copyCreatePrompt.plan"
+      <PlanSection
+        activePlan={activePlan}
+        nextPlan={nextPlan}
         locale={locale}
-        warning={!mentorFiles.plan}
+        planActionError={planActionError}
       />
       <FileSetting
         label={t("settings.spec", locale)}
