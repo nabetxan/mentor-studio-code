@@ -16,6 +16,11 @@ vi.mock("../../src/panels/writes/planWrites", () => ({
   activatePlan: vi.fn().mockResolvedValue(undefined),
   deactivatePlan: vi.fn().mockResolvedValue(undefined),
   reorderPlans: vi.fn().mockResolvedValue(undefined),
+  changeStatus: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("../../src/panels/readConfigLocale", () => ({
+  readConfigLocale: vi.fn().mockResolvedValue("en"),
 }));
 
 vi.mock("../../src/panels/writes/taskWrites", () => ({
@@ -120,7 +125,11 @@ const extWindow = vscodeMock.window as unknown as ExtendedWindow;
 // Helpers
 // ---------------------------------------------------------------------------
 
-const FAKE_PATHS = { dbPath: "/fake/data.db", wasmPath: "/fake/sql-wasm.wasm" };
+const FAKE_PATHS = {
+  dbPath: "/fake/data.db",
+  wasmPath: "/fake/sql-wasm.wasm",
+  workspaceRoot: "/fake/workspace",
+};
 
 function createPanel(): {
   panel: FakeWebviewPanel;
@@ -276,8 +285,8 @@ describe("PlanPanel", () => {
     );
   });
 
-  it("'openMarkdownFile' calls vscode.commands.executeCommand with vscode.open", async () => {
-    const executeSpy = vi.spyOn(vscodeMock.commands, "executeCommand");
+  it("'openMarkdownFile' opens an absolute path via showTextDocument", async () => {
+    const showSpy = vi.spyOn(vscodeMock.window, "showTextDocument");
     const { panel } = createPanel();
 
     await panel.webview.__triggerMessage({
@@ -285,9 +294,48 @@ describe("PlanPanel", () => {
       filePath: "/workspace/plan.md",
     });
 
-    expect(executeSpy).toHaveBeenCalledWith(
-      "vscode.open",
+    expect(showSpy).toHaveBeenCalledWith(
       expect.objectContaining({ fsPath: "/workspace/plan.md" }),
+      expect.objectContaining({ preview: true }),
+    );
+  });
+
+  it("'openMarkdownFile' resolves a relative path against the workspace root", async () => {
+    const showSpy = vi.spyOn(vscodeMock.window, "showTextDocument");
+    const wsMutable = vscodeMock.workspace as unknown as {
+      workspaceFolders: { uri: vscodeMock.MockUri }[] | undefined;
+    };
+    wsMutable.workspaceFolders = [{ uri: vscodeMock.Uri.file("/repo") }];
+    try {
+      const { panel } = createPanel();
+      await panel.webview.__triggerMessage({
+        type: "openMarkdownFile",
+        filePath: "docs/plan.md",
+      });
+
+      expect(showSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ fsPath: "/repo/docs/plan.md" }),
+        expect.objectContaining({ preview: true }),
+      );
+    } finally {
+      wsMutable.workspaceFolders = undefined;
+    }
+  });
+
+  it("'openMarkdownFile' shows an error when the file cannot be opened", async () => {
+    const errSpy = vi.spyOn(vscodeMock.window, "showErrorMessage");
+    vi.spyOn(vscodeMock.window, "showTextDocument").mockRejectedValueOnce(
+      new Error("file not found"),
+    );
+    const { panel } = createPanel();
+
+    await panel.webview.__triggerMessage({
+      type: "openMarkdownFile",
+      filePath: "/missing/plan.md",
+    });
+
+    expect(errSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Failed to open /missing/plan.md"),
     );
   });
 
@@ -336,50 +384,8 @@ describe("PlanPanel", () => {
   });
 
   // NOTE: 'deletePlan' was removed from PanelRequest in Task 3-2 (replaced by removePlan).
-
-  it("'updatePlan' with status=active calls activatePlan", async () => {
-    const { panel } = createPanel();
-    const planWritesMod = await import("../../src/panels/writes/planWrites.js");
-
-    await panel.webview.__triggerMessage({
-      type: "updatePlan",
-      requestId: "req-act",
-      id: 5,
-      status: "active",
-    });
-
-    expect(planWritesMod.activatePlan).toHaveBeenCalledWith(
-      FAKE_PATHS.dbPath,
-      { id: 5 },
-      FAKE_PATHS.wasmPath,
-    );
-    expect(panel.__posted).toContainEqual({
-      type: "writeOk",
-      requestId: "req-act",
-    });
-  });
-
-  it("'updatePlan' with status=queued calls deactivatePlan", async () => {
-    const { panel } = createPanel();
-    const planWritesMod = await import("../../src/panels/writes/planWrites.js");
-
-    await panel.webview.__triggerMessage({
-      type: "updatePlan",
-      requestId: "req-deact",
-      id: 7,
-      status: "queued",
-    });
-
-    expect(planWritesMod.deactivatePlan).toHaveBeenCalledWith(
-      FAKE_PATHS.dbPath,
-      { id: 7 },
-      FAKE_PATHS.wasmPath,
-    );
-    expect(panel.__posted).toContainEqual({
-      type: "writeOk",
-      requestId: "req-deact",
-    });
-  });
+  // NOTE: 'updatePlan' with `status` and the 'restorePlan' request were removed from
+  // the panel protocol — status transitions are handled exclusively by 'setPlanStatus'.
 
   it("'updatePlan' without status calls updatePlan with name/filePath", async () => {
     const { panel } = createPanel();
@@ -452,28 +458,6 @@ describe("PlanPanel", () => {
     });
   });
 
-  it("'restorePlan' dispatches to planWrites.restorePlan and posts writeOk", async () => {
-    const { panel } = createPanel();
-    const planWritesMod = await import("../../src/panels/writes/planWrites.js");
-
-    await panel.webview.__triggerMessage({
-      type: "restorePlan",
-      requestId: "req-restore",
-      id: 11,
-      toStatus: "backlog",
-    });
-
-    expect(planWritesMod.restorePlan).toHaveBeenCalledWith(
-      FAKE_PATHS.dbPath,
-      { id: 11, toStatus: "backlog" },
-      FAKE_PATHS.wasmPath,
-    );
-    expect(panel.__posted).toContainEqual({
-      type: "writeOk",
-      requestId: "req-restore",
-    });
-  });
-
   it("'pickPlanFile' with file selected posts pickPlanFileResult with fsPath", async () => {
     const showOpenDialogSpy = vi
       .spyOn(vscodeMock.window, "showOpenDialog")
@@ -514,5 +498,425 @@ describe("PlanPanel", () => {
       requestId: "req-pick-cancel",
       filePath: null,
     });
+  });
+
+  // -------------------------------------------------------------------------
+  // setPlanStatus handler tests
+  // -------------------------------------------------------------------------
+
+  it("setPlanStatus to 'queued' when source is non-active calls changeStatus", async () => {
+    const { panel } = createPanel();
+    // Explicit snapshot — plan 3 exists with status 'backlog' (non-active).
+    const snapshotMod = await import("../../src/panels/snapshot.js");
+    vi.mocked(snapshotMod.readSnapshot).mockResolvedValue({
+      plans: [
+        { id: 3, name: "P3", filePath: null, status: "backlog", sortOrder: 1 },
+      ],
+      tasks: [],
+      topics: [],
+    });
+    const planWritesMod = await import("../../src/panels/writes/planWrites.js");
+
+    await panel.webview.__triggerMessage({
+      type: "setPlanStatus",
+      requestId: "req-cs-1",
+      id: 3,
+      toStatus: "queued",
+    });
+
+    expect(planWritesMod.changeStatus).toHaveBeenCalledWith(
+      FAKE_PATHS.dbPath,
+      { id: 3, toStatus: "queued" },
+      FAKE_PATHS.wasmPath,
+    );
+    expect(planWritesMod.deactivatePlan).not.toHaveBeenCalled();
+    expect(panel.__posted).toContainEqual({
+      type: "writeOk",
+      requestId: "req-cs-1",
+    });
+  });
+
+  it("setPlanStatus to 'active' without conflict calls activatePlan", async () => {
+    const { panel } = createPanel();
+    const snapshotMod = await import("../../src/panels/snapshot.js");
+    vi.mocked(snapshotMod.readSnapshot).mockResolvedValue({
+      plans: [
+        { id: 3, name: "P3", filePath: null, status: "queued", sortOrder: 1 },
+      ],
+      tasks: [],
+      topics: [],
+    });
+    const planWritesMod = await import("../../src/panels/writes/planWrites.js");
+
+    await panel.webview.__triggerMessage({
+      type: "setPlanStatus",
+      requestId: "req-act-1",
+      id: 3,
+      toStatus: "active",
+    });
+
+    expect(planWritesMod.activatePlan).toHaveBeenCalledWith(
+      FAKE_PATHS.dbPath,
+      { id: 3 },
+      FAKE_PATHS.wasmPath,
+    );
+    expect(panel.__posted).toContainEqual({
+      type: "writeOk",
+      requestId: "req-act-1",
+    });
+  });
+
+  it("setPlanStatus to 'active' with conflict + Replace: activates new plan", async () => {
+    const { panel } = createPanel();
+    const snapshotMod = await import("../../src/panels/snapshot.js");
+    vi.mocked(snapshotMod.readSnapshot).mockResolvedValue({
+      plans: [
+        {
+          id: 1,
+          name: "Plan A",
+          filePath: null,
+          status: "active",
+          sortOrder: 1,
+        },
+        {
+          id: 3,
+          name: "Plan B",
+          filePath: null,
+          status: "queued",
+          sortOrder: 2,
+        },
+      ],
+      tasks: [],
+      topics: [],
+    });
+    vi.spyOn(vscodeMock.window, "showInformationMessage").mockResolvedValueOnce(
+      "Activate",
+    );
+    const planWritesMod = await import("../../src/panels/writes/planWrites.js");
+
+    await panel.webview.__triggerMessage({
+      type: "setPlanStatus",
+      requestId: "req-conflict-1",
+      id: 3,
+      toStatus: "active",
+    });
+
+    expect(vscodeMock.window.showInformationMessage).toHaveBeenCalled();
+    expect(planWritesMod.activatePlan).toHaveBeenCalledWith(
+      FAKE_PATHS.dbPath,
+      { id: 3 },
+      FAKE_PATHS.wasmPath,
+    );
+    expect(panel.__posted).toContainEqual({
+      type: "writeOk",
+      requestId: "req-conflict-1",
+    });
+  });
+
+  it("setPlanStatus to 'active' with conflict + Cancel: no-op, returns writeOk", async () => {
+    const { panel } = createPanel();
+    const snapshotMod = await import("../../src/panels/snapshot.js");
+    vi.mocked(snapshotMod.readSnapshot).mockResolvedValue({
+      plans: [
+        {
+          id: 1,
+          name: "Plan A",
+          filePath: null,
+          status: "active",
+          sortOrder: 1,
+        },
+        {
+          id: 3,
+          name: "Plan B",
+          filePath: null,
+          status: "queued",
+          sortOrder: 2,
+        },
+      ],
+      tasks: [],
+      topics: [],
+    });
+    vi.spyOn(vscodeMock.window, "showInformationMessage").mockResolvedValueOnce(
+      undefined,
+    );
+    const planWritesMod = await import("../../src/panels/writes/planWrites.js");
+
+    await panel.webview.__triggerMessage({
+      type: "setPlanStatus",
+      requestId: "req-cancel-1",
+      id: 3,
+      toStatus: "active",
+    });
+
+    expect(planWritesMod.activatePlan).not.toHaveBeenCalled();
+    expect(panel.__posted).toContainEqual({
+      type: "writeOk",
+      requestId: "req-cancel-1",
+    });
+  });
+
+  it("setPlanStatus to 'removed' calls removePlan (non-active source)", async () => {
+    const { panel } = createPanel();
+    const planWritesMod = await import("../../src/panels/writes/planWrites.js");
+
+    await panel.webview.__triggerMessage({
+      type: "setPlanStatus",
+      requestId: "req-rm-1",
+      id: 5,
+      toStatus: "removed",
+    });
+
+    expect(planWritesMod.removePlan).toHaveBeenCalledWith(
+      FAKE_PATHS.dbPath,
+      { id: 5 },
+      FAKE_PATHS.wasmPath,
+    );
+    expect(panel.__posted).toContainEqual({
+      type: "writeOk",
+      requestId: "req-rm-1",
+    });
+  });
+
+  it("setPlanStatus to 'removed' from active: deactivates first, then removes", async () => {
+    const { panel } = createPanel();
+    const snapshotMod = await import("../../src/panels/snapshot.js");
+    vi.mocked(snapshotMod.readSnapshot).mockResolvedValue({
+      plans: [
+        {
+          id: 1,
+          name: "Plan A",
+          filePath: null,
+          status: "active",
+          sortOrder: 1,
+        },
+      ],
+      tasks: [],
+      topics: [],
+    });
+    const planWritesMod = await import("../../src/panels/writes/planWrites.js");
+
+    await panel.webview.__triggerMessage({
+      type: "setPlanStatus",
+      requestId: "req-rm-active",
+      id: 1,
+      toStatus: "removed",
+    });
+
+    expect(planWritesMod.deactivatePlan).toHaveBeenCalledWith(
+      FAKE_PATHS.dbPath,
+      { id: 1 },
+      FAKE_PATHS.wasmPath,
+    );
+    expect(planWritesMod.removePlan).toHaveBeenCalledWith(
+      FAKE_PATHS.dbPath,
+      { id: 1 },
+      FAKE_PATHS.wasmPath,
+    );
+    expect(panel.__posted).toContainEqual({
+      type: "writeOk",
+      requestId: "req-rm-active",
+    });
+  });
+
+  it("setPlanStatus to 'paused' from active is a single-tx changeStatus", async () => {
+    const { panel } = createPanel();
+    const planWritesMod = await import("../../src/panels/writes/planWrites.js");
+
+    await panel.webview.__triggerMessage({
+      type: "setPlanStatus",
+      requestId: "req-pause-active",
+      id: 1,
+      toStatus: "paused",
+    });
+
+    // Single transaction: changeStatus handles active → paused directly — no
+    // intermediate deactivatePlan call, so a partial failure can't leave the
+    // plan stuck in 'queued'.
+    expect(planWritesMod.deactivatePlan).not.toHaveBeenCalled();
+    expect(planWritesMod.changeStatus).toHaveBeenCalledWith(
+      FAKE_PATHS.dbPath,
+      { id: 1, toStatus: "paused" },
+      FAKE_PATHS.wasmPath,
+    );
+    expect(panel.__posted).toContainEqual({
+      type: "writeOk",
+      requestId: "req-pause-active",
+    });
+  });
+
+  it("setPlanStatus to 'queued' from active is a single-tx changeStatus", async () => {
+    const { panel } = createPanel();
+    const planWritesMod = await import("../../src/panels/writes/planWrites.js");
+
+    await panel.webview.__triggerMessage({
+      type: "setPlanStatus",
+      requestId: "req-deact-active",
+      id: 1,
+      toStatus: "queued",
+    });
+
+    expect(planWritesMod.deactivatePlan).not.toHaveBeenCalled();
+    expect(planWritesMod.changeStatus).toHaveBeenCalledWith(
+      FAKE_PATHS.dbPath,
+      { id: 1, toStatus: "queued" },
+      FAKE_PATHS.wasmPath,
+    );
+    expect(panel.__posted).toContainEqual({
+      type: "writeOk",
+      requestId: "req-deact-active",
+    });
+  });
+
+  it("in-flight setPlanStatus for same id returns writeError busy", async () => {
+    const { panel } = createPanel();
+    const planWritesMod = await import("../../src/panels/writes/planWrites.js");
+    let resolveFirst!: () => void;
+    vi.mocked(planWritesMod.changeStatus).mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveFirst = resolve;
+        }),
+    );
+
+    const firstPromise = panel.webview.__triggerMessage({
+      type: "setPlanStatus",
+      requestId: "req-flight-1",
+      id: 10,
+      toStatus: "paused",
+    });
+
+    await panel.webview.__triggerMessage({
+      type: "setPlanStatus",
+      requestId: "req-flight-2",
+      id: 10,
+      toStatus: "completed",
+    });
+
+    expect(panel.__posted).toContainEqual({
+      type: "writeError",
+      requestId: "req-flight-2",
+      error: "busy",
+    });
+
+    resolveFirst();
+    await firstPromise;
+
+    expect(panel.__posted).toContainEqual({
+      type: "writeOk",
+      requestId: "req-flight-1",
+    });
+  });
+
+  it("initData includes locale field", async () => {
+    const { panel } = createPanel();
+    await panel.webview.__triggerMessage({ type: "ready" });
+
+    const initMsg = panel.__posted.find(
+      (m) => (m as Record<string, unknown>).type === "initData",
+    ) as Record<string, unknown> | undefined;
+    expect(initMsg).toBeDefined();
+    expect(initMsg?.locale).toBe("en");
+  });
+
+  it("conflict dialog message uses Japanese when locale is ja", async () => {
+    // Force the cached locale by seeding the readConfigLocale mock before the
+    // panel reads it via 'ready'.
+    const localeMod = await import("../../src/panels/readConfigLocale.js");
+    vi.mocked(localeMod.readConfigLocale).mockResolvedValue("ja");
+
+    const { panel } = createPanel();
+    // 'ready' populates the cached locale used by the conflict dialog.
+    await panel.webview.__triggerMessage({ type: "ready" });
+
+    const snapshotMod = await import("../../src/panels/snapshot.js");
+    vi.mocked(snapshotMod.readSnapshot).mockResolvedValue({
+      plans: [
+        {
+          id: 1,
+          name: "Plan A",
+          filePath: null,
+          status: "active",
+          sortOrder: 1,
+        },
+        {
+          id: 2,
+          name: "Plan B",
+          filePath: null,
+          status: "queued",
+          sortOrder: 2,
+        },
+      ],
+      tasks: [],
+      topics: [],
+    });
+    const infoSpy = vi
+      .spyOn(vscodeMock.window, "showInformationMessage")
+      .mockResolvedValueOnce(undefined);
+
+    await panel.webview.__triggerMessage({
+      type: "setPlanStatus",
+      requestId: "req-ja-conflict",
+      id: 2,
+      toStatus: "active",
+    });
+
+    expect(infoSpy).toHaveBeenCalled();
+    const [message] = infoSpy.mock.calls[0];
+    expect(message).toContain("アクティブプラン");
+    expect(message).toContain("Plan A");
+    expect(message).toContain("Plan B");
+
+    // Reset for sibling tests.
+    vi.mocked(localeMod.readConfigLocale).mockResolvedValue("en");
+  });
+
+  it("onAfterWrite fires after a successful write request", async () => {
+    const bus = new BroadcastBus();
+    const onAfterWrite = vi.fn().mockResolvedValue(undefined);
+    const ctx = { extensionUri: vscodeMock.Uri.file("/ext") };
+    PlanPanel.createOrShow(
+      ctx as unknown as Parameters<typeof PlanPanel.createOrShow>[0],
+      bus,
+      FAKE_PATHS,
+      onAfterWrite,
+    );
+    const panel = panels[panels.length - 1];
+
+    await panel.webview.__triggerMessage({
+      type: "createPlan",
+      requestId: "req-after-1",
+      name: "P",
+      filePath: "/p.md",
+    });
+    // Let the finally{} microtask settle.
+    await Promise.resolve();
+
+    expect(onAfterWrite).toHaveBeenCalledTimes(1);
+  });
+
+  it("onAfterWrite fires after a setPlanStatus request too", async () => {
+    const bus = new BroadcastBus();
+    const onAfterWrite = vi.fn().mockResolvedValue(undefined);
+    const ctx = { extensionUri: vscodeMock.Uri.file("/ext") };
+    PlanPanel.createOrShow(
+      ctx as unknown as Parameters<typeof PlanPanel.createOrShow>[0],
+      bus,
+      FAKE_PATHS,
+      onAfterWrite,
+    );
+    const panel = panels[panels.length - 1];
+
+    await panel.webview.__triggerMessage({
+      type: "setPlanStatus",
+      requestId: "req-after-2",
+      id: 1,
+      toStatus: "paused",
+    });
+    // The finally-hook that runs onAfterWrite is attached to the in-flight
+    // promise; yield twice so its microtasks complete.
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(onAfterWrite).toHaveBeenCalledTimes(1);
   });
 });

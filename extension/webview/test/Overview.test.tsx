@@ -25,6 +25,7 @@ const mockData: DashboardData = {
   topicsWithHistory: [],
   plans: [],
   activePlan: null,
+  nextPlan: null,
 };
 
 const defaultProps = {
@@ -122,6 +123,7 @@ describe("Overview", () => {
       topicsWithHistory: ["javascript"],
       plans: [],
       activePlan: null,
+      nextPlan: null,
     };
     render(<Overview {...defaultProps} data={data} />);
     // Expand the topic
@@ -189,6 +191,7 @@ describe("Overview", () => {
       topicsWithHistory: [],
       plans: [],
       activePlan: null,
+      nextPlan: null,
     };
     render(<Overview {...defaultProps} data={data} />);
     expect(screen.getByText("TypeScript")).toBeTruthy();
@@ -317,21 +320,22 @@ describe("Overview", () => {
       const { container } = render(
         <Overview {...defaultProps} data={dataWithTopics} />,
       );
-      // Select source via the native <select> inside the merge section
       const mergeSection = container.querySelector(
         ".merge-topics-section",
       ) as HTMLElement;
-      const sourceSelect = within(mergeSection).getByRole("combobox");
-      fireEvent.change(sourceSelect, { target: { value: "ts" } });
-      // Target uses TopicSelect (custom dropdown) — click the button then the option
+      // Source uses TopicSelect — open via placeholder, click option
+      const sourceButton = within(mergeSection).getByText("トピックを選択");
+      fireEvent.click(sourceButton);
+      const tsOption = within(mergeSection)
+        .getAllByRole("option", { name: "TypeScript" })
+        .find((el) => el.tagName === "BUTTON") as HTMLElement;
+      fireEvent.click(tsOption);
+      // Target uses TopicSelect — click the "—" placeholder button then the option
       const targetButton = within(mergeSection).getByText("—");
       fireEvent.click(targetButton);
-      const reactOptions = within(mergeSection).getAllByRole("option", {
-        name: "React",
-      });
-      const reactButton = reactOptions.find(
-        (el) => el.tagName === "BUTTON",
-      ) as HTMLElement;
+      const reactButton = within(mergeSection)
+        .getAllByRole("option", { name: "React" })
+        .find((el) => el.tagName === "BUTTON") as HTMLElement;
       fireEvent.click(reactButton);
       // Click merge
       fireEvent.click(within(mergeSection).getByText("統合"));

@@ -180,6 +180,10 @@ export function computeDashboardDataFromDb(
     sortOrder: Number(r[4]),
   }));
   const activePlan = plans.find((p) => p.status === "active") ?? null;
+  const nextPlan =
+    plans
+      .filter((p) => p.status === "queued")
+      .sort((a, b) => a.sortOrder - b.sortOrder)[0] ?? null;
 
   return {
     totalQuestions,
@@ -193,6 +197,7 @@ export function computeDashboardDataFromDb(
     topicsWithHistory,
     plans,
     activePlan,
+    nextPlan,
   };
 }
 

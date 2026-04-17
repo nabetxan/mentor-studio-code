@@ -221,3 +221,27 @@ export async function pausePlan(
     assertStatusInvariants(db);
   });
 }
+
+export async function changeStatus(
+  dbPath: string,
+  args: { id: number; toStatus: Exclude<PlanStatus, "active" | "removed"> },
+  wasmPath: string,
+): Promise<void> {
+  await withWriteTransaction(dbPath, { wasmPath, purpose: "normal" }, (db) => {
+    if (!rowExists(db, "plans", args.id)) {
+      throw new Error(`plan not found: ${args.id}`);
+    }
+    const s = args.toStatus as string;
+    if (s === "active")
+      throw new Error("use activatePlan for active transitions");
+    if (s === "removed")
+      throw new Error("use removePlan for removed transitions");
+    const stmt = db.prepare("UPDATE plans SET status = ? WHERE id = ?");
+    try {
+      stmt.run([args.toStatus, args.id]);
+    } finally {
+      stmt.free();
+    }
+    assertStatusInvariants(db);
+  });
+}

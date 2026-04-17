@@ -137,6 +137,20 @@ export class FileWatcherService implements vscode.Disposable {
     this.onConfigChanged?.(this.config);
   }
 
+  // Extension-initiated writes use atomic rename (see atomicWriteFile), which
+  // VSCode's FileSystemWatcher does not reliably detect — Plan Panel would
+  // stay stale until the next unrelated event. Broadcast directly here and
+  // refresh sidebar data. Safe if the watcher also fires later: both paths
+  // are idempotent.
+  private async notifyWrite(): Promise<void> {
+    try {
+      await this.onDbChanged?.();
+    } catch (err) {
+      this.log?.(`onDbChanged failed: ${String(err)}`);
+    }
+    await this.refresh();
+  }
+
   async refresh(): Promise<void> {
     const progressPath = join(
       this.workspaceRoot,
@@ -166,6 +180,7 @@ export class FileWatcherService implements vscode.Disposable {
         topicsWithHistory: [],
         plans: [],
         activePlan: null,
+        nextPlan: null,
       });
       return;
     }
@@ -194,7 +209,7 @@ export class FileWatcherService implements vscode.Disposable {
   async mergeTopic(fromKey: string, toKey: string): Promise<void> {
     if (!this.dbPath || !this.wasmPath) return;
     await dbMergeTopic(this.dbPath, fromKey, toKey, this.wasmPath);
-    await this.refresh();
+    await this.notifyWrite();
   }
 
   async deleteTopics(
@@ -204,7 +219,7 @@ export class FileWatcherService implements vscode.Disposable {
       return keys.map((key) => ({ key, ok: false, error: "db_not_ready" }));
     }
     const results = await dbDeleteTopics(this.dbPath, keys, this.wasmPath);
-    await this.refresh();
+    await this.notifyWrite();
     return results;
   }
 
@@ -215,14 +230,14 @@ export class FileWatcherService implements vscode.Disposable {
       return { ok: false, error: "db_not_ready" };
     }
     const res = await dbAddTopic(this.dbPath, label, this.wasmPath);
-    if (res.ok) await this.refresh();
+    if (res.ok) await this.notifyWrite();
     return res;
   }
 
   async updateTopicLabel(key: string, newLabel: string): Promise<void> {
     if (!this.dbPath || !this.wasmPath) return;
     await dbUpdateTopicLabel(this.dbPath, key, newLabel, this.wasmPath);
-    await this.refresh();
+    await this.notifyWrite();
   }
 
   async activatePlan(id: number): Promise<void> {
@@ -230,7 +245,7 @@ export class FileWatcherService implements vscode.Disposable {
       throw new Error("db_not_ready");
     }
     await dbActivatePlan(this.dbPath, { id }, this.wasmPath);
-    await this.refresh();
+    await this.notifyWrite();
   }
 
   async deactivatePlan(id: number): Promise<void> {
@@ -238,7 +253,7 @@ export class FileWatcherService implements vscode.Disposable {
       throw new Error("db_not_ready");
     }
     await dbDeactivatePlan(this.dbPath, { id }, this.wasmPath);
-    await this.refresh();
+    await this.notifyWrite();
   }
 
   async pauseActivePlan(id: number): Promise<void> {
@@ -246,7 +261,7 @@ export class FileWatcherService implements vscode.Disposable {
       throw new Error("db_not_ready");
     }
     await dbPausePlan(this.dbPath, id, this.wasmPath);
-    await this.refresh();
+    await this.notifyWrite();
   }
 
   async changeActivePlanFile(id: number, relPath: string): Promise<void> {
@@ -254,7 +269,7 @@ export class FileWatcherService implements vscode.Disposable {
       throw new Error("db_not_ready");
     }
     await dbUpdatePlan(this.dbPath, { id, filePath: relPath }, this.wasmPath);
-    await this.refresh();
+    await this.notifyWrite();
   }
 
   async createAndActivatePlan(relPath: string): Promise<void> {
@@ -266,7 +281,7 @@ export class FileWatcherService implements vscode.Disposable {
       this.wasmPath,
     );
     await dbActivatePlan(this.dbPath, { id }, this.wasmPath);
-    await this.refresh();
+    await this.notifyWrite();
   }
 
   async addFilesToPlan(uris: vscode.Uri[]): Promise<void> {
@@ -310,7 +325,7 @@ export class FileWatcherService implements vscode.Disposable {
     // No .md files at all — do nothing
     if (added === 0 && skipped === 0) return;
 
-    await this.refresh();
+    await this.notifyWrite();
 
     const openPlanPanel = "Open Plan Panel";
 

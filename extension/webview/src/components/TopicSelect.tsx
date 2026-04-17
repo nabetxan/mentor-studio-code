@@ -6,11 +6,13 @@ interface TopicSelectProps {
   options: TopicConfig[];
   value: string;
   onChange: (key: string) => void;
-  onAddTopic: (label: string) => void;
-  addTopicError: string | null;
-  lastAddedKey: string | null;
-  onClearLastAddedKey: () => void;
+  onAddTopic?: (label: string) => void;
+  addTopicError?: string | null;
+  lastAddedKey?: string | null;
+  onClearLastAddedKey?: () => void;
   locale: Locale;
+  placeholder?: string;
+  ariaLabel?: string;
 }
 
 export function TopicSelect({
@@ -22,12 +24,16 @@ export function TopicSelect({
   lastAddedKey,
   onClearLastAddedKey,
   locale,
+  placeholder,
+  ariaLabel,
 }: TopicSelectProps) {
   const [open, setOpen] = useState(false);
   const [newLabel, setNewLabel] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const selectedLabel = options.find((o) => o.key === value)?.label ?? "—";
+  const showAddNew = Boolean(onAddTopic);
+  const selectedLabel =
+    options.find((o) => o.key === value)?.label ?? placeholder ?? "—";
 
   // Auto-select newly added topic and clear input on success
   useEffect(() => {
@@ -36,7 +42,7 @@ export function TopicSelect({
         onChange(lastAddedKey);
         setNewLabel("");
       }
-      onClearLastAddedKey();
+      onClearLastAddedKey?.();
     }
   }, [lastAddedKey, onChange, open, onClearLastAddedKey]);
 
@@ -60,6 +66,7 @@ export function TopicSelect({
   }
 
   function handleAdd() {
+    if (!onAddTopic) return;
     const trimmed = newLabel.trim();
     if (!trimmed) return;
     onAddTopic(trimmed);
@@ -95,7 +102,10 @@ export function TopicSelect({
       </button>
       {open && (
         <div className="topic-select-dropdown">
-          <div role="listbox" aria-label={t("overview.topic.mergeTo", locale)}>
+          <div
+            role="listbox"
+            aria-label={ariaLabel ?? t("overview.topic.mergeTo", locale)}
+          >
             {[...options]
               .sort((a, b) =>
                 a.label.localeCompare(b.label, undefined, { numeric: true }),
@@ -112,28 +122,32 @@ export function TopicSelect({
                 </button>
               ))}
           </div>
-          <div className="topic-select-separator" />
-          <div className="topic-select-add">
-            <div className="form-row">
-              <button
-                className="btn-primary"
-                disabled={addDisabled}
-                onClick={handleAdd}
-              >
-                +
-              </button>
-              <input
-                className="form-input"
-                value={newLabel}
-                onChange={(e) => setNewLabel(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={t("overview.topic.newTopic", locale)}
-              />
-            </div>
-            {addTopicError && (
-              <div className="topic-select-error">{addTopicError}</div>
-            )}
-          </div>
+          {showAddNew && (
+            <>
+              <div className="topic-select-separator" />
+              <div className="topic-select-add">
+                <div className="form-row">
+                  <button
+                    className="btn-primary"
+                    disabled={addDisabled}
+                    onClick={handleAdd}
+                  >
+                    +
+                  </button>
+                  <input
+                    className="form-input"
+                    value={newLabel}
+                    onChange={(e) => setNewLabel(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder={t("overview.topic.newTopic", locale)}
+                  />
+                </div>
+                {addTopicError && (
+                  <div className="topic-select-error">{addTopicError}</div>
+                )}
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>

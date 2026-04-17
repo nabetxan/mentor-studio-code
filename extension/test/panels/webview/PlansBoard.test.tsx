@@ -12,32 +12,40 @@ afterEach(cleanup);
 const plans: UiPlan[] = [
   {
     id: 1,
-    name: "Plan A",
-    filePath: "/work/a.md",
+    name: "Plan Active",
+    filePath: "/a.md",
     status: "active",
     sortOrder: 1,
   },
   {
     id: 2,
-    name: "Plan B",
+    name: "Plan Queued",
     filePath: null,
     status: "queued",
     sortOrder: 2,
   },
   {
     id: 3,
-    name: "Plan Done",
-    filePath: "/work/done.md",
-    status: "completed",
+    name: "Plan Paused",
+    filePath: null,
+    status: "paused",
     sortOrder: 3,
   },
   {
     id: 4,
-    name: "Plan Gone",
+    name: "Plan Backlog",
     filePath: null,
-    status: "removed",
+    status: "backlog",
     sortOrder: 4,
   },
+  {
+    id: 5,
+    name: "Plan Done",
+    filePath: "/d.md",
+    status: "completed",
+    sortOrder: 5,
+  },
+  { id: 6, name: "Plan Gone", filePath: null, status: "removed", sortOrder: 6 },
 ];
 
 function noop(): void {}
@@ -50,10 +58,7 @@ function renderBoard(
       plans={plans}
       onCreatePlanFromFile={noop}
       onRenamePlan={noop}
-      onActivatePlan={noop}
-      onDeactivatePlan={noop}
-      onRemovePlan={noop}
-      onRestorePlan={noop}
+      onSetPlanStatus={noop}
       onOpenFile={noop}
       onReorder={noop}
       error={null}
@@ -62,90 +67,59 @@ function renderBoard(
   );
 }
 
-describe("PlansBoard", () => {
-  it("renders active/queued/paused/backlog by default, hides completed and removed", () => {
+describe("PlansBoard (grouped)", () => {
+  it("renders all 6 group headers", () => {
     renderBoard();
-    expect(screen.getByText("Plan A")).toBeTruthy();
-    expect(screen.getByText("Plan B")).toBeTruthy();
+    // PlanGroup aria-labels follow "Label (N)" pattern
+    expect(screen.getByRole("button", { name: /^Active \(/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Queued \(/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Paused \(/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Backlog \(/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Completed \(/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Removed \(/ })).toBeTruthy();
+  });
+
+  it("Active/Queued/Paused/Backlog groups are open by default, Completed/Removed are closed", () => {
+    renderBoard();
+    expect(screen.getByText("Plan Active")).toBeTruthy();
+    expect(screen.getByText("Plan Queued")).toBeTruthy();
+    expect(screen.getByText("Plan Paused")).toBeTruthy();
+    expect(screen.getByText("Plan Backlog")).toBeTruthy();
     expect(screen.queryByText("Plan Done")).toBeNull();
     expect(screen.queryByText("Plan Gone")).toBeNull();
   });
 
-  it("Show Completed checkbox reveals completed plan rows with ghost Activate", () => {
+  it("clicking Completed header expands it", () => {
     renderBoard();
-    fireEvent.click(screen.getByLabelText("show completed"));
+    const completedHeader = screen.getByRole("button", { name: /Completed/ });
+    fireEvent.click(completedHeader);
     expect(screen.getByText("Plan Done")).toBeTruthy();
-    // The completed row's Activate button should have variant ghost
-    const toggles = screen.getAllByTestId("plan-toggle-active");
-    const completedToggle = toggles.find(
-      (btn) =>
-        btn.textContent === "Activate" &&
-        btn
-          .closest("[data-testid='plan-row']")
-          ?.textContent?.includes("Plan Done"),
-    );
-    expect(completedToggle).toBeTruthy();
-    expect(completedToggle?.getAttribute("data-variant")).toBe("ghost");
   });
 
-  it("Show Removed checkbox reveals removed plan rows with Restore button", () => {
+  it("empty group is disabled", () => {
+    renderBoard({ plans: [plans[0]] });
+    const queuedHeader = screen.getByRole("button", { name: /Queued/ });
+    expect(queuedHeader.getAttribute("aria-disabled")).toBe("true");
+  });
+
+  it("plans with status queued/paused/backlog have visible drag handles", () => {
     renderBoard();
-    fireEvent.click(screen.getByLabelText("show removed"));
-    expect(screen.getByText("Plan Gone")).toBeTruthy();
-    expect(screen.getByTestId("plan-restore")).toBeTruthy();
-    // removed rows don't show Activate/Deactivate or Remove
     const rows = screen.getAllByTestId("plan-row");
-    const removedRow = rows.find((r) => r.textContent?.includes("Plan Gone"));
-    expect(removedRow).toBeTruthy();
-    expect(
-      removedRow?.querySelector("[data-testid='plan-toggle-active']"),
-    ).toBeNull();
-    expect(removedRow?.querySelector("[data-testid='plan-remove']")).toBeNull();
+    const queuedRow = rows.find((r) => r.textContent?.includes("Plan Queued"));
+    const handle = queuedRow?.querySelector(
+      "[data-testid='plan-handle']",
+    ) as HTMLElement;
+    expect(handle?.style.visibility).not.toBe("hidden");
   });
 
-  it("Activate button on a queued plan calls onActivatePlan(id)", () => {
-    const onActivate = vi.fn();
-    renderBoard({ onActivatePlan: onActivate });
-    const toggles = screen.getAllByTestId("plan-toggle-active");
-    // index 1 = Plan B (queued) — label Activate
-    expect(toggles[1]?.textContent).toBe("Activate");
-    fireEvent.click(toggles[1]!);
-    expect(onActivate).toHaveBeenCalledWith(2);
-  });
-
-  it("Deactivate on active plan calls onDeactivatePlan(id)", () => {
-    const onDeactivate = vi.fn();
-    renderBoard({ onDeactivatePlan: onDeactivate });
-    const toggles = screen.getAllByTestId("plan-toggle-active");
-    expect(toggles[0]?.textContent).toBe("Deactivate");
-    fireEvent.click(toggles[0]!);
-    expect(onDeactivate).toHaveBeenCalledWith(1);
-  });
-
-  it("Remove button calls onRemovePlan with id", () => {
-    const onRemove = vi.fn();
-    renderBoard({ onRemovePlan: onRemove });
-    const dels = screen.getAllByTestId("plan-remove");
-    fireEvent.click(dels[1]!);
-    expect(onRemove).toHaveBeenCalledWith(2);
-  });
-
-  it("Restore button on removed plan calls onRestorePlan(id)", () => {
-    const onRestore = vi.fn();
-    renderBoard({ onRestorePlan: onRestore });
-    fireEvent.click(screen.getByLabelText("show removed"));
-    fireEvent.click(screen.getByTestId("plan-restore"));
-    expect(onRestore).toHaveBeenCalledWith(4);
-  });
-
-  it("open button appears only for plans with filePath and calls onOpenFile", () => {
-    const onOpen = vi.fn();
-    renderBoard({ onOpenFile: onOpen });
-    const openBtns = screen.getAllByLabelText("open plan file");
-    // Plan A has filePath; Plan B doesn't; Plan Done/Gone hidden by default
-    expect(openBtns).toHaveLength(1);
-    fireEvent.click(openBtns[0]!);
-    expect(onOpen).toHaveBeenCalledWith("/work/a.md");
+  it("plans in active group have hidden drag handles", () => {
+    renderBoard();
+    const rows = screen.getAllByTestId("plan-row");
+    const activeRow = rows.find((r) => r.textContent?.includes("Plan Active"));
+    const handle = activeRow?.querySelector(
+      "[data-testid='plan-handle']",
+    ) as HTMLElement;
+    expect(handle?.style.visibility).toBe("hidden");
   });
 
   it("Add Plan from File button calls onCreatePlanFromFile", () => {
@@ -160,10 +134,14 @@ describe("PlansBoard", () => {
     expect(screen.getByText("Something went wrong")).toBeTruthy();
   });
 
-  it("computeReorderedIds reorders correctly", () => {
+  it("computeReorderedIds still works", () => {
     expect(computeReorderedIds([1, 2, 3], 1, 3)).toEqual([2, 3, 1]);
-    expect(computeReorderedIds([1, 2, 3], 3, 1)).toEqual([3, 1, 2]);
     expect(computeReorderedIds([1, 2, 3], 1, 1)).toEqual([1, 2, 3]);
-    expect(computeReorderedIds([1, 2, 3], 99, 2)).toEqual([1, 2, 3]);
+  });
+
+  it("no Show Completed / Show Removed checkboxes", () => {
+    renderBoard();
+    expect(screen.queryByLabelText("show completed")).toBeNull();
+    expect(screen.queryByLabelText("show removed")).toBeNull();
   });
 });

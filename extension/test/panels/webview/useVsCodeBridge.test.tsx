@@ -69,17 +69,17 @@ describe("useVsCodeBridge", () => {
     expect(resolved).toBe(true);
   });
 
-  it("sendRequest posts restorePlan with toStatus", () => {
+  it("sendRequest posts setPlanStatus with toStatus", () => {
     const { result } = renderHook(() => useVsCodeBridge());
     act(() => {
       void result.current.sendRequest({
-        type: "restorePlan",
+        type: "setPlanStatus",
         id: 3,
         toStatus: "backlog",
       });
     });
-    const req = posted.find((p) => p.type === "restorePlan") as
-      | Extract<PanelRequest, { type: "restorePlan" }>
+    const req = posted.find((p) => p.type === "setPlanStatus") as
+      | Extract<PanelRequest, { type: "setPlanStatus" }>
       | undefined;
     expect(req).toBeDefined();
     expect(req?.id).toBe(3);
@@ -143,6 +143,7 @@ describe("useVsCodeBridge", () => {
       ],
       tasks: [],
       topics: [],
+      locale: "en",
     });
     expect(result.current.ready).toBe(true);
     expect(result.current.snapshot.plans).toHaveLength(1);

@@ -314,6 +314,7 @@ export function App() {
             onLocaleChange={handleLocaleChange}
             profileLastUpdated={data?.profileLastUpdated ?? null}
             activePlan={data?.activePlan ?? null}
+            nextPlan={data?.nextPlan ?? null}
             planActionError={planActionError}
           />
         )}

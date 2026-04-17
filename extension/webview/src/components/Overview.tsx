@@ -402,31 +402,19 @@ export function Overview({
               <div className="detail-lbl">
                 {t("overview.topic.mergeSource", locale)}
               </div>
-              <select
-                className="form-select"
+              <TopicSelect
+                options={data?.allTopics ?? []}
                 value={mergeSource}
-                onChange={(e) => {
-                  setMergeSource(e.target.value);
-                  if (e.target.value === mergeTarget) {
+                onChange={(key) => {
+                  setMergeSource(key);
+                  if (key === mergeTarget) {
                     setMergeTarget("");
                   }
                 }}
-              >
-                <option value="">
-                  {t("overview.topic.mergeSelectSource", locale)}
-                </option>
-                {[...(data?.allTopics ?? [])]
-                  .sort((a, b) =>
-                    a.label.localeCompare(b.label, undefined, {
-                      numeric: true,
-                    }),
-                  )
-                  .map((tp) => (
-                    <option key={tp.key} value={tp.key}>
-                      {stripKeyPrefix(tp.label)}
-                    </option>
-                  ))}
-              </select>
+                locale={locale}
+                placeholder={t("overview.topic.mergeSelectSource", locale)}
+                ariaLabel={t("overview.topic.mergeSource", locale)}
+              />
             </div>
             <div className="merge-topics-field">
               <div className="detail-lbl">

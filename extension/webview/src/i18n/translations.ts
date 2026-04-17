@@ -159,32 +159,27 @@ const translations = {
     ja: "実装プラン (必須)",
     en: "Implementation Plan (required)",
   },
-  "settings.activePlan": {
-    ja: "アクティブなプラン",
-    en: "Active plan file",
+  "settings.plan.section": {
+    ja: "プラン",
+    en: "Plan",
   },
-  "settings.activePlan.none": {
-    ja: "(アクティブなプランなし)",
-    en: "(no active plan)",
+  "settings.plan.activeLabel": {
+    ja: "Active:",
+    en: "Active:",
+  },
+  "settings.plan.nextLabel": {
+    ja: "Next:",
+    en: "Next:",
+  },
+  "settings.planPanel.openButton": {
+    ja: "パネルを開く",
+    en: "Open Panel",
   },
   "settings.activePlan.uiOnly": {
     ja: "(UIのみのプラン)",
     en: "(UI-only plan)",
   },
-  "settings.activePlan.hint": {
-    ja: "プランは `add-plan` CLI またはプランパネルで管理します",
-    en: "Manage plans via the `add-plan` CLI or the Plan Panel",
-  },
   "settings.activePlan.activate": { ja: "有効化", en: "Activate" },
-  "settings.activePlan.deactivate": { ja: "無効化", en: "Deactivate" },
-  "settings.activePlan.queuedPlans": {
-    ja: "他のプラン",
-    en: "Other plans",
-  },
-  "settings.openPlanPanel.button": {
-    ja: "プランパネルを開く",
-    en: "Open Plan Panel",
-  },
   "settings.activePlan.activateFailed": {
     ja: "プランの有効化に失敗しました",
     en: "Failed to activate plan",
@@ -192,14 +187,6 @@ const translations = {
   "settings.activePlan.deactivateFailed": {
     ja: "プランの無効化に失敗しました",
     en: "Failed to deactivate plan",
-  },
-  "settings.activePlan.pauseFailed": {
-    ja: "プランの一時停止に失敗しました",
-    en: "Failed to pause plan",
-  },
-  "settings.activePlan.changeFileFailed": {
-    ja: "プランファイルの変更に失敗しました",
-    en: "Failed to change plan file",
   },
   "settings.unset": { ja: "⚠ 未設定", en: "⚠ Not set" },
   "settings.unsetGuide": {

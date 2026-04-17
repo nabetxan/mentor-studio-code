@@ -11,11 +11,13 @@ describe("protocol types", () => {
       plans: [],
       tasks: [],
       topics: [],
+      locale: "en",
     };
     if (msg.type === "initData") {
       expect(Array.isArray(msg.plans)).toBe(true);
       expect(Array.isArray(msg.tasks)).toBe(true);
       expect(Array.isArray(msg.topics)).toBe(true);
+      expect(msg.locale).toBe("en");
     }
   });
 
@@ -97,11 +99,17 @@ describe("protocol types", () => {
     }
   });
 
-  it("PanelRequest updatePlan status field is optional", () => {
-    const req: PanelRequest = { type: "updatePlan", requestId: "r4", id: 1 };
+  it("PanelRequest updatePlan carries optional name and filePath", () => {
+    const req: PanelRequest = {
+      type: "updatePlan",
+      requestId: "r4",
+      id: 1,
+      name: "Renamed",
+    };
     if (req.type === "updatePlan") {
       expect(req.id).toBe(1);
-      expect(req.status).toBeUndefined();
+      expect(req.name).toBe("Renamed");
+      expect(req.filePath).toBeUndefined();
     }
   });
 
@@ -127,14 +135,14 @@ describe("protocol types", () => {
     }
   });
 
-  it("PanelRequest restorePlan carries id and toStatus", () => {
+  it("PanelRequest setPlanStatus carries id and toStatus", () => {
     const req: PanelRequest = {
-      type: "restorePlan",
-      requestId: "r-restore",
+      type: "setPlanStatus",
+      requestId: "r-ss",
       id: 11,
       toStatus: "backlog",
     };
-    if (req.type === "restorePlan") {
+    if (req.type === "setPlanStatus") {
       expect(req.id).toBe(11);
       expect(req.toStatus).toBe("backlog");
     }

@@ -127,6 +127,7 @@ describe("computeDashboardDataFromDb", () => {
         status: "active",
         sortOrder: 1,
       });
+      expect(out.nextPlan).toBeNull();
     } finally {
       db.close();
     }
@@ -146,6 +147,7 @@ describe("computeDashboardDataFromDb", () => {
       expect(out.currentTask).toBeNull();
       expect(out.plans).toEqual([]);
       expect(out.activePlan).toBeNull();
+      expect(out.nextPlan).toBeNull();
     } finally {
       db.close();
     }
@@ -188,6 +190,71 @@ describe("computeDashboardDataFromDb", () => {
       expect(out.plans[2].filePath).toBeNull();
       expect(out.activePlan?.name).toBe("Phase 3");
       expect(out.activePlan?.status).toBe("active");
+      expect(out.nextPlan?.name).toBe("Phase 2");
+      expect(out.nextPlan?.status).toBe("queued");
+    } finally {
+      db.close();
+    }
+  });
+
+  it("nextPlan picks the queued plan with the smallest sortOrder", async () => {
+    const env = await makeEnvWithDb([]);
+    await seedPlans(env.paths.dbPath, [
+      {
+        name: "Queued B",
+        filePath: "docs/b.md",
+        status: "queued",
+        sortOrder: 5,
+        createdAt: "2026-04-13T00:00:00Z",
+      },
+      {
+        name: "Queued A",
+        filePath: "docs/a.md",
+        status: "queued",
+        sortOrder: 2,
+        createdAt: "2026-04-12T00:00:00Z",
+      },
+      {
+        name: "Queued C",
+        filePath: "docs/c.md",
+        status: "queued",
+        sortOrder: 8,
+        createdAt: "2026-04-14T00:00:00Z",
+      },
+    ]);
+
+    const db = await openReadOnly(env.paths.dbPath);
+    try {
+      const out = computeDashboardDataFromDb(db, {});
+      expect(out.activePlan).toBeNull();
+      expect(out.nextPlan?.name).toBe("Queued A");
+      expect(out.nextPlan?.sortOrder).toBe(2);
+    } finally {
+      db.close();
+    }
+  });
+
+  it("nextPlan is null when no queued plans exist", async () => {
+    const env = await makeEnvWithDb([]);
+    await seedPlans(env.paths.dbPath, [
+      {
+        name: "Only backlog",
+        status: "backlog",
+        sortOrder: 1,
+        createdAt: "2026-04-13T00:00:00Z",
+      },
+      {
+        name: "Only paused",
+        status: "paused",
+        sortOrder: 2,
+        createdAt: "2026-04-13T00:00:00Z",
+      },
+    ]);
+
+    const db = await openReadOnly(env.paths.dbPath);
+    try {
+      const out = computeDashboardDataFromDb(db, {});
+      expect(out.nextPlan).toBeNull();
     } finally {
       db.close();
     }

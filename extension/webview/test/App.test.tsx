@@ -57,6 +57,7 @@ const mockData: DashboardData = {
   topicsWithHistory: [],
   plans: [],
   activePlan: null,
+  nextPlan: null,
 };
 
 describe("App", () => {
@@ -94,7 +95,7 @@ describe("App", () => {
     render(<App />);
     simulateMessage({ type: "config", data: mockConfig });
     fireEvent.click(screen.getByText("Settings"));
-    expect(screen.getByText("アクティブなプラン")).toBeTruthy();
+    expect(screen.getByText("プラン")).toBeTruthy();
   });
 
   it("sends ready message on mount", () => {

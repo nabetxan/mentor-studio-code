@@ -10,7 +10,7 @@ import { useCopyFeedback } from "../hooks/useCopyFeedback";
 import type { TranslationKey } from "../i18n";
 import { t } from "../i18n";
 import { postMessage } from "../vscodeApi";
-import { CheckIcon, CopyIcon, SparkleIcon } from "./icons";
+import { CheckIcon, CopyIcon, OpenPanelIcon, SparkleIcon } from "./icons";
 
 interface SettingsProps {
   config: MentorStudioConfig | null;
@@ -18,20 +18,21 @@ interface SettingsProps {
   onLocaleChange: (locale: Locale) => void;
   profileLastUpdated: string | null;
   activePlan: PlanDto | null;
+  nextPlan: PlanDto | null;
   planActionError: string | null;
 }
 
-interface ActivePlanSettingProps {
+interface ActivePlanRowProps {
   activePlan: PlanDto | null;
   locale: Locale;
   planActionError: string | null;
 }
 
-function ActivePlanSetting({
+function ActivePlanRow({
   activePlan,
   locale,
   planActionError,
-}: ActivePlanSettingProps) {
+}: ActivePlanRowProps) {
   const [copiedKey, triggerCopy] = useCopyFeedback();
   const copied = copiedKey !== null;
 
@@ -40,21 +41,16 @@ function ActivePlanSetting({
     triggerCopy("copied");
   };
 
-  const label = t("settings.activePlan", locale);
-
   if (!activePlan) {
     return (
-      <div className="setting-item setting-item--warning">
-        <span className="setting-warning-badge" aria-hidden="true">
-          !
-        </span>
+      <div className="plan-row">
         <div className="setting-label-row">
-          <div className="setting-label">{label}</div>
-          <span className="setting-warning">
-            {t("settings.activePlan.none", locale)}
-          </span>
+          <div className="plan-row-prefix">
+            {t("settings.plan.activeLabel", locale)}
+          </div>
+          <span className="setting-warning">{t("settings.unset", locale)}</span>
         </div>
-        <div className="setting-unset">
+        <div className="plan-row-body setting-unset">
           <div className="setting-actions-vertical">
             <button
               className="btn-primary"
@@ -97,9 +93,11 @@ function ActivePlanSetting({
   const { id, filePath } = activePlan;
 
   return (
-    <div className="setting-item">
-      <div className="setting-label">{label}</div>
-      <div className="setting-value">
+    <div className="plan-row">
+      <div className="plan-row-prefix">
+        {t("settings.plan.activeLabel", locale)}
+      </div>
+      <div className="plan-row-body setting-value">
         {filePath ? (
           <a
             href="#"
@@ -137,6 +135,105 @@ function ActivePlanSetting({
           </p>
         )}
       </div>
+    </div>
+  );
+}
+
+interface NextPlanRowProps {
+  nextPlan: PlanDto;
+  showActivateButton: boolean;
+  locale: Locale;
+}
+
+function NextPlanRow({
+  nextPlan,
+  showActivateButton,
+  locale,
+}: NextPlanRowProps) {
+  const { id, filePath } = nextPlan;
+  return (
+    <div className="plan-row">
+      <div className="plan-row-prefix">
+        {t("settings.plan.nextLabel", locale)}
+      </div>
+      <div className="plan-row-body setting-value">
+        {filePath ? (
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              postMessage({ type: "openFile", relativePath: filePath });
+            }}
+            className="file-path-link"
+            title={filePath}
+          >
+            {filePath}
+          </a>
+        ) : (
+          <span className="file-path-link muted">
+            {t("settings.activePlan.uiOnly", locale)}
+          </span>
+        )}
+        {showActivateButton && (
+          <div className="setting-actions">
+            <button
+              className="btn-primary"
+              onClick={() => postMessage({ type: "activatePlan", id })}
+            >
+              {t("settings.activePlan.activate", locale)}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface PlanSectionProps {
+  activePlan: PlanDto | null;
+  nextPlan: PlanDto | null;
+  locale: Locale;
+  planActionError: string | null;
+}
+
+function PlanSection({
+  activePlan,
+  nextPlan,
+  locale,
+  planActionError,
+}: PlanSectionProps) {
+  const warning = !activePlan;
+  return (
+    <div className={`setting-item${warning ? " setting-item--warning" : ""}`}>
+      {warning && (
+        <span className="setting-warning-badge" aria-hidden="true">
+          !
+        </span>
+      )}
+      <div className="plan-section-header">
+        <div className="setting-label">
+          {t("settings.plan.section", locale)}
+        </div>
+        <button
+          className="btn-outlined btn-with-icon"
+          onClick={() => postMessage({ type: "openPlanPanel" })}
+        >
+          {t("settings.planPanel.openButton", locale)}
+          <OpenPanelIcon />
+        </button>
+      </div>
+      <ActivePlanRow
+        activePlan={activePlan}
+        locale={locale}
+        planActionError={planActionError}
+      />
+      {nextPlan && (
+        <NextPlanRow
+          nextPlan={nextPlan}
+          showActivateButton={!activePlan}
+          locale={locale}
+        />
+      )}
     </div>
   );
 }
@@ -398,6 +495,7 @@ export function Settings({
   onLocaleChange,
   profileLastUpdated,
   activePlan,
+  nextPlan,
   planActionError,
 }: SettingsProps) {
   const mentorFiles = config?.mentorFiles ?? {
@@ -409,19 +507,12 @@ export function Settings({
     <div className="settings">
       <ProfileSection profileLastUpdated={profileLastUpdated} locale={locale} />
       <p className="setting-guide">{t("settings.unsetGuide", locale)}</p>
-      <ActivePlanSetting
+      <PlanSection
         activePlan={activePlan}
+        nextPlan={nextPlan}
         locale={locale}
         planActionError={planActionError}
       />
-      <div className="setting-item">
-        <button
-          className="btn-outlined"
-          onClick={() => postMessage({ type: "openPlanPanel" })}
-        >
-          {t("settings.openPlanPanel.button", locale)}
-        </button>
-      </div>
       <FileSetting
         label={t("settings.spec", locale)}
         field="spec"

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import {
   activatePlan,
+  changeStatus,
   createPlan,
   deactivatePlan,
   deletePlan,
@@ -376,6 +377,121 @@ describe("planWrites", () => {
       await restorePlan(env.paths.dbPath, { id: 2, toStatus: "queued" }, WASM);
       // Row was not removed so WHERE status='removed' matches nothing — backlog unchanged.
       expect((await readPlan(env.paths.dbPath, 2))?.status).toBe("backlog");
+    });
+  });
+
+  describe("changeStatus", () => {
+    beforeEach(async () => {
+      await seedPlans(env.paths.dbPath, [
+        {
+          name: "P-queued",
+          status: "queued",
+          sortOrder: 1,
+          createdAt: "2026-04-01T00:00:00.000Z",
+        },
+        {
+          name: "P-paused",
+          status: "paused",
+          sortOrder: 2,
+          createdAt: "2026-04-01T00:00:00.000Z",
+        },
+        {
+          name: "P-backlog",
+          status: "backlog",
+          sortOrder: 3,
+          createdAt: "2026-04-01T00:00:00.000Z",
+        },
+        {
+          name: "P-completed",
+          status: "completed",
+          sortOrder: 4,
+          createdAt: "2026-04-01T00:00:00.000Z",
+        },
+        {
+          name: "P-removed",
+          status: "removed",
+          sortOrder: 5,
+          createdAt: "2026-04-01T00:00:00.000Z",
+        },
+      ]);
+    });
+
+    it("queued → paused", async () => {
+      await changeStatus(env.paths.dbPath, { id: 1, toStatus: "paused" }, WASM);
+      expect((await readPlan(env.paths.dbPath, 1))?.status).toBe("paused");
+    });
+
+    it("queued → backlog", async () => {
+      await changeStatus(
+        env.paths.dbPath,
+        { id: 1, toStatus: "backlog" },
+        WASM,
+      );
+      expect((await readPlan(env.paths.dbPath, 1))?.status).toBe("backlog");
+    });
+
+    it("queued → completed", async () => {
+      await changeStatus(
+        env.paths.dbPath,
+        { id: 1, toStatus: "completed" },
+        WASM,
+      );
+      expect((await readPlan(env.paths.dbPath, 1))?.status).toBe("completed");
+    });
+
+    it("paused → queued", async () => {
+      await changeStatus(env.paths.dbPath, { id: 2, toStatus: "queued" }, WASM);
+      expect((await readPlan(env.paths.dbPath, 2))?.status).toBe("queued");
+    });
+
+    it("backlog → queued", async () => {
+      await changeStatus(env.paths.dbPath, { id: 3, toStatus: "queued" }, WASM);
+      expect((await readPlan(env.paths.dbPath, 3))?.status).toBe("queued");
+    });
+
+    it("completed → queued", async () => {
+      await changeStatus(env.paths.dbPath, { id: 4, toStatus: "queued" }, WASM);
+      expect((await readPlan(env.paths.dbPath, 4))?.status).toBe("queued");
+    });
+
+    it("removed → queued", async () => {
+      await changeStatus(env.paths.dbPath, { id: 5, toStatus: "queued" }, WASM);
+      expect((await readPlan(env.paths.dbPath, 5))?.status).toBe("queued");
+    });
+
+    it("removed → backlog", async () => {
+      await changeStatus(
+        env.paths.dbPath,
+        { id: 5, toStatus: "backlog" },
+        WASM,
+      );
+      expect((await readPlan(env.paths.dbPath, 5))?.status).toBe("backlog");
+    });
+
+    it("rejects toStatus='active'", async () => {
+      await expect(
+        changeStatus(
+          env.paths.dbPath,
+          { id: 1, toStatus: "active" as "queued" },
+          WASM,
+        ),
+      ).rejects.toThrow("use activatePlan");
+    });
+
+    it("rejects toStatus='removed'", async () => {
+      await expect(
+        changeStatus(
+          env.paths.dbPath,
+          { id: 1, toStatus: "removed" as "queued" },
+          WASM,
+        ),
+      ).rejects.toThrow("use removePlan");
+    });
+
+    it("not-found id throws", async () => {
+      await expect(
+        changeStatus(env.paths.dbPath, { id: 999, toStatus: "queued" }, WASM),
+      ).rejects.toThrow("plan not found: 999");
     });
   });
 });

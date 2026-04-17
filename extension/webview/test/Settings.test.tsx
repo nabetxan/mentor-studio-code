@@ -13,6 +13,7 @@ const defaultProps = {
   onLocaleChange: () => {},
   profileLastUpdated: null as string | null,
   activePlan: null as PlanDto | null,
+  nextPlan: null as PlanDto | null,
   planActionError: null as string | null,
 };
 
@@ -23,11 +24,11 @@ describe("Settings", () => {
 
   it("shows unset state when config is null", () => {
     render(<Settings {...defaultProps} />);
-    // Spec is the only config-driven file field remaining
+    // Spec and active plan both show the "⚠ 未設定" warning
     const warnings = screen.getAllByText("⚠ 未設定");
-    expect(warnings).toHaveLength(1);
-    // Active plan shows its own "(no active plan)" warning text
-    expect(screen.getByText("(アクティブなプランなし)")).toBeTruthy();
+    expect(warnings).toHaveLength(2);
+    // Active-plan row uses the unified "Active:" label in both unset and set states.
+    expect(screen.getAllByText("Active:").length).toBeGreaterThan(0);
   });
 
   it("shows unset state when mentorFiles are not set", () => {
@@ -36,7 +37,7 @@ describe("Settings", () => {
     };
     render(<Settings {...defaultProps} config={config} />);
     const warnings = screen.getAllByText("⚠ 未設定");
-    expect(warnings).toHaveLength(1);
+    expect(warnings).toHaveLength(2);
   });
 
   it("shows spec file path when set", () => {
@@ -74,9 +75,10 @@ describe("Settings", () => {
     expect(screen.getByText("(UIのみのプラン)")).toBeTruthy();
   });
 
-  it("renders (no active plan) warning when activePlan is null", () => {
+  it("renders Active Plan warning when activePlan is null", () => {
     render(<Settings {...defaultProps} activePlan={null} />);
-    expect(screen.getByText("(アクティブなプランなし)")).toBeTruthy();
+    expect(screen.getAllByText("Active:").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("⚠ 未設定").length).toBeGreaterThan(0);
   });
 
   it("sends selectFile field:plan on the active-plan Select File click", async () => {
@@ -129,8 +131,8 @@ describe("Settings", () => {
   it("renders labels in English", () => {
     render(<Settings {...defaultProps} locale="en" />);
     const warnings = screen.getAllByText("⚠ Not set");
-    expect(warnings).toHaveLength(1);
-    expect(screen.getByText("(no active plan)")).toBeTruthy();
+    expect(warnings).toHaveLength(2);
+    expect(screen.getAllByText("Active:").length).toBeGreaterThan(0);
   });
 
   it("renders Uninstall Guide section", () => {
@@ -208,12 +210,79 @@ describe("Settings", () => {
     ).toBeTruthy();
   });
 
-  it("sends openPlanPanel message when Open Plan Panel is clicked", async () => {
+  it("renders Open Panel button in Plan section header", () => {
+    render(<Settings {...defaultProps} />);
+    expect(screen.getByRole("button", { name: "パネルを開く" })).toBeTruthy();
+  });
+
+  it("sends openPlanPanel message when Open Panel button is clicked", async () => {
     const { postMessage } = await import("../src/vscodeApi");
     (postMessage as ReturnType<typeof vi.fn>).mockClear();
     render(<Settings {...defaultProps} activePlan={null} />);
-    fireEvent.click(screen.getByText("プランパネルを開く"));
+    fireEvent.click(screen.getByRole("button", { name: "パネルを開く" }));
     expect(postMessage).toHaveBeenCalledWith({ type: "openPlanPanel" });
+  });
+
+  it("renders only Active row when active plan exists and no next plan", () => {
+    const activePlan: PlanDto = {
+      id: 10,
+      name: "Phase 1",
+      filePath: "docs/a.md",
+      status: "active",
+      sortOrder: 0,
+    };
+    render(<Settings {...defaultProps} activePlan={activePlan} />);
+    expect(screen.getByText("Active:")).toBeTruthy();
+    expect(screen.queryByText("Next:")).toBeNull();
+  });
+
+  it("renders both Active and Next rows when both exist, without Activate button", () => {
+    const activePlan: PlanDto = {
+      id: 11,
+      name: "Phase 1",
+      filePath: "docs/a.md",
+      status: "active",
+      sortOrder: 0,
+    };
+    const nextPlan: PlanDto = {
+      id: 12,
+      name: "Phase 2",
+      filePath: "docs/b.md",
+      status: "queued",
+      sortOrder: 1,
+    };
+    render(
+      <Settings
+        {...defaultProps}
+        activePlan={activePlan}
+        nextPlan={nextPlan}
+      />,
+    );
+    expect(screen.getByText("Active:")).toBeTruthy();
+    expect(screen.getByText("Next:")).toBeTruthy();
+    expect(screen.getByText("docs/a.md")).toBeTruthy();
+    expect(screen.getByText("docs/b.md")).toBeTruthy();
+    expect(screen.queryByText("有効化")).toBeNull();
+  });
+
+  it("shows warning UI plus Next row with Activate button when no active plan but next plan exists", async () => {
+    const { postMessage } = await import("../src/vscodeApi");
+    (postMessage as ReturnType<typeof vi.fn>).mockClear();
+    const nextPlan: PlanDto = {
+      id: 13,
+      name: "Phase 2",
+      filePath: "docs/b.md",
+      status: "queued",
+      sortOrder: 1,
+    };
+    render(
+      <Settings {...defaultProps} activePlan={null} nextPlan={nextPlan} />,
+    );
+    expect(screen.getAllByText("Active:").length).toBeGreaterThan(0);
+    expect(screen.getByText("Next:")).toBeTruthy();
+    expect(screen.getByText("docs/b.md")).toBeTruthy();
+    fireEvent.click(screen.getByText("有効化"));
+    expect(postMessage).toHaveBeenCalledWith({ type: "activatePlan", id: 13 });
   });
 
   it("disables cleanup button when nothing is selected", () => {

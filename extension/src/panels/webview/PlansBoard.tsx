@@ -12,7 +12,9 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import type { PlanStatus } from "@mentor-studio/shared";
-import { useMemo, useState } from "react";
+import { useContext, useMemo } from "react";
+import { LocaleContext, t } from "./i18n";
+import { PlanGroup } from "./PlanGroup";
 import { PlanRow } from "./PlanRow";
 import { s } from "./styles";
 import type { UiPlan } from "./types";
@@ -21,10 +23,7 @@ interface Props {
   plans: UiPlan[];
   onCreatePlanFromFile: () => void;
   onRenamePlan: (id: number, name: string) => void;
-  onActivatePlan: (id: number) => void;
-  onDeactivatePlan: (id: number) => void;
-  onRemovePlan: (id: number) => void;
-  onRestorePlan: (id: number) => void;
+  onSetPlanStatus: (id: number, toStatus: PlanStatus) => void;
   onOpenFile: (filePath: string) => void;
   onReorder: (orderedIds: number[]) => void;
   error: string | null;
@@ -42,7 +41,21 @@ export function computeReorderedIds(
   return arrayMove(ids, oldIndex, newIndex);
 }
 
-const DEFAULT_STATUSES: ReadonlySet<PlanStatus> = new Set<PlanStatus>([
+const GROUP_ORDER: PlanStatus[] = [
+  "active",
+  "queued",
+  "paused",
+  "backlog",
+  "completed",
+  "removed",
+];
+
+const REORDERABLE: ReadonlySet<PlanStatus> = new Set([
+  "queued",
+  "paused",
+  "backlog",
+]);
+const DEFAULT_OPEN: ReadonlySet<PlanStatus> = new Set([
   "active",
   "queued",
   "paused",
@@ -54,102 +67,122 @@ export function PlansBoard(props: Props): JSX.Element {
     plans,
     onCreatePlanFromFile,
     onRenamePlan,
-    onActivatePlan,
-    onDeactivatePlan,
-    onRemovePlan,
-    onRestorePlan,
+    onSetPlanStatus,
     onOpenFile,
     onReorder,
     error,
   } = props;
+  const locale = useContext(LocaleContext);
+  const tr = t(locale).board;
 
-  const [showCompleted, setShowCompleted] = useState(false);
-  const [showRemoved, setShowRemoved] = useState(false);
-
-  const visiblePlans = useMemo(() => {
-    return plans.filter((p) => {
-      if (DEFAULT_STATUSES.has(p.status)) return true;
-      if (p.status === "completed" && showCompleted) return true;
-      if (p.status === "removed" && showRemoved) return true;
-      return false;
-    });
-  }, [plans, showCompleted, showRemoved]);
+  const grouped = useMemo(() => {
+    const map = new Map<PlanStatus, UiPlan[]>();
+    for (const status of GROUP_ORDER) map.set(status, []);
+    for (const p of plans) {
+      map.get(p.status)?.push(p);
+    }
+    return map;
+  }, [plans]);
 
   const sensors = useSensors(useSensor(PointerSensor));
 
-  function handleDragEnd(ev: DragEndEvent): void {
-    const { active, over } = ev;
-    if (!over || active.id === over.id) return;
-    const ids = visiblePlans.map((p) => p.id);
-    const reordered = computeReorderedIds(
-      ids,
-      Number(active.id),
-      Number(over.id),
-    );
-    if (reordered !== ids) onReorder(reordered);
+  /** Build the full ordered ID list across all groups, applying a
+   *  within-group reorder to one specific group. The backend's
+   *  reorderPlans expects the complete list to avoid sortOrder collisions. */
+  function buildFullOrder(
+    targetStatus: PlanStatus,
+    reorderedGroupIds: number[],
+  ): number[] {
+    const result: number[] = [];
+    for (const st of GROUP_ORDER) {
+      if (st === targetStatus) {
+        result.push(...reorderedGroupIds);
+      } else {
+        for (const p of grouped.get(st) ?? []) result.push(p.id);
+      }
+    }
+    return result;
+  }
+
+  function handleDragEnd(status: PlanStatus) {
+    return (ev: DragEndEvent): void => {
+      const { active, over } = ev;
+      if (!over || active.id === over.id) return;
+      const groupPlans = grouped.get(status) ?? [];
+      const ids = groupPlans.map((p) => p.id);
+      const reordered = computeReorderedIds(
+        ids,
+        Number(active.id),
+        Number(over.id),
+      );
+      if (reordered !== ids) onReorder(buildFullOrder(status, reordered));
+    };
+  }
+
+  function renderGroupContent(status: PlanStatus): JSX.Element {
+    const groupPlans = grouped.get(status) ?? [];
+    const reorderable = REORDERABLE.has(status);
+
+    const rows = groupPlans.map((p) => (
+      <PlanRow
+        key={p.id}
+        plan={p}
+        reorderable={reorderable}
+        onRename={(name) => onRenamePlan(p.id, name)}
+        onSetStatus={(toStatus) => onSetPlanStatus(p.id, toStatus)}
+        onOpenFile={() => {
+          if (p.filePath) onOpenFile(p.filePath);
+        }}
+      />
+    ));
+
+    if (reorderable) {
+      return (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd(status)}
+        >
+          <SortableContext
+            items={groupPlans.map((p) => p.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {rows}
+          </SortableContext>
+        </DndContext>
+      );
+    }
+
+    return <>{rows}</>;
   }
 
   return (
     <div style={s.pane} data-testid="plans-board">
       <div style={s.header}>
-        <span style={s.headerTitle}>Plans</span>
-        <span style={s.headerToggles}>
-          <label style={s.toggleLabel}>
-            <input
-              type="checkbox"
-              checked={showCompleted}
-              onChange={(e) => setShowCompleted(e.target.checked)}
-              aria-label="show completed"
-            />
-            Show Completed
-          </label>
-          <label style={s.toggleLabel}>
-            <input
-              type="checkbox"
-              checked={showRemoved}
-              onChange={(e) => setShowRemoved(e.target.checked)}
-              aria-label="show removed"
-            />
-            Show Removed
-          </label>
-        </span>
+        <span style={s.headerTitle}>{tr.title}</span>
       </div>
       {error ? <div style={s.error}>{error}</div> : null}
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
-      >
-        <SortableContext
-          items={visiblePlans.map((p) => p.id)}
-          strategy={verticalListSortingStrategy}
-        >
-          {visiblePlans.map((p) => (
-            <PlanRow
-              key={p.id}
-              plan={p}
-              onRename={(name) => onRenamePlan(p.id, name)}
-              onActivate={() => onActivatePlan(p.id)}
-              onDeactivate={() => onDeactivatePlan(p.id)}
-              onRemove={() => onRemovePlan(p.id)}
-              onRestore={() => onRestorePlan(p.id)}
-              onOpenFile={() => {
-                if (p.filePath) onOpenFile(p.filePath);
-              }}
-            />
-          ))}
-        </SortableContext>
-      </DndContext>
-      {visiblePlans.length === 0 ? (
-        <div style={s.desc}>No plans to show — add one below.</div>
-      ) : null}
+      {GROUP_ORDER.map((status) => {
+        const groupPlans = grouped.get(status) ?? [];
+        return (
+          <PlanGroup
+            key={status}
+            status={status}
+            count={groupPlans.length}
+            reorderable={REORDERABLE.has(status)}
+            defaultOpen={DEFAULT_OPEN.has(status)}
+          >
+            {renderGroupContent(status)}
+          </PlanGroup>
+        );
+      })}
       <div style={s.addRow}>
         <button
           style={s.button}
           onClick={onCreatePlanFromFile}
           data-testid="plan-add-from-file"
         >
-          Add Plan from File…
+          {tr.addPlanFromFile}
         </button>
       </div>
     </div>

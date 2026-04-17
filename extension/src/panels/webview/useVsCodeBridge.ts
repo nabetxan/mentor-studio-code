@@ -1,4 +1,4 @@
-import type { PlanDto, TaskDto, TopicDto } from "@mentor-studio/shared";
+import type { Locale, PlanDto, TaskDto, TopicDto } from "@mentor-studio/shared";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PanelMessage, PanelRequest } from "../protocol";
 
@@ -19,12 +19,13 @@ export type BridgeRequest =
   | Omit<Extract<PanelRequest, { type: "createPlan" }>, "requestId">
   | Omit<Extract<PanelRequest, { type: "updatePlan" }>, "requestId">
   | Omit<Extract<PanelRequest, { type: "removePlan" }>, "requestId">
-  | Omit<Extract<PanelRequest, { type: "restorePlan" }>, "requestId">;
+  | Omit<Extract<PanelRequest, { type: "setPlanStatus" }>, "requestId">;
 
 export interface Snapshot {
   plans: PlanDto[];
   tasks: TaskDto[];
   topics: TopicDto[];
+  locale: Locale;
 }
 
 export interface Bridge {
@@ -62,6 +63,7 @@ export function useVsCodeBridge(): Bridge {
     plans: [],
     tasks: [],
     topics: [],
+    locale: "en",
   });
   const [ready, setReady] = useState(false);
 
@@ -94,6 +96,7 @@ export function useVsCodeBridge(): Bridge {
             plans: msg.plans,
             tasks: msg.tasks,
             topics: msg.topics,
+            locale: msg.locale ?? "en",
           });
           setReady(true);
           return;

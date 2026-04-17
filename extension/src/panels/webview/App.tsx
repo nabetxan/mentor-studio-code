@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import type { PlanStatus } from "@mentor-studio/shared";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { LocaleContext } from "./i18n";
 import { PlansBoard } from "./PlansBoard";
 import { s } from "./styles";
 import type { UiPlan } from "./types";
 import { useVsCodeBridge } from "./useVsCodeBridge";
 
-/** Extract a plan name from a filesystem path: strip directories and extension. */
 function basenameWithoutExt(filePath: string): string {
   const lastSlash = Math.max(
     filePath.lastIndexOf("/"),
@@ -19,32 +20,29 @@ export function App(): JSX.Element {
   const { ready, snapshot, sendRequest, pickPlanFile, openFile } =
     useVsCodeBridge();
 
-  // Optimistic overlays
   const [tentativePlans, setTentativePlans] = useState<UiPlan[]>([]);
   const [planOverrides, setPlanOverrides] = useState<
     Record<number, Partial<UiPlan>>
   >({});
-  const [hiddenPlanIds, setHiddenPlanIds] = useState<Set<number>>(new Set());
   const [planOrderOverride, setPlanOrderOverride] = useState<number[] | null>(
     null,
   );
-
   const [plansError, setPlansError] = useState<string | null>(null);
 
-  // Any fresh snapshot clears overrides (the server is authoritative now).
+  // Fresh snapshot clears all optimistic state
   useEffect(() => {
     if (!ready) return;
     setTentativePlans([]);
     setPlanOverrides({});
-    setHiddenPlanIds(new Set());
     setPlanOrderOverride(null);
   }, [ready, snapshot]);
 
-  // Compose display list from server + overrides
   const plans: UiPlan[] = useMemo(() => {
-    const visible: UiPlan[] = snapshot.plans
-      .filter((p) => !hiddenPlanIds.has(p.id))
-      .map((p) => ({ ...p, ...planOverrides[p.id] }));
+    const visible: UiPlan[] = snapshot.plans.map((p) => ({
+      ...p,
+      ...planOverrides[p.id],
+      pending: planOverrides[p.id]?.pending,
+    }));
     let merged: UiPlan[] = [...visible, ...tentativePlans];
     if (planOrderOverride) {
       const byId = new Map(merged.map((p: UiPlan) => [p.id, p]));
@@ -57,18 +55,8 @@ export function App(): JSX.Element {
       merged = ordered;
     }
     return merged;
-  }, [
-    snapshot.plans,
-    tentativePlans,
-    planOverrides,
-    hiddenPlanIds,
-    planOrderOverride,
-  ]);
+  }, [snapshot.plans, tentativePlans, planOverrides, planOrderOverride]);
 
-  // ---------- Plan handlers ----------
-
-  // Creates as backlog (no auto-activate). Sidebar's counterpart activates
-  // immediately — different UX roles, intentionally split.
   async function handleCreatePlanFromFile(): Promise<void> {
     setPlansError(null);
     let filePath: string | null;
@@ -122,97 +110,32 @@ export function App(): JSX.Element {
     }
   }
 
-  async function handleActivatePlan(id: number): Promise<void> {
-    setPlanOverrides((prev) => ({
-      ...prev,
-      [id]: { ...prev[id], status: "active", pending: true },
-    }));
-    setPlansError(null);
-    try {
-      await sendRequest({ type: "updatePlan", id, status: "active" });
-      setPlanOverrides((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-    } catch (e) {
-      setPlanOverrides((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-      setPlansError(errMsg(e));
-    }
-  }
-
-  async function handleDeactivatePlan(id: number): Promise<void> {
-    setPlanOverrides((prev) => ({
-      ...prev,
-      [id]: { ...prev[id], status: "queued", pending: true },
-    }));
-    setPlansError(null);
-    try {
-      await sendRequest({ type: "updatePlan", id, status: "queued" });
-      setPlanOverrides((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-    } catch (e) {
-      setPlanOverrides((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-      setPlansError(errMsg(e));
-    }
-  }
-
-  async function handleRemovePlan(id: number): Promise<void> {
-    setPlanOverrides((prev) => ({
-      ...prev,
-      [id]: { ...prev[id], status: "removed", pending: true },
-    }));
-    setPlansError(null);
-    try {
-      await sendRequest({ type: "removePlan", id });
-      setPlanOverrides((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-    } catch (e) {
-      setPlanOverrides((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-      setPlansError(errMsg(e));
-    }
-  }
-
-  async function handleRestorePlan(id: number): Promise<void> {
-    setPlanOverrides((prev) => ({
-      ...prev,
-      [id]: { ...prev[id], status: "backlog", pending: true },
-    }));
-    setPlansError(null);
-    try {
-      await sendRequest({ type: "restorePlan", id, toStatus: "backlog" });
-      setPlanOverrides((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-    } catch (e) {
-      setPlanOverrides((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-      setPlansError(errMsg(e));
-    }
-  }
+  const handleSetPlanStatus = useCallback(
+    async (id: number, toStatus: PlanStatus): Promise<void> => {
+      // Optimistically swap the row's status so the badge doesn't flicker
+      // between writeOk and the next snapshot arrival. The override is cleared
+      // by the `ready/snapshot` useEffect once a fresh snapshot lands.
+      setPlanOverrides((prev) => ({
+        ...prev,
+        [id]: { ...prev[id], status: toStatus, pending: true },
+      }));
+      setPlansError(null);
+      try {
+        await sendRequest({ type: "setPlanStatus", id, toStatus });
+      } catch (e) {
+        setPlanOverrides((prev) => {
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        });
+        const msg = errMsg(e);
+        if (msg !== "busy") {
+          setPlansError(msg);
+        }
+      }
+    },
+    [sendRequest],
+  );
 
   async function handleReorderPlans(orderedIds: number[]): Promise<void> {
     setPlanOrderOverride(orderedIds);
@@ -227,20 +150,21 @@ export function App(): JSX.Element {
   }
 
   return (
-    <div style={s.app}>
-      <PlansBoard
-        plans={plans}
-        onCreatePlanFromFile={() => void handleCreatePlanFromFile()}
-        onRenamePlan={(id, name) => void handleRenamePlan(id, name)}
-        onActivatePlan={(id) => void handleActivatePlan(id)}
-        onDeactivatePlan={(id) => void handleDeactivatePlan(id)}
-        onRemovePlan={(id) => void handleRemovePlan(id)}
-        onRestorePlan={(id) => void handleRestorePlan(id)}
-        onOpenFile={openFile}
-        onReorder={(ids) => void handleReorderPlans(ids)}
-        error={plansError}
-      />
-    </div>
+    <LocaleContext.Provider value={snapshot.locale}>
+      <div style={s.app}>
+        <PlansBoard
+          plans={plans}
+          onCreatePlanFromFile={() => void handleCreatePlanFromFile()}
+          onRenamePlan={(id, name) => void handleRenamePlan(id, name)}
+          onSetPlanStatus={(id, toStatus) =>
+            void handleSetPlanStatus(id, toStatus)
+          }
+          onOpenFile={openFile}
+          onReorder={(ids) => void handleReorderPlans(ids)}
+          error={plansError}
+        />
+      </div>
+    </LocaleContext.Provider>
   );
 }
 

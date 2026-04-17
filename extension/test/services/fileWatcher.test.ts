@@ -219,4 +219,43 @@ describe("FileWatcherService: pauseActivePlan / changeActivePlanFile / createAnd
       "db_not_ready",
     );
   });
+
+  it("write methods invoke onDbChanged so Plan Panel stays in sync", async () => {
+    await withWriteTransaction(
+      env.paths.dbPath,
+      { wasmPath: WASM, purpose: "normal" },
+      (db: Database) => {
+        db.exec(
+          "INSERT INTO plans (name, filePath, status, sortOrder, createdAt) VALUES ('p3', 'old.md', 'queued', 1, '2026-01-01T00:00:00Z')",
+        );
+        return undefined;
+      },
+    );
+    const id = await (async () => {
+      const db = await openDb(env.paths.dbPath);
+      try {
+        return Number(
+          db.exec("SELECT id FROM plans WHERE name='p3'")[0].values[0][0],
+        );
+      } finally {
+        db.close();
+      }
+    })();
+
+    const onDbChanged = vi.fn();
+    const svcWithHook = new FileWatcherService(
+      env.dir,
+      ".mentor",
+      () => {},
+      undefined,
+      undefined,
+      undefined,
+      onDbChanged,
+      env.paths.dbPath,
+      WASM,
+    );
+
+    await svcWithHook.changeActivePlanFile(id, "new-path.md");
+    expect(onDbChanged).toHaveBeenCalledTimes(1);
+  });
 });

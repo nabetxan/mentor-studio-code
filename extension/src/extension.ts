@@ -81,7 +81,21 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     vscode.commands.registerCommand("mentor-studio.openPlanPanel", () => {
-      PlanPanel.createOrShow(context, bus, { dbPath, wasmPath });
+      const workspaceRoot =
+        vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? "";
+      // Every Plan Panel write refreshes the sidebar dashboard and broadcasts
+      // dbChanged so the panel's own webview re-fetches a fresh snapshot.
+      // Mirrors what FileWatcherService runs for sidebar-initiated writes.
+      const onAfterWrite = async (): Promise<void> => {
+        await watcher.refresh();
+        bus.broadcast({ type: "dbChanged" });
+      };
+      PlanPanel.createOrShow(
+        context,
+        bus,
+        { dbPath, wasmPath, workspaceRoot },
+        onAfterWrite,
+      );
     }),
   );
 
@@ -106,6 +120,10 @@ export function activate(context: vscode.ExtensionContext): void {
       } else {
         sidebarProvider.sendNoConfig();
       }
+      // Reuse dbChanged so the Plan Panel re-fetches initData — that's where
+      // locale lives, so a config-file edit (e.g. locale flipped in Settings)
+      // propagates to an open panel without needing its own message type.
+      bus.broadcast({ type: "dbChanged" });
     },
     (msg) => getOutputChannel().appendLine(msg),
     context.globalState,

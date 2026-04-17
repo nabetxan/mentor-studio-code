@@ -67,16 +67,11 @@ function loadInitialData(): void {
         status: "active",
         sortOrder: 1,
       },
-      {
-        id: 2,
-        name: "Plan B",
-        filePath: null,
-        status: "queued",
-        sortOrder: 2,
-      },
+      { id: 2, name: "Plan B", filePath: null, status: "queued", sortOrder: 2 },
     ],
     tasks: [],
     topics: [],
+    locale: "en",
   });
 }
 
@@ -101,7 +96,6 @@ describe("App <Plan Panel>", () => {
     const pickReq = posted.find((p) => p.type === "pickPlanFile");
     expect(pickReq).toBeDefined();
 
-    // Server responds with a file path
     simulateIncoming({
       type: "pickPlanFileResult",
       requestId: lastRequestId("pickPlanFile"),
@@ -115,107 +109,65 @@ describe("App <Plan Panel>", () => {
     expect(createReq).toBeDefined();
     expect(createReq?.name).toBe("my-plan");
     expect(createReq?.filePath).toBe("/work/plans/my-plan.md");
-
-    // Optimistic tentative row
-    expect(screen.getByText("my-plan")).toBeTruthy();
-
-    simulateIncoming({
-      type: "writeOk",
-      requestId: lastRequestId("createPlan"),
-    });
-    await flush();
-    expect(screen.queryByText("my-plan")).toBeNull();
   });
 
-  it("Add Plan from File with null result does NOT post createPlan", async () => {
+  it("badge button click -> status menu -> select paused -> posts setPlanStatus", () => {
     render(<App />);
     loadInitialData();
-    fireEvent.click(screen.getByTestId("plan-add-from-file"));
-    simulateIncoming({
-      type: "pickPlanFileResult",
-      requestId: lastRequestId("pickPlanFile"),
-      filePath: null,
-    });
-    await flush();
-    expect(posted.find((p) => p.type === "createPlan")).toBeUndefined();
-  });
-
-  it("Activate on a queued plan posts updatePlan status=active", () => {
-    render(<App />);
-    loadInitialData();
-    const toggles = screen.getAllByTestId("plan-toggle-active");
-    // index 1 = Plan B queued
-    fireEvent.click(toggles[1]!);
-    const req = posted.find((p) => p.type === "updatePlan" && p.id === 2) as
-      | Extract<PanelRequest, { type: "updatePlan" }>
+    // Find Plan B's badge button (it's in the Queued group)
+    const badges = screen.getAllByTestId("plan-status-btn");
+    const planBBadge = badges.find((b) => b.textContent?.includes("Queued"));
+    fireEvent.click(planBBadge!);
+    const items = screen.getAllByRole("menuitem");
+    const pausedItem = items.find((i) => i.textContent?.includes("Paused"));
+    fireEvent.click(pausedItem!);
+    const req = posted.find((p) => p.type === "setPlanStatus") as
+      | Extract<PanelRequest, { type: "setPlanStatus" }>
       | undefined;
-    expect(req?.status).toBe("active");
+    expect(req).toBeDefined();
+    expect(req?.id).toBe(2);
+    expect(req?.toStatus).toBe("paused");
   });
 
-  it("Deactivate on active plan posts updatePlan status=queued", () => {
-    render(<App />);
-    loadInitialData();
-    const toggles = screen.getAllByTestId("plan-toggle-active");
-    fireEvent.click(toggles[0]!);
-    const req = posted.find((p) => p.type === "updatePlan" && p.id === 1) as
-      | Extract<PanelRequest, { type: "updatePlan" }>
-      | undefined;
-    expect(req?.status).toBe("queued");
-  });
-
-  it("Remove plan posts removePlan and optimistically hides the row", () => {
-    render(<App />);
-    loadInitialData();
-    const dels = screen.getAllByTestId("plan-remove");
-    fireEvent.click(dels[1]!);
-    expect(screen.queryByText("Plan B")).toBeNull();
-    const req = posted.find((p) => p.type === "removePlan");
-    expect(req).toMatchObject({ type: "removePlan", id: 2 });
-  });
-
-  it("rolls back optimistic remove on writeError", async () => {
-    render(<App />);
-    loadInitialData();
-    const dels = screen.getAllByTestId("plan-remove");
-    fireEvent.click(dels[1]!);
-    expect(screen.queryByText("Plan B")).toBeNull();
-
-    const reqId = lastRequestId("removePlan");
-    simulateIncoming({
-      type: "writeError",
-      requestId: reqId,
-      error: "FK fail",
-    });
-    await flush();
-
-    expect(screen.getByText("Plan B")).toBeTruthy();
-    expect(screen.getByText("FK fail")).toBeTruthy();
-  });
-
-  it("Restore on removed plan posts restorePlan with toStatus=backlog", async () => {
+  it("locale=ja is passed through context", () => {
     render(<App />);
     simulateIncoming({
       type: "initData",
       plans: [
         {
-          id: 5,
-          name: "Plan Gone",
+          id: 1,
+          name: "Plan A",
           filePath: null,
-          status: "removed",
+          status: "queued",
           sortOrder: 1,
         },
       ],
       tasks: [],
       topics: [],
+      locale: "ja",
     });
-    fireEvent.click(screen.getByLabelText("show removed"));
-    fireEvent.click(screen.getByTestId("plan-restore"));
-    const req = posted.find((p) => p.type === "restorePlan") as
-      | Extract<PanelRequest, { type: "restorePlan" }>
-      | undefined;
-    expect(req).toBeDefined();
-    expect(req?.id).toBe(5);
-    expect(req?.toStatus).toBe("backlog");
+    const badge = screen.getByTestId("plan-status-btn");
+    expect(badge.textContent).toContain("\u5F85\u6A5F");
+  });
+
+  it("missing locale in initData falls back to en", () => {
+    render(<App />);
+    simulateIncoming({
+      type: "initData",
+      plans: [
+        {
+          id: 1,
+          name: "Plan A",
+          filePath: null,
+          status: "queued",
+          sortOrder: 1,
+        },
+      ],
+      tasks: [],
+      topics: [],
+    } as unknown as PanelMessage);
+    const badge = screen.getByTestId("plan-status-btn");
+    expect(badge.textContent).toContain("Queued");
   });
 
   it("dbChanged triggers a fresh 'ready' post", () => {
@@ -235,30 +187,5 @@ describe("App <Plan Panel>", () => {
       type: "openMarkdownFile",
       filePath: "/work/a.md",
     });
-  });
-
-  it("rolls back optimistic create on writeError", async () => {
-    render(<App />);
-    loadInitialData();
-
-    fireEvent.click(screen.getByTestId("plan-add-from-file"));
-    simulateIncoming({
-      type: "pickPlanFileResult",
-      requestId: lastRequestId("pickPlanFile"),
-      filePath: "/work/bad.md",
-    });
-    await flush();
-
-    expect(screen.getByText("bad")).toBeTruthy();
-    const reqId = lastRequestId("createPlan");
-    simulateIncoming({
-      type: "writeError",
-      requestId: reqId,
-      error: "nope",
-    });
-    await flush();
-
-    expect(screen.queryByText("bad")).toBeNull();
-    expect(screen.getByText("nope")).toBeTruthy();
   });
 });

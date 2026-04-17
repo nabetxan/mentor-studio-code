@@ -103,6 +103,7 @@ export interface DashboardData {
   topicsWithHistory: string[];
   plans: PlanDto[];
   activePlan: PlanDto | null;
+  nextPlan: PlanDto | null;
 }
 
 // === Extension <-> Webview message protocol ===

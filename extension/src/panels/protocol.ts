@@ -1,4 +1,5 @@
 import type {
+  Locale,
   PlanDto,
   PlanStatus,
   TaskDto,
@@ -7,7 +8,13 @@ import type {
 
 // Extension → Panel
 export type PanelMessage =
-  | { type: "initData"; plans: PlanDto[]; tasks: TaskDto[]; topics: TopicDto[] }
+  | {
+      type: "initData";
+      plans: PlanDto[];
+      tasks: TaskDto[];
+      topics: TopicDto[];
+      locale: Locale;
+    }
   | { type: "dbChanged"; timestamp?: number } // optional — not all broadcasters populate it
   | { type: "writeError"; requestId: string; error: string }
   | { type: "writeOk"; requestId: string }
@@ -23,14 +30,13 @@ export type PanelRequest =
       id: number;
       name?: string;
       filePath?: string | null;
-      status?: "active" | "queued";
     }
   | { type: "removePlan"; requestId: string; id: number }
   | {
-      type: "restorePlan";
+      type: "setPlanStatus";
       requestId: string;
       id: number;
-      toStatus: Exclude<PlanStatus, "active" | "removed">;
+      toStatus: PlanStatus;
     }
   | { type: "openMarkdownFile"; filePath: string }
   | { type: "pickPlanFile"; requestId: string }

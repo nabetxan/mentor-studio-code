@@ -1,40 +1,42 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import type { PlanStatus } from "@mentor-studio/shared";
 import type { CSSProperties } from "react";
-import { useState } from "react";
+import { useContext, useState } from "react";
+import { LocaleContext, t } from "./i18n";
+import { OpenExternalIcon } from "./icons";
+import { StatusMenu } from "./StatusMenu";
 import { s } from "./styles";
 import type { UiPlan } from "./types";
 
 interface Props {
   plan: UiPlan;
+  reorderable: boolean;
   onRename: (name: string) => void;
-  onActivate: () => void;
-  onDeactivate: () => void;
-  onRemove: () => void;
-  onRestore: () => void;
+  onSetStatus: (toStatus: PlanStatus) => void;
   onOpenFile: () => void;
 }
 
-export function PlanRow(props: Props): JSX.Element {
-  const {
-    plan,
-    onRename,
-    onActivate,
-    onDeactivate,
-    onRemove,
-    onRestore,
-    onOpenFile,
-  } = props;
+export function PlanRow({
+  plan,
+  reorderable,
+  onRename,
+  onSetStatus,
+  onOpenFile,
+}: Props): JSX.Element {
+  const locale = useContext(LocaleContext);
+  const tr = t(locale);
+  const labels = tr.planStatus;
 
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: plan.id });
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(plan.name);
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  const isRemoved = plan.status === "removed";
-  const isCompleted = plan.status === "completed";
   const isActive = plan.status === "active";
+  const isRemoved = plan.status === "removed";
 
   const style: CSSProperties = {
     ...s.row,
@@ -42,6 +44,7 @@ export function PlanRow(props: Props): JSX.Element {
     ...(isRemoved ? s.rowRemoved : {}),
     transform: CSS.Transform.toString(transform),
     transition,
+    position: "relative",
   };
 
   function commit(): void {
@@ -57,11 +60,10 @@ export function PlanRow(props: Props): JSX.Element {
   return (
     <div ref={setNodeRef} style={style} data-testid="plan-row">
       <span
-        style={s.handle}
-        {...attributes}
-        {...listeners}
+        style={reorderable ? s.handle : s.handleHidden}
+        {...(reorderable ? { ...attributes, ...listeners } : {})}
         data-testid="plan-handle"
-        aria-label="drag handle"
+        aria-label={tr.aria.dragHandle}
       >
         ≡
       </span>
@@ -79,7 +81,7 @@ export function PlanRow(props: Props): JSX.Element {
             }
           }}
           autoFocus
-          aria-label="plan name input"
+          aria-label={tr.aria.planNameInput}
         />
       ) : (
         <span
@@ -93,45 +95,37 @@ export function PlanRow(props: Props): JSX.Element {
           {plan.name}
         </span>
       )}
-      <span style={s.badge} data-testid="plan-status">
-        {plan.status}
+      <span style={{ position: "relative", display: "inline-block" }}>
+        <button
+          style={isActive ? s.badgeButtonActive : s.badgeButton}
+          data-testid="plan-status-btn"
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((prev) => !prev)}
+        >
+          {labels[plan.status]} ▾
+        </button>
+        {menuOpen ? (
+          <StatusMenu
+            currentStatus={plan.status}
+            onSelect={(toStatus) => {
+              setMenuOpen(false);
+              onSetStatus(toStatus);
+            }}
+            onClose={() => setMenuOpen(false)}
+          />
+        ) : null}
       </span>
       {plan.filePath ? (
         <button
-          style={s.buttonGhost}
+          style={{ ...s.buttonGhost, gap: 4 }}
           onClick={onOpenFile}
-          aria-label="open plan file"
+          aria-label={tr.aria.openPlanFile}
         >
-          open ↗
+          {tr.board.openPlanFile}
+          <OpenExternalIcon />
         </button>
       ) : null}
-      {isRemoved ? (
-        <button
-          style={s.buttonGhost}
-          onClick={onRestore}
-          data-testid="plan-restore"
-        >
-          Restore
-        </button>
-      ) : (
-        <>
-          <button
-            style={isCompleted ? s.buttonGhost : s.button}
-            onClick={isActive ? onDeactivate : onActivate}
-            data-testid="plan-toggle-active"
-            data-variant={isCompleted ? "ghost" : "primary"}
-          >
-            {isActive ? "Deactivate" : "Activate"}
-          </button>
-          <button
-            style={s.buttonGhost}
-            onClick={onRemove}
-            data-testid="plan-remove"
-          >
-            Remove
-          </button>
-        </>
-      )}
     </div>
   );
 }
