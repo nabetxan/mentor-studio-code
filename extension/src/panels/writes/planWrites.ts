@@ -159,6 +159,33 @@ export async function activatePlan(
     } finally {
       stmt.free();
     }
+
+    const hasActive = db.exec(
+      "SELECT 1 FROM tasks WHERE status = 'active' LIMIT 1",
+    );
+    if (!hasActive[0]?.values?.length) {
+      const firstQueued = db.prepare(
+        "SELECT id FROM tasks WHERE planId = ? AND status = 'queued' ORDER BY sortOrder ASC, id ASC LIMIT 1",
+      );
+      let firstId: number | null = null;
+      try {
+        firstQueued.bind([args.id]);
+        if (firstQueued.step()) firstId = Number(firstQueued.get()[0]);
+      } finally {
+        firstQueued.free();
+      }
+      if (firstId !== null) {
+        const act = db.prepare(
+          "UPDATE tasks SET status = 'active' WHERE id = ?",
+        );
+        try {
+          act.run([firstId]);
+        } finally {
+          act.free();
+        }
+      }
+    }
+
     assertStatusInvariants(db);
   });
 }

@@ -11,9 +11,17 @@ export async function createTask(
   dbPath: string,
   args: { planId: number; name: string },
   wasmPath: string,
-): Promise<{ id: number }> {
+): Promise<{ id: number; activated: boolean }> {
   return withWriteTransaction(dbPath, { wasmPath, purpose: "normal" }, (db) => {
-    if (!rowExists(db, "plans", args.planId)) {
+    const planStmt = db.prepare("SELECT status FROM plans WHERE id = ?");
+    let planStatus: string | null = null;
+    try {
+      planStmt.bind([args.planId]);
+      if (planStmt.step()) planStatus = String(planStmt.get()[0]);
+    } finally {
+      planStmt.free();
+    }
+    if (planStatus === null) {
       throw new Error(`plan not found: ${args.planId}`);
     }
 
@@ -40,8 +48,27 @@ export async function createTask(
     }
     const idRes = db.exec("SELECT last_insert_rowid()");
     const id = Number(idRes[0].values[0][0]);
+
+    let activated = false;
+    if (planStatus === "active") {
+      const hasActive = db.exec(
+        "SELECT 1 FROM tasks WHERE status = 'active' LIMIT 1",
+      );
+      if (!hasActive[0]?.values?.length) {
+        const upd = db.prepare(
+          "UPDATE tasks SET status = 'active' WHERE id = ?",
+        );
+        try {
+          upd.run([id]);
+        } finally {
+          upd.free();
+        }
+        activated = true;
+      }
+    }
+
     assertStatusInvariants(db);
-    return { id };
+    return { id, activated };
   });
 }
 

@@ -49,8 +49,8 @@ For all writes, use the bundled CLI:
 node .mentor/tools/mentor-cli.js <command> '<json-arg>'
 \`\`\`
 
-Write commands: \`record-answer\`, \`add-topic\`, \`update-task\`, \`update-progress\`, \`update-profile\`, \`update-config\`.
-Read commands: \`session-brief '{"flow":"..."}'\`, \`list-topics\`, \`list-unresolved '{"topicId":N,"limit":N}'\`.
+Write commands: \`record-answer\`, \`add-topic\`, \`add-plan\`, \`add-task\`, \`activate-plan\`, \`activate-task\`, \`update-plan\`, \`update-task\`, \`update-progress\`, \`update-profile\`, \`update-config\`.
+Read commands: \`session-brief '{"flow":"..."}'\`, \`list-plans\`, \`list-topics\`, \`list-unresolved '{"topicId":N,"limit":N}'\`.
 
 All commands output JSON: \`{"ok":true,...}\` on success, \`{"ok":false,"error":"..."}\` on failure.
 
@@ -176,7 +176,7 @@ description: Main learning session — loads session state, runs Teaching Cycle,
    **Case A — No \`active\` plan (zero plans with status \`active\`)**:
    - Tell the user there is no active plan.
    - Ask: "Which plan would you like to activate?" and list the \`queued\`/\`paused\`/\`backlog\` plans returned.
-   - On user selection: \`node .mentor/tools/mentor-cli.js activate-plan '{"id":<id>}'\`
+   - On user selection: \`node .mentor/tools/mentor-cli.js activate-plan '{"id":<id>}'\` — this also auto-activates the plan's first queued task when no task is active globally.
    - Re-run \`list-plans '{}'\` and continue to Case B/C.
 
    **Case B — \`active\` plan exists but \`taskCount === 0\`** (tasks not yet registered in DB):
@@ -184,14 +184,19 @@ description: Main learning session — loads session state, runs Teaching Cycle,
    - If the plan has a \`filePath\` pointing to an existing markdown file → read it. Extract any \`## Task N\` headings as a starting point; otherwise generate a structured task list (≥ 1 task) from the goal.
    - If the plan has no \`filePath\` (UI-only plan) → ask the user about the goal, then propose creating \`.mentor/plan/YYYY-MM-DD-<slug>.md\` with the task breakdown. Never overwrite an existing file; append a counter or timestamp on collision.
    - On user confirmation:
-     - Register each task in order: \`node .mentor/tools/mentor-cli.js add-task '{"planId":<id>,"name":"<task name>"}'\`
+     - Register each task in order: \`node .mentor/tools/mentor-cli.js add-task '{"planId":<id>,"name":"<task name>"}'\` — the first \`add-task\` under an active plan with no active task auto-activates that task (\`{"activated":true}\` in the response); subsequent tasks stay \`queued\`.
      - If a markdown file was newly created, set \`filePath\`: \`node .mentor/tools/mentor-cli.js update-plan '{"id":<id>,"filePath":"<rel path>"}'\`
 
-   **Case C — \`active\` plan exists with tasks**: no action needed.
+   **Case C — \`active\` plan exists with tasks**: no action needed. If \`currentTask\` is still null after re-running \`session-brief\` (e.g. all tasks were queued and none were auto-activated), pick the first queued task and run \`node .mentor/tools/mentor-cli.js activate-task '{"id":<id>}'\`. The active-task invariant requires the task's plan to be active, so \`activate-task\` only succeeds within the current active plan.
 
    Also check any \`queued\` plan with \`taskCount === 0\` and apply the same task-generation flow as Case B before activating it.
 
    After the health check completes, re-run \`session-brief\` to pick up the now-populated \`currentTask\`.
+
+   **Current Task Sync** — once \`currentTask\` is resolved, ensure \`.mentor/current-task.md\` reflects it:
+   - Read \`.mentor/current-task.md\`.
+   - If the file is empty, is still the initial placeholder, or describes a different task than \`currentTask\` → overwrite it with \`currentTask.name\` and the task's steps (pull them from the plan markdown file when available; otherwise draft them from the goal).
+   - The AI is the sole writer of this file. The extension only seeds a placeholder at setup and never updates it at runtime.
 
    ### Plan Status Reference
 
@@ -288,7 +293,7 @@ Run in order, never skip:
    \`\`\`
    Response shape: \`{"ok":true,"nextTask":{"id":N,"name":"...","planId":N}|null,"planCompleted":bool}\`. The CLI auto-advances the next queued task to \`active\`.
 2. Handle the response:
-   - \`nextTask\` is not null → tell the user the next task (\`nextTask.name\`) has been activated. Offer to start it now, or let them stop and resume later.
+   - \`nextTask\` is not null → overwrite \`.mentor/current-task.md\` with \`nextTask.name\` and its steps (pull them from the plan markdown when available), then tell the user the next task has been activated. Offer to start it now, or let them stop and resume later.
    - \`nextTask\` is null AND \`planCompleted\` is true → congratulate the learner on finishing the plan. Ask them to pick the next plan from the Plan Panel (\`Mentor Studio Code: Open Plan Panel\`), then stop.
    - \`nextTask\` is null AND \`planCompleted\` is false → the plan has no queued tasks left but is not marked complete. Tell the user to open the Plan Panel to add or reorder tasks.
 3. Update resume context:
@@ -397,7 +402,7 @@ description: Review the current task's implementation against requirements.
    - If the command returns \`{"ok": false, ...}\`, tell the user the error and STOP.
    - Output fields you will use: \`currentTask\` (\`{id, name, planId}\` or null), \`resumeContext\`.
    - If \`currentTask\` is null → tell the user there is no active task to review and stop.
-4. Read \`.mentor/current-task.md\` — the extension keeps this file in sync with the active task and holds the full requirements.
+4. Read \`.mentor/current-task.md\` — it holds the full requirements of the active task. The mentor-session flow keeps this file in sync; if it is empty or out of date, ask the user to start or resume a mentor-session first.
 
 ## Flow
 

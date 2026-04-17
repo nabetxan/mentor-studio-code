@@ -1,7 +1,14 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { addTask } from "../../src/cli/commands/addTask";
-import { makeEnv, makeEnvWithDb, seedPlans, type TestEnv } from "./helpers";
+import {
+  makeEnv,
+  makeEnvWithDb,
+  seedPlans,
+  seedTasks,
+  withDb,
+  type TestEnv,
+} from "./helpers";
 
 describe("add-task", () => {
   let env: TestEnv;
@@ -30,7 +37,7 @@ describe("add-task", () => {
       expect(res).toMatchObject({ ok: true, id: 1 });
     });
 
-    it("assigns sequential ids for multiple tasks", async () => {
+    it("auto-activates the first task under an active plan", async () => {
       await seedPlans(env.paths.dbPath, [
         {
           name: "Plan A",
@@ -41,8 +48,61 @@ describe("add-task", () => {
       ]);
       const r1 = await addTask({ planId: 1, name: "Task 1" }, env.paths);
       const r2 = await addTask({ planId: 1, name: "Task 2" }, env.paths);
-      expect(r1).toMatchObject({ ok: true, id: 1 });
-      expect(r2).toMatchObject({ ok: true, id: 2 });
+      expect(r1).toMatchObject({ ok: true, id: 1, activated: true });
+      expect(r2).toMatchObject({ ok: true, id: 2, activated: false });
+
+      const rows = await withDb(env.paths.dbPath, (db) => {
+        const r = db.exec("SELECT id, status FROM tasks ORDER BY id ASC");
+        return r[0]?.values;
+      });
+      expect(rows).toEqual([
+        [1, "active"],
+        [2, "queued"],
+      ]);
+    });
+
+    it("does not auto-activate when the plan is not active", async () => {
+      await seedPlans(env.paths.dbPath, [
+        {
+          name: "Plan A",
+          status: "backlog",
+          sortOrder: 1,
+          createdAt: "2026-01-01T00:00:00Z",
+        },
+      ]);
+      const res = await addTask({ planId: 1, name: "Task 1" }, env.paths);
+      expect(res).toMatchObject({ ok: true, id: 1, activated: false });
+
+      const rows = await withDb(env.paths.dbPath, (db) => {
+        const r = db.exec("SELECT id, status FROM tasks ORDER BY id ASC");
+        return r[0]?.values;
+      });
+      expect(rows).toEqual([[1, "queued"]]);
+    });
+
+    it("does not auto-activate when an active task already exists", async () => {
+      await seedPlans(env.paths.dbPath, [
+        {
+          name: "Plan A",
+          status: "active",
+          sortOrder: 1,
+          createdAt: "2026-01-01T00:00:00Z",
+        },
+      ]);
+      await seedTasks(env.paths.dbPath, [
+        { planId: 1, name: "Existing", status: "active", sortOrder: 1 },
+      ]);
+      const res = await addTask({ planId: 1, name: "Task 2" }, env.paths);
+      expect(res).toMatchObject({ ok: true, id: 2, activated: false });
+
+      const rows = await withDb(env.paths.dbPath, (db) => {
+        const r = db.exec("SELECT id, status FROM tasks ORDER BY id ASC");
+        return r[0]?.values;
+      });
+      expect(rows).toEqual([
+        [1, "active"],
+        [2, "queued"],
+      ]);
     });
 
     it("returns plan_not_found for bogus planId", async () => {

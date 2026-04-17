@@ -31,12 +31,12 @@ export const addTask: Command = async (rawArgs, paths) => {
   const name = args.name;
 
   try {
-    const { id } = await createTask(
+    const { id, activated } = await createTask(
       paths.dbPath,
       { planId, name },
       paths.wasmPath,
     );
-    return { ok: true, id };
+    return { ok: true, id, activated };
   } catch (e) {
     const msg = (e as Error).message;
     if (msg.startsWith("plan not found")) {

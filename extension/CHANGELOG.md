@@ -32,6 +32,7 @@ On first activation of v0.6.0, the extension automatically migrates existing wor
   - `session-brief` — flow-specific filtered bundle (learner profile, current task, relevant gaps).
   - `list-unresolved`, `list-topics`, `list-plans` (returns `taskCount`; `removed` / `completed` hidden unless opted in).
   - `add-topic`, `record-answer`, `update-task` (auto-activates next queued task), `update-profile`, `update-progress`, `update-config`.
+  - `add-plan`, `add-task`, `update-plan`, `delete-plan`, `activate-plan`, `activate-task` — task activation is enforced to keep the invariant "active task belongs to the active plan; at most 1 active plan and 1 active task". `add-task` auto-activates the first task under an active plan when no task is currently active; `activate-plan` cascades to activate the plan's first queued task under the same condition.
 - **DB foundation** (`src/db/`) — DDL, `sql.js` loader, atomic writes, cross-process advisory lock, write transactions, integrity checks, status invariant assertions.
 - **DB-backed dashboard** (`services/dbDashboard.ts`) and a broadcast bus (`services/broadcastBus.ts`) for coalescing DB-change notifications to the webview.
 - **Test infrastructure** — mock VS Code file system watcher, end-to-end smoke tests for mentor-cli, and extensive unit coverage across DB, migration, CLI, and session-brief layers. Template validation tests for SKILL.md files.

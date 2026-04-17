@@ -59,6 +59,21 @@ describe("activate-plan", () => {
       ]);
     });
 
+    it("cascades: activates the first queued task of the newly active plan", async () => {
+      await activatePlan({ id: 2 }, env.paths);
+
+      const taskStatuses = await withDb(env.paths.dbPath, (db) => {
+        const r = db.exec(
+          "SELECT id, planId, status FROM tasks ORDER BY id ASC",
+        );
+        return r[0]?.values;
+      });
+      expect(taskStatuses).toEqual([
+        [1, 1, "queued"],
+        [2, 2, "active"],
+      ]);
+    });
+
     it("deactivates an active plan when deactivate=true", async () => {
       const res = await activatePlan({ id: 1, deactivate: true }, env.paths);
       expect(res).toEqual({ ok: true, id: 1, active: false });
