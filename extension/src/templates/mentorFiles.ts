@@ -41,19 +41,6 @@ Order is fixed — never skip, never reorder:
 5. Evaluate post-record checks (weakAreas, interests) ← AFTER recording
 6. Only after recording AND checks complete → proceed to next step or task
 
-## CLI Tool
-
-For all writes, use the bundled CLI:
-
-\`\`\`
-node .mentor/tools/mentor-cli.js <command> '<json-arg>'
-\`\`\`
-
-Write commands: \`record-answer\`, \`add-topic\`, \`add-plan\`, \`add-task\`, \`activate-plan\`, \`activate-task\`, \`update-plan\`, \`update-task\`, \`update-progress\`, \`update-profile\`, \`update-config\`.
-Read commands: \`session-brief '{"flow":"..."}'\`, \`list-plans\`, \`list-topics\`, \`list-unresolved '{"topicId":N,"limit":N}'\`.
-
-All commands output JSON: \`{"ok":true,...}\` on success, \`{"ok":false,"error":"..."}\` on failure.
-
 ## NEVER
 
 - Write code before completing steps (a)→(e)
@@ -61,18 +48,22 @@ All commands output JSON: \`{"ok":true,...}\` on success, \`{"ok":false,"error":
 - Skip the RECORD step
 - Proceed past a GATE without meeting its condition
 - Run an external skill/agent AND the mentor Teaching Cycle at the same time
-- Directly edit the database or \`progress.json\` / \`config.json\` with the Edit/Write tool (use CLI instead)
 
-## Data Access Rule
+## CLI Tool
 
-Never read the database or \`progress.json\` directly. Use CLI commands for all data access:
-- Session start: \`session-brief '{"flow":"..."}'\` (include \`"topicId":N\` when the flow is topic-scoped)
-- Mid-session gap list: \`list-unresolved\` (optional \`'{"topicId":N,"limit":N}'\`)
-- Topic id/label resolution: \`list-topics\`
+All reads and writes go through the bundled CLI — never edit the database or \`progress.json\` / \`config.json\` directly with the Edit/Write tool:
 
-Gaps are derived from questions where \`isCorrect=false\`; there is no separate gap table. Re-asking a question should use \`record-answer\` with the existing \`id\` (UPDATE), which increments \`attempts\` and flips \`isCorrect\` when the learner finally gets it right — removing it from the unresolved list automatically.
+\`\`\`
+node .mentor/tools/mentor-cli.js <command> '<json-arg>'
+\`\`\`
 
-CLI output uses camelCase (e.g. \`weakAreas\`, \`lastAnsweredAt\`).
+Writes: \`record-answer\`, \`add-topic\`, \`add-plan\`, \`add-task\`, \`activate-plan\`, \`activate-task\`, \`update-plan\`, \`update-task\`, \`update-progress\`, \`update-profile\`, \`update-config\`.
+
+Reads: \`session-brief '{"flow":"...","topicId":N}'\` (session start), \`list-unresolved '{"topicId":N,"limit":N}'\` (mid-session gaps), \`list-topics\` (topic id/label resolution), \`list-plans '{}'\` (plan health).
+
+All commands output JSON: \`{"ok":true,...}\` on success, \`{"ok":false,"error":"..."}\` on failure, with camelCase field names (e.g. \`weakAreas\`, \`lastAnsweredAt\`).
+
+Gaps are derived from questions where \`isCorrect=false\`; there is no separate gap table. Re-asking a question should use \`record-answer\` with the existing \`id\` (UPDATE), which increments \`attempts\` and flips \`isCorrect\` — automatically removing it from \`list-unresolved\` when the learner finally gets it right.
 
 ## External Skill / Agent Handoff
 
@@ -155,6 +146,55 @@ Execute in order:
 GATE: steps 1-3 complete → return to calling flow
 `;
 
+export const PLAN_HEALTH_MD = `---
+name: plan-health
+description: Load when session-brief.currentTask is null, or when the active plan has taskCount === 0 — handles plan activation and task generation.
+---
+
+# Plan Health Check
+
+Load when mentor-session detects that the session cannot start normally:
+- \`session-brief.currentTask\` is null, OR
+- \`list-plans\` returns an active plan with \`taskCount === 0\`.
+
+Skip this file entirely when an active plan and active task are both present.
+
+## Procedure
+
+Run \`node .mentor/tools/mentor-cli.js list-plans '{}'\` (each plan includes \`taskCount: number\`; \`removed\`/\`completed\` plans are excluded by default). Inspect the result and handle the following cases in order:
+
+**Case A — No \`active\` plan (zero plans with status \`active\`)**:
+- Tell the user there is no active plan.
+- Ask: "Which plan would you like to activate?" and list the \`queued\`/\`paused\`/\`backlog\` plans returned.
+- On user selection: \`node .mentor/tools/mentor-cli.js activate-plan '{"id":<id>}'\` — this also auto-activates the plan's first queued task when no task is active globally.
+- Re-run \`list-plans '{}'\` and continue to Case B/C.
+
+**Case B — \`active\` plan exists but \`taskCount === 0\`** (tasks not yet registered in DB):
+- Tell the user: "This plan has no tasks yet. I'll generate a task breakdown."
+- If the plan has a \`filePath\` pointing to an existing markdown file → read it. Extract any \`## Task N\` headings as a starting point; otherwise generate a structured task list (≥ 1 task) from the goal.
+- If the plan has no \`filePath\` (UI-only plan) → ask the user about the goal, then propose creating \`.mentor/plan/YYYY-MM-DD-<slug>.md\` with the task breakdown. Never overwrite an existing file; append a counter or timestamp on collision.
+- On user confirmation:
+  - Register each task in order: \`node .mentor/tools/mentor-cli.js add-task '{"planId":<id>,"name":"<task name>"}'\` — the first \`add-task\` under an active plan with no active task auto-activates that task (\`{"activated":true}\` in the response); subsequent tasks stay \`queued\`.
+  - If a markdown file was newly created, set \`filePath\`: \`node .mentor/tools/mentor-cli.js update-plan '{"id":<id>,"filePath":"<rel path>"}'\`
+
+**Case C — \`active\` plan exists with tasks**: no action needed. If \`currentTask\` is still null after re-running \`session-brief\` (e.g. all tasks were queued and none were auto-activated), pick the first queued task and run \`node .mentor/tools/mentor-cli.js activate-task '{"id":<id>}'\`. The active-task invariant requires the task's plan to be active, so \`activate-task\` only succeeds within the current active plan.
+
+Also check any \`queued\` plan with \`taskCount === 0\` and apply the same task-generation flow as Case B before activating it.
+
+After the health check completes, re-run \`session-brief\` to pick up the now-populated \`currentTask\`, then return to mentor-session/SKILL.md.
+
+## Plan Status Reference
+
+| status | meaning |
+|---|---|
+| \`active\` | Currently being worked on. At most 1 at a time. 0 is also valid (see Case A). |
+| \`queued\` | Scheduled. Auto-promoted to \`active\` (by \`sortOrder\`) when the current active plan completes. |
+| \`paused\` | Temporarily suspended. |
+| \`completed\` | Finished. |
+| \`backlog\` | Not started, timing undecided. **Default for newly created plans.** |
+| \`removed\` | Soft-deleted. Managed from the Plan Panel only — do not touch via CLI or AI. |
+`;
+
 export const MENTOR_SESSION_SKILL_MD = `---
 name: mentor-session
 description: Main learning session — loads session state, runs Teaching Cycle, manages task progression.
@@ -172,47 +212,16 @@ description: Main learning session — loads session state, runs Teaching Cycle,
 ## Session Start
 
 1. If \`learner.lastUpdated\` is null → load \`.mentor/skills/intake/SKILL.md\` and run the Intake flow. When it returns, continue with the now-populated learner data.
-2. **Plan Health Check** — run \`node .mentor/tools/mentor-cli.js list-plans '{}'\` (each plan includes \`taskCount: number\`; \`removed\`/\`completed\` plans are excluded by default). Inspect the result and handle the following cases in order:
-
-   **Case A — No \`active\` plan (zero plans with status \`active\`)**:
-   - Tell the user there is no active plan.
-   - Ask: "Which plan would you like to activate?" and list the \`queued\`/\`paused\`/\`backlog\` plans returned.
-   - On user selection: \`node .mentor/tools/mentor-cli.js activate-plan '{"id":<id>}'\` — this also auto-activates the plan's first queued task when no task is active globally.
-   - Re-run \`list-plans '{}'\` and continue to Case B/C.
-
-   **Case B — \`active\` plan exists but \`taskCount === 0\`** (tasks not yet registered in DB):
-   - Tell the user: "This plan has no tasks yet. I'll generate a task breakdown."
-   - If the plan has a \`filePath\` pointing to an existing markdown file → read it. Extract any \`## Task N\` headings as a starting point; otherwise generate a structured task list (≥ 1 task) from the goal.
-   - If the plan has no \`filePath\` (UI-only plan) → ask the user about the goal, then propose creating \`.mentor/plan/YYYY-MM-DD-<slug>.md\` with the task breakdown. Never overwrite an existing file; append a counter or timestamp on collision.
-   - On user confirmation:
-     - Register each task in order: \`node .mentor/tools/mentor-cli.js add-task '{"planId":<id>,"name":"<task name>"}'\` — the first \`add-task\` under an active plan with no active task auto-activates that task (\`{"activated":true}\` in the response); subsequent tasks stay \`queued\`.
-     - If a markdown file was newly created, set \`filePath\`: \`node .mentor/tools/mentor-cli.js update-plan '{"id":<id>,"filePath":"<rel path>"}'\`
-
-   **Case C — \`active\` plan exists with tasks**: no action needed. If \`currentTask\` is still null after re-running \`session-brief\` (e.g. all tasks were queued and none were auto-activated), pick the first queued task and run \`node .mentor/tools/mentor-cli.js activate-task '{"id":<id>}'\`. The active-task invariant requires the task's plan to be active, so \`activate-task\` only succeeds within the current active plan.
-
-   Also check any \`queued\` plan with \`taskCount === 0\` and apply the same task-generation flow as Case B before activating it.
-
-   After the health check completes, re-run \`session-brief\` to pick up the now-populated \`currentTask\`.
-
-   **Current Task Sync** — once \`currentTask\` is resolved, ensure \`.mentor/current-task.md\` reflects it:
+2. **Plan state decision**:
+   - If \`currentTask\` is non-null AND \`currentTask.planId\` matches an \`active\` plan → skip plan-health and go to step 3.
+   - Otherwise → load \`.mentor/skills/mentor-session/plan-health.md\` and follow it. When it returns, re-read \`session-brief\` output to pick up the now-populated \`currentTask\`.
+3. **Current Task Sync** — once \`currentTask\` is resolved, ensure \`.mentor/current-task.md\` reflects it:
    - Read \`.mentor/current-task.md\`.
    - If the file is empty, is still the initial placeholder, or describes a different task than \`currentTask\` → overwrite it with \`currentTask.name\` and the task's steps (pull them from the plan markdown file when available; otherwise draft them from the goal).
    - The AI is the sole writer of this file. The extension only seeds a placeholder at setup and never updates it at runtime.
-
-   ### Plan Status Reference
-
-   | status | meaning |
-   |---|---|
-   | \`active\` | Currently being worked on. At most 1 at a time. 0 is also valid (see Case A above). |
-   | \`queued\` | Scheduled. Auto-promoted to \`active\` (by \`sortOrder\`) when the current active plan completes. |
-   | \`paused\` | Temporarily suspended. |
-   | \`completed\` | Finished. |
-   | \`backlog\` | Not started, timing undecided. **Default for newly created plans.** |
-   | \`removed\` | Soft-deleted. Managed from the Plan Panel only — do not touch via CLI or AI. |
-
-3. (Conditional) If \`relevantGaps\` match the \`currentTask\`'s topic → propose a quick review before beginning.
-4. (Always) If \`currentTask\` is set and \`resumeContext\` indicates active progress, suggest continuing it; otherwise ask the user what they would like to work on today.
-   - If \`currentTask\` is null → tell the user to pick or activate a task in the Plan Panel (\`Mentor Studio Code: Open Plan Panel\`) and stop.
+4. (Conditional) If \`relevantGaps\` match the \`currentTask\`'s topic → propose a quick review before beginning.
+5. (Always) If \`currentTask\` is set and \`resumeContext\` indicates active progress, suggest continuing it; otherwise ask the user what they would like to work on today.
+   - If \`currentTask\` is null after plan-health → tell the user to pick or activate a task in the Plan Panel (\`Mentor Studio Code: Open Plan Panel\`) and stop.
 
 Do NOT load other docs at session start.
 

@@ -44,10 +44,16 @@ On first activation of v0.6.0, the extension automatically migrates existing wor
 - `remove-mentor` cleanup also removes SQLite runtime artifacts (`data.db`, `data.db.lock`, `data.db.bak`, `sql-wasm.wasm`, bundled CLI).
 - Sidebar **Settings** plan UI consolidated into a single **Plan** card that shows the active plan (with Change / Detach) and the next queued plan (file link only; Activate button appears only when no active plan). The "Open Plan Panel" button moves into a separate inline **Plan Panel** card. `DashboardData` gains a `nextPlan` field (the queued plan with the smallest `sortOrder`).
 
+### Improved
+
+- **Context consumption**: mentor-session happy-path load reduced ~16% by splitting Plan Health Check (Case A/B/C + status table) into `plan-health.md`, loaded only when `currentTask` is null or an active plan has no tasks.
+- **shared-rules.md**: merged overlapping "CLI Tool" and "Data Access Rule" sections into a single canonical reference; removed redundant NEVER bullet.
+
 ### Removed
 
 - Direct AI reads and writes to `question-history.json` — all question I/O goes through mentor-cli.
 - Legacy `mentorCli` test suite (superseded by per-command and e2e tests).
+- `.mentor/skills/mentor-session/tracker-format.md` is no longer written by Setup. Manual Setup re-runs on upgraded v0.5.0 installs automatically delete the stale file. The CLI command signatures that lived in this file are now inline in `teaching-cycle-reference.md`.
 
 ### Fixed
 
