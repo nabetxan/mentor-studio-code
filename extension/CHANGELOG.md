@@ -10,7 +10,7 @@ This release migrates the runtime data store from JSON files to SQLite, and rebu
 
 On first activation of v0.6.0, the extension automatically migrates existing workspaces:
 
-- `.mentor/question-history.json` and parts of `.mentor/progress.json` are migrated into a new SQLite database at `.mentor/data.db`. Legacy files are preserved as `.bak`.
+- `.mentor/question-history.json` and parts of `.mentor/progress.json` are migrated into a new SQLite database at `.mentor/data.db`. The original `question-history.json` is deleted after a successful migration (content now lives in the DB); `config.json` / `progress.json` / `question-history.json` are preserved as `.bak` snapshots.
 - `config.json` no longer stores `topics` or `mentorFiles.plan` — topics live in the DB, and the active plan is implied by the single plan row with `status = 'active'`. Writes to `mentorFiles.plan` from the Sidebar or `update-config` CLI are now rejected.
 - `progress.json` is slimmed to `resume_context` and `learner_profile`. All task state (active task, completed/skipped tasks, unresolved gaps) now lives in the SQLite DB. Topic identifiers are auto-increment integers instead of string keys.
 - Orphan history and pre-schema string tasks are bucketed under a synthesized "Legacy" plan so nothing is dropped.
@@ -37,6 +37,7 @@ On first activation of v0.6.0, the extension automatically migrates existing wor
 ### Removed
 
 - Direct AI reads and writes to `question-history.json` — all question I/O goes through mentor-cli.
+- `question-history.json` is no longer created on fresh setup, and is deleted after a successful legacy-workspace migration (the `.bak` is kept as a backup).
 - Legacy `mentorCli` test suite and `.mentor/skills/mentor-session/tracker-format.md` (signatures inlined into `teaching-cycle-reference.md`).
 
 ### Fixed

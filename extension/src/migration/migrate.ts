@@ -252,6 +252,7 @@ export async function migrate(
         join(mentorDir, "config.json"),
         Buffer.from(`${JSON.stringify(newConfig, null, 2)}\n`),
       );
+      unlinkSync(join(mentorDir, "question-history.json"));
     } catch (e) {
       return {
         ok: false,

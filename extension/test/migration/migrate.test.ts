@@ -124,6 +124,7 @@ describe("migrate", () => {
     expect(existsSync(join(mentor, "question-history.json.bak"))).toBe(true);
     expect(existsSync(join(mentor, "progress.json.bak"))).toBe(true);
     expect(existsSync(join(mentor, "config.json.bak"))).toBe(true);
+    expect(existsSync(join(mentor, "question-history.json"))).toBe(false);
 
     const SQL = await loadSqlJs(WASM);
     const db = new SQL.Database(readFileSync(join(mentor, "data.db")));

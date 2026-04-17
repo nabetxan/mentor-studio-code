@@ -602,8 +602,6 @@ node .mentor/tools/mentor-cli.js update-profile '{"experience":"<Q1>","level":"<
 Then tell the user that their profile has been saved and the session will now begin. Return control to the caller to continue from the relevantGaps check.
 `;
 
-export const QUESTION_HISTORY_JSON = JSON.stringify({ history: [] }, null, 2);
-
 export const CURRENT_TASK_MD = `# Current Task
 
 No task assigned yet. Run intake to get started.
