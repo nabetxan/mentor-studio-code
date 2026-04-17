@@ -2,6 +2,12 @@
 
 All notable changes to "Mentor Studio Code" will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- **Explorer context menu: Add to Mentor Spec** — right-click a markdown file in the Explorer to set it as the active mentor spec (`mentorFiles.spec` in `.mentor/config.json`). If a spec is already set, a modal confirms replacement. Mirrors the existing **Add to Mentor Plan** entry.
+
 ## [0.6.0] - 2026-04-17
 
 This release migrates the runtime data store from JSON files to SQLite, and rebuilds the Plan Panel around a richer plan lifecycle.

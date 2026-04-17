@@ -284,6 +284,83 @@ export class FileWatcherService implements vscode.Disposable {
     await this.notifyWrite();
   }
 
+  async setFileAsSpec(uri: vscode.Uri): Promise<void> {
+    if (!uri.fsPath.endsWith(".md")) return;
+    if (!vscode.workspace.getWorkspaceFolder(uri)) {
+      await vscode.window.showErrorMessage(
+        "File must be inside the workspace.",
+      );
+      return;
+    }
+
+    const relPath = vscode.workspace.asRelativePath(uri, false);
+    const configPath = join(this.workspaceRoot, ".mentor", "config.json");
+
+    let rawText: string;
+    try {
+      rawText = await readFile(configPath, "utf-8");
+    } catch {
+      await vscode.window.showErrorMessage(
+        ".mentor/config.json not found. Run Setup Mentor first.",
+      );
+      return;
+    }
+
+    const parsed = parseConfig(rawText);
+    if (!parsed) {
+      await vscode.window.showErrorMessage(
+        ".mentor/config.json has invalid format.",
+      );
+      return;
+    }
+
+    const currentSpec = parsed.mentorFiles?.spec ?? null;
+
+    if (currentSpec === relPath) {
+      await vscode.window.showInformationMessage(
+        `${relPath} is already set as the Mentor Spec.`,
+      );
+      return;
+    }
+
+    if (currentSpec) {
+      const replace = "Replace";
+      const choice = await vscode.window.showWarningMessage(
+        `Replace current Mentor Spec "${currentSpec}" with "${relPath}"?`,
+        { modal: true },
+        replace,
+      );
+      if (choice !== replace) return;
+    }
+
+    let rawObj: Record<string, unknown>;
+    try {
+      rawObj = JSON.parse(rawText) as Record<string, unknown>;
+    } catch {
+      await vscode.window.showErrorMessage(
+        ".mentor/config.json has invalid JSON.",
+      );
+      return;
+    }
+    const mentorFiles =
+      (rawObj.mentorFiles as Record<string, unknown> | undefined) ?? {};
+    mentorFiles.spec = relPath;
+    rawObj.mentorFiles = mentorFiles;
+
+    try {
+      await writeFile(configPath, JSON.stringify(rawObj, null, 2) + "\n");
+    } catch (err) {
+      await vscode.window.showErrorMessage(
+        `Failed to update .mentor/config.json: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return;
+    }
+
+    await vscode.window.showInformationMessage(
+      `Set Mentor Spec to "${relPath}".`,
+    );
+  }
+
   async addFilesToPlan(uris: vscode.Uri[]): Promise<void> {
     if (!this.dbPath || !this.wasmPath) return;
     if (uris.length === 0) return;

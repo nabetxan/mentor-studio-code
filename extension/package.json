@@ -69,6 +69,11 @@
         "command": "mentor-studio.addFilesToPlan",
         "title": "Add to Mentor Plan",
         "category": "Mentor Studio Code"
+      },
+      {
+        "command": "mentor-studio.setFileAsSpec",
+        "title": "Add to Mentor Spec",
+        "category": "Mentor Studio Code"
       }
     ],
     "menus": {
@@ -77,6 +82,11 @@
           "command": "mentor-studio.addFilesToPlan",
           "when": "resourceExtname == .md && workspaceFolderCount > 0",
           "group": "mentor@1"
+        },
+        {
+          "command": "mentor-studio.setFileAsSpec",
+          "when": "resourceExtname == .md && workspaceFolderCount > 0",
+          "group": "mentor@2"
         }
       ]
     }

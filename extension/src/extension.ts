@@ -109,6 +109,16 @@ export function activate(context: vscode.ExtensionContext): void {
     ),
   );
 
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "mentor-studio.setFileAsSpec",
+      async (uri: vscode.Uri) => {
+        if (!uri) return;
+        await watcher.setFileAsSpec(uri);
+      },
+    ),
+  );
+
   // File watcher
   const watcher = new FileWatcherService(
     workspaceRoot.fsPath,
