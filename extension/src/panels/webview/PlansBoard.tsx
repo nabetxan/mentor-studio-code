@@ -169,7 +169,6 @@ export function PlansBoard(props: Props): JSX.Element {
             key={status}
             status={status}
             count={groupPlans.length}
-            reorderable={REORDERABLE.has(status)}
             defaultOpen={DEFAULT_OPEN.has(status)}
           >
             {renderGroupContent(status)}

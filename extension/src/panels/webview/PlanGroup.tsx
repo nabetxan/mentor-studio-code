@@ -7,7 +7,6 @@ import { s } from "./styles";
 interface Props {
   status: PlanStatus;
   count: number;
-  reorderable: boolean;
   defaultOpen: boolean;
   children: ReactNode;
 }

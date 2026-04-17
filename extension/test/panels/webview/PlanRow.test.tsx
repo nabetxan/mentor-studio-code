@@ -4,6 +4,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { PlanRow } from "../../../src/panels/webview/PlanRow";
 import type { UiPlan } from "../../../src/panels/webview/types";
 
+type Props = React.ComponentProps<typeof PlanRow>;
+
 vi.mock("@dnd-kit/sortable", () => ({
   useSortable: () => ({
     attributes: {},
@@ -24,19 +26,21 @@ const basePlan: UiPlan = {
   sortOrder: 1,
 };
 
-function renderRow(
-  overrides: Partial<React.ComponentProps<typeof PlanRow>> = {},
-): void {
-  render(
-    <PlanRow
-      plan={basePlan}
-      reorderable
-      onRename={vi.fn()}
-      onSetStatus={vi.fn()}
-      onOpenFile={vi.fn()}
-      {...overrides}
-    />,
-  );
+function renderRow(overrides: Partial<Props> = {}): {
+  rerender: (next: Partial<Props>) => void;
+} {
+  const defaults: Props = {
+    plan: basePlan,
+    reorderable: true,
+    onRename: vi.fn(),
+    onSetStatus: vi.fn(),
+    onOpenFile: vi.fn(),
+  };
+  const result = render(<PlanRow {...defaults} {...overrides} />);
+  return {
+    rerender: (next) =>
+      result.rerender(<PlanRow {...defaults} {...overrides} {...next} />),
+  };
 }
 
 describe("PlanRow", () => {
@@ -96,5 +100,13 @@ describe("PlanRow", () => {
   it("open button does not appear when filePath is null", () => {
     renderRow({ plan: { ...basePlan, filePath: null } });
     expect(screen.queryByLabelText("open plan file")).toBeNull();
+  });
+
+  it("input reflects latest plan.name after prop change while idle", () => {
+    const { rerender } = renderRow();
+    rerender({ plan: { ...basePlan, name: "Renamed Externally" } });
+    fireEvent.doubleClick(screen.getByText("Renamed Externally"));
+    const input = screen.getByLabelText("plan name input") as HTMLInputElement;
+    expect(input.value).toBe("Renamed Externally");
   });
 });

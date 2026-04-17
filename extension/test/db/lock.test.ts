@@ -128,6 +128,24 @@ describe("file lock — stale detection", () => {
     await releaseLock(handle);
   });
 
+  it("reclaims lock with invalid acquiredAt timestamp", async () => {
+    const lockDir = join(dir, "data.db.lock");
+    await mkdir(lockDir);
+    await writeFile(
+      join(lockDir, "owner.json"),
+      JSON.stringify({
+        pid: process.pid,
+        acquiredAt: "not-a-valid-date",
+        purpose: "normal",
+      }),
+    );
+    const handle = await acquireLock(join(dir, "data.db"), {
+      purpose: "normal",
+      timeoutMs: 300,
+    });
+    await releaseLock(handle);
+  });
+
   it("reclaims lock immediately if pid is dead", async () => {
     const lockDir = join(dir, "data.db.lock");
     await mkdir(lockDir);

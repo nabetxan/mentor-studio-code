@@ -2,7 +2,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { PlanStatus } from "@mentor-studio/shared";
 import type { CSSProperties } from "react";
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { LocaleContext, t } from "./i18n";
 import { OpenExternalIcon } from "./icons";
 import { StatusMenu } from "./StatusMenu";
@@ -34,6 +34,10 @@ export function PlanRow({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(plan.name);
   const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!editing) setDraft(plan.name);
+  }, [plan.name, editing]);
 
   const isActive = plan.status === "active";
   const isRemoved = plan.status === "removed";

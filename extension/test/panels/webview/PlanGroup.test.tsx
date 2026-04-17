@@ -8,7 +8,7 @@ afterEach(cleanup);
 describe("PlanGroup", () => {
   it("renders header with status label and count", () => {
     render(
-      <PlanGroup status="queued" count={3} reorderable={false} defaultOpen>
+      <PlanGroup status="queued" count={3} defaultOpen>
         <div>child</div>
       </PlanGroup>,
     );
@@ -18,7 +18,7 @@ describe("PlanGroup", () => {
 
   it("renders children when open", () => {
     render(
-      <PlanGroup status="queued" count={1} reorderable={false} defaultOpen>
+      <PlanGroup status="queued" count={1} defaultOpen>
         <div>visible-child</div>
       </PlanGroup>,
     );
@@ -27,7 +27,7 @@ describe("PlanGroup", () => {
 
   it("hides children when collapsed via click", () => {
     render(
-      <PlanGroup status="queued" count={1} reorderable={false} defaultOpen>
+      <PlanGroup status="queued" count={1} defaultOpen>
         <div>visible-child</div>
       </PlanGroup>,
     );
@@ -37,12 +37,7 @@ describe("PlanGroup", () => {
 
   it("defaultOpen=false starts collapsed", () => {
     render(
-      <PlanGroup
-        status="completed"
-        count={2}
-        reorderable={false}
-        defaultOpen={false}
-      >
+      <PlanGroup status="completed" count={2} defaultOpen={false}>
         <div>hidden-child</div>
       </PlanGroup>,
     );
@@ -51,7 +46,7 @@ describe("PlanGroup", () => {
 
   it("empty group is disabled (aria-disabled) and not clickable", () => {
     render(
-      <PlanGroup status="active" count={0} reorderable={false} defaultOpen>
+      <PlanGroup status="active" count={0} defaultOpen>
         <div>should-not-appear</div>
       </PlanGroup>,
     );

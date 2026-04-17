@@ -81,7 +81,9 @@ async function isStale(lockDir: string, deadline: number): Promise<boolean> {
         purpose: LockPurpose;
       };
       if (!isPidAlive(meta.pid)) return true;
-      const age = Date.now() - new Date(meta.acquiredAt).getTime();
+      const acquiredMs = new Date(meta.acquiredAt).getTime();
+      if (Number.isNaN(acquiredMs)) return true;
+      const age = Date.now() - acquiredMs;
       const threshold = STALE_MS[meta.purpose] ?? STALE_MS.normal;
       return age > threshold;
     } catch (err) {
