@@ -2,12 +2,6 @@
 
 All notable changes to "Mentor Studio Code" will be documented in this file.
 
-## [Unreleased]
-
-### Added
-
-- **Explorer context menu: Add to Mentor Spec** — right-click a markdown file in the Explorer to set it as the active mentor spec (`mentorFiles.spec` in `.mentor/config.json`). If a spec is already set, a modal confirms replacement. Mirrors the existing **Add to Mentor Plan** entry.
-
 ## [0.6.0] - 2026-04-17
 
 This release migrates the runtime data store from JSON files to SQLite, and rebuilds the Plan Panel around a richer plan lifecycle.
@@ -26,6 +20,7 @@ On first activation of v0.6.0, the extension automatically migrates existing wor
 
 - **SQLite-backed runtime store** (`.mentor/data.db`) — topics, plans, tasks, and question history in a single DB with foreign-key integrity, status invariants, and integer IDs.
 - **Plan Panel redesign** — single Plans pane with a 6-status lifecycle (`backlog`, `queued`, `active`, `completed`, `paused`, `removed`), collapsible status groups, consolidated status badge + dropdown, drag-and-drop reorder within Queued / Paused / Backlog, file-picker-based plan import, auto-promotion of the next queued plan on completion, and i18n (Japanese / English).
+- **Explorer context menu: Add to Mentor Spec** — right-click a markdown file in the Explorer to set it as the active mentor spec (`mentorFiles.spec` in `.mentor/config.json`). If a spec is already set, a modal confirms replacement. Mirrors the existing **Add to Mentor Plan** entry.
 - **Rebuilt mentor-cli** talking to SQLite — adds `add-plan` / `add-task` / `update-plan` / `delete-plan` / `activate-plan` / `activate-task` and enforces the "at most 1 active plan and 1 active task" invariant. `session-brief`, `list-unresolved`, `list-topics`, `list-plans`, `record-answer`, `update-task`, etc. now read/write the DB.
 - **DB-backed dashboard** and broadcast bus to coalesce DB-change notifications to the webview.
 
