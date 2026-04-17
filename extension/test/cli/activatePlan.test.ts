@@ -4,6 +4,7 @@ import { activatePlan } from "../../src/cli/commands/activatePlan";
 import {
   makeEnv,
   makeEnvWithDb,
+  mutateDb,
   seedPlans,
   seedTasks,
   withDb,
@@ -72,6 +73,44 @@ describe("activate-plan", () => {
         [1, 1, "queued"],
         [2, 2, "active"],
       ]);
+    });
+
+    it("demotes the active task of the previously-active plan", async () => {
+      // Promote T1 (planId=1) to active so the previously-active plan owns it.
+      await mutateDb(env.paths.dbPath, (db) => {
+        db.exec("UPDATE tasks SET status = 'active' WHERE id = 1");
+      });
+
+      const res = await activatePlan({ id: 2 }, env.paths);
+      expect(res).toEqual({ ok: true, id: 2, active: true });
+
+      const taskStatuses = await withDb(env.paths.dbPath, (db) => {
+        const r = db.exec(
+          "SELECT id, planId, status FROM tasks ORDER BY id ASC",
+        );
+        return r[0]?.values;
+      });
+      // T1 must be demoted to keep the active-task-under-active-plan invariant.
+      // T2 should be activated as the new plan's first queued task.
+      expect(taskStatuses).toEqual([
+        [1, 1, "queued"],
+        [2, 2, "active"],
+      ]);
+    });
+
+    it("deactivate demotes the active task under the deactivated plan", async () => {
+      await mutateDb(env.paths.dbPath, (db) => {
+        db.exec("UPDATE tasks SET status = 'active' WHERE id = 1");
+      });
+
+      const res = await activatePlan({ id: 1, deactivate: true }, env.paths);
+      expect(res).toEqual({ ok: true, id: 1, active: false });
+
+      const t1Status = await withDb(env.paths.dbPath, (db) => {
+        const r = db.exec("SELECT status FROM tasks WHERE id = 1");
+        return r[0]?.values[0][0];
+      });
+      expect(t1Status).toBe("queued");
     });
 
     it("deactivates an active plan when deactivate=true", async () => {

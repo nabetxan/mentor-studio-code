@@ -59,7 +59,7 @@ node .mentor/tools/mentor-cli.js <command> '<json-arg>'
 
 Writes: \`record-answer\`, \`add-topic\`, \`add-plan\`, \`add-task\`, \`activate-plan\`, \`activate-task\`, \`update-plan\`, \`update-task\`, \`update-progress\`, \`update-profile\`, \`update-config\`.
 
-Reads: \`session-brief '{"flow":"...","topicId":N}'\` (session start), \`list-unresolved '{"topicId":N,"limit":N}'\` (mid-session gaps), \`list-topics\` (topic id/label resolution), \`list-plans '{}'\` (plan health).
+Reads: \`session-brief '{"flow":"..."}'\` (session start; add \`"topicId":N\` only when the flow is topic-scoped, e.g. \`review\`), \`list-unresolved '{}'\` (mid-session gaps; optional \`"topicId":N\` to scope, \`"limit":N\` to cap results), \`list-topics\` (topic id/label resolution), \`list-plans '{}'\` (plan health).
 
 All commands output JSON: \`{"ok":true,...}\` on success, \`{"ok":false,"error":"..."}\` on failure, with camelCase field names (e.g. \`weakAreas\`, \`lastAnsweredAt\`).
 

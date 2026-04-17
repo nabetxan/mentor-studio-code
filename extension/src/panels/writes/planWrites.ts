@@ -156,6 +156,17 @@ export async function activatePlan(
     if (!rowExists(db, "plans", args.id)) {
       throw new Error(`plan not found: ${args.id}`);
     }
+    // Demote any active tasks that don't belong to the plan we're activating,
+    // otherwise they'd violate the active-task-under-active-plan invariant
+    // once their plan is moved to 'queued' below.
+    const demoteTasks = db.prepare(
+      "UPDATE tasks SET status = 'queued' WHERE status = 'active' AND planId != ?",
+    );
+    try {
+      demoteTasks.run([args.id]);
+    } finally {
+      demoteTasks.free();
+    }
     db.exec("UPDATE plans SET status = 'queued' WHERE status = 'active'");
     const stmt = db.prepare("UPDATE plans SET status = 'active' WHERE id = ?");
     try {
@@ -222,6 +233,16 @@ export async function deactivatePlan(
   wasmPath: string,
 ): Promise<void> {
   await withWriteTransaction(dbPath, { wasmPath, purpose: "normal" }, (db) => {
+    // Demote any active task under this plan first, otherwise queueing the
+    // plan would violate the active-task-under-active-plan invariant.
+    const demoteTasks = db.prepare(
+      "UPDATE tasks SET status = 'queued' WHERE planId = ? AND status = 'active'",
+    );
+    try {
+      demoteTasks.run([args.id]);
+    } finally {
+      demoteTasks.free();
+    }
     const stmt = db.prepare(
       "UPDATE plans SET status = 'queued' WHERE id = ? AND status = 'active'",
     );
@@ -242,6 +263,16 @@ export async function pausePlan(
   await withWriteTransaction(dbPath, { wasmPath, purpose: "normal" }, (db) => {
     if (!rowExists(db, "plans", id)) {
       throw new Error(`plan not found: ${id}`);
+    }
+    // Demote any active task under this plan first, otherwise pausing the
+    // plan would violate the active-task-under-active-plan invariant.
+    const demoteTasks = db.prepare(
+      "UPDATE tasks SET status = 'queued' WHERE planId = ? AND status = 'active'",
+    );
+    try {
+      demoteTasks.run([id]);
+    } finally {
+      demoteTasks.free();
     }
     const stmt = db.prepare("UPDATE plans SET status = 'paused' WHERE id = ?");
     try {
@@ -267,6 +298,17 @@ export async function changeStatus(
       throw new Error("use activatePlan for active transitions");
     if (s === "removed")
       throw new Error("use removePlan for removed transitions");
+    // Demote any active task under this plan first, otherwise moving the
+    // plan away from 'active' would violate the active-task-under-active-plan
+    // invariant.
+    const demoteTasks = db.prepare(
+      "UPDATE tasks SET status = 'queued' WHERE planId = ? AND status = 'active'",
+    );
+    try {
+      demoteTasks.run([args.id]);
+    } finally {
+      demoteTasks.free();
+    }
     const stmt = db.prepare("UPDATE plans SET status = ? WHERE id = ?");
     try {
       stmt.run([args.toStatus, args.id]);
