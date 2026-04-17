@@ -58,6 +58,11 @@ function makeView(): FakeWebviewView {
 describe("SidebarProvider", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    (
+      vscodeMock.workspace as unknown as {
+        workspaceFolders: { uri: vscodeMock.MockUri }[] | undefined;
+      }
+    ).workspaceFolders = [{ uri: vscodeMock.Uri.file("/workspace") }];
   });
 
   it("getSubscriber() forwards messages to the webview", () => {
@@ -371,10 +376,7 @@ describe("SidebarProvider", () => {
     vi.spyOn(vscodeMock.window, "showOpenDialog").mockResolvedValue([fakeUri]);
     await view.__trigger({ type: "changeActivePlanFile", id: 4 });
     expect(changeActivePlanFile).toHaveBeenCalledOnce();
-    expect(changeActivePlanFile).toHaveBeenCalledWith(
-      4,
-      "/workspace/plans/chapter1.md",
-    );
+    expect(changeActivePlanFile).toHaveBeenCalledWith(4, "plans/chapter1.md");
     expect(view.__posted).toContainEqual({
       type: "changeActivePlanFileResult",
       id: 4,
@@ -417,9 +419,57 @@ describe("SidebarProvider", () => {
     vi.spyOn(vscodeMock.window, "showOpenDialog").mockResolvedValue([fakeUri]);
     await view.__trigger({ type: "selectFile", field: "plan" });
     expect(createAndActivatePlan).toHaveBeenCalledOnce();
-    expect(createAndActivatePlan).toHaveBeenCalledWith(
-      "/workspace/plans/new-plan.md",
+    expect(createAndActivatePlan).toHaveBeenCalledWith("plans/new-plan.md");
+  });
+
+  it("selectFile with field:plan rejects file outside workspace → handler NOT called, error shown", async () => {
+    const provider = new SidebarProvider(
+      vscodeMock.Uri.file("/ext") as unknown as ConstructorParameters<
+        typeof SidebarProvider
+      >[0],
     );
+    const view = makeView();
+    provider.resolveWebviewView(
+      view as unknown as Parameters<typeof provider.resolveWebviewView>[0],
+    );
+    const createAndActivatePlan = vi.fn(() => Promise.resolve());
+    provider.setPlanHandlers({ ...noopPlanHandlers(), createAndActivatePlan });
+    const outsideUri = vscodeMock.Uri.file("/elsewhere/plans/new-plan.md");
+    vi.spyOn(vscodeMock.window, "showOpenDialog").mockResolvedValue([
+      outsideUri,
+    ]);
+    const errSpy = vi.spyOn(vscodeMock.window, "showErrorMessage");
+    await view.__trigger({ type: "selectFile", field: "plan" });
+    expect(createAndActivatePlan).not.toHaveBeenCalled();
+    expect(errSpy).toHaveBeenCalledOnce();
+  });
+
+  it("changeActivePlanFile rejects file outside workspace → handler NOT called, ok:false posted", async () => {
+    const provider = new SidebarProvider(
+      vscodeMock.Uri.file("/ext") as unknown as ConstructorParameters<
+        typeof SidebarProvider
+      >[0],
+    );
+    const view = makeView();
+    provider.resolveWebviewView(
+      view as unknown as Parameters<typeof provider.resolveWebviewView>[0],
+    );
+    const changeActivePlanFile = vi.fn(() => Promise.resolve());
+    provider.setPlanHandlers({ ...noopPlanHandlers(), changeActivePlanFile });
+    const outsideUri = vscodeMock.Uri.file("/elsewhere/plans/chapter1.md");
+    vi.spyOn(vscodeMock.window, "showOpenDialog").mockResolvedValue([
+      outsideUri,
+    ]);
+    const errSpy = vi.spyOn(vscodeMock.window, "showErrorMessage");
+    await view.__trigger({ type: "changeActivePlanFile", id: 4 });
+    expect(changeActivePlanFile).not.toHaveBeenCalled();
+    expect(errSpy).toHaveBeenCalledOnce();
+    expect(view.__posted).toContainEqual({
+      type: "changeActivePlanFileResult",
+      id: 4,
+      ok: false,
+      error: "outside_workspace",
+    });
   });
 
   it("clearFile with field:plan throws — plan is managed by Plan Panel", async () => {

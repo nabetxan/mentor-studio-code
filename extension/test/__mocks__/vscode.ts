@@ -115,6 +115,7 @@ interface MutableWorkspace {
   createFileSystemWatcher: (pattern: RelativePattern) => MockFileSystemWatcher;
   workspaceFolders: { uri: MockUri }[] | undefined;
   asRelativePath: (uri: MockUri, includeWorkspaceFolder: boolean) => string;
+  getWorkspaceFolder: (uri: MockUri) => { uri: MockUri } | undefined;
   fs: {
     readFile: (uri: MockUri) => Promise<Uint8Array>;
     writeFile: (uri: MockUri, content: Uint8Array) => Promise<void>;
@@ -122,10 +123,33 @@ interface MutableWorkspace {
 }
 
 (workspace as unknown as MutableWorkspace).workspaceFolders = undefined;
+(workspace as unknown as MutableWorkspace).getWorkspaceFolder = (
+  uri: MockUri,
+): { uri: MockUri } | undefined => {
+  const folders =
+    (workspace as unknown as MutableWorkspace).workspaceFolders ?? [];
+  for (const f of folders) {
+    const base = f.uri.fsPath.replace(/\/+$/, "");
+    if (uri.fsPath === base || uri.fsPath.startsWith(base + "/")) {
+      return f;
+    }
+  }
+  return undefined;
+};
 (workspace as unknown as MutableWorkspace).asRelativePath = (
   uri: MockUri,
   _includeWorkspaceFolder: boolean,
-): string => uri.fsPath;
+): string => {
+  const folder = (workspace as unknown as MutableWorkspace).getWorkspaceFolder(
+    uri,
+  );
+  if (!folder) return uri.fsPath;
+  const base = folder.uri.fsPath.replace(/\/+$/, "");
+  if (uri.fsPath === base) return "";
+  return uri.fsPath.startsWith(base + "/")
+    ? uri.fsPath.slice(base.length + 1)
+    : uri.fsPath;
+};
 (workspace as unknown as MutableWorkspace).fs = {
   readFile: (_uri: MockUri): Promise<Uint8Array> =>
     Promise.resolve(new Uint8Array()),

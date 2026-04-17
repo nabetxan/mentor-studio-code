@@ -2,6 +2,7 @@ import type { Locale, PlanStatus } from "@mentor-studio/shared";
 import * as path from "node:path";
 import * as vscode from "vscode";
 import { BroadcastBus } from "../services/broadcastBus";
+import { toWorkspaceRelative } from "../utils/workspacePath";
 import type { PanelRequest } from "./protocol";
 import { readConfigLocale } from "./readConfigLocale";
 import { readSnapshot } from "./snapshot";
@@ -153,7 +154,9 @@ export class PlanPanel {
               filters: { Markdown: ["md"] },
             });
             const filePath =
-              picked && picked.length > 0 ? picked[0].fsPath : null;
+              picked && picked.length > 0
+                ? toWorkspaceRelative(picked[0], this.cachedLocale === "ja")
+                : null;
             void this.panel.webview.postMessage({
               type: "pickPlanFileResult",
               requestId: req.requestId,

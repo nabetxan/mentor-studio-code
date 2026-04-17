@@ -7,11 +7,11 @@ import type {
   MentorStudioConfig,
   WebviewMessage,
 } from "@mentor-studio/shared";
-import * as path from "node:path";
 import * as vscode from "vscode";
 import { findMentorRef, promptAndAddMentorRef } from "../services/claudeMd";
 import { parseConfig } from "../services/dataParser";
 import { getNonce } from "../utils/nonce";
+import { toWorkspaceRelative } from "../utils/workspacePath";
 
 export class SidebarProvider implements vscode.WebviewViewProvider {
   private view?: vscode.WebviewView;
@@ -107,7 +107,8 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
               filters: { Markdown: ["md"] },
             });
             if (!uris || uris.length === 0) return;
-            const relPath = vscode.workspace.asRelativePath(uris[0], false);
+            const relPath = toWorkspaceRelative(uris[0], this.isJa);
+            if (relPath === null) return;
             try {
               await this.onCreateAndActivatePlan?.(relPath);
             } catch (err) {
@@ -124,27 +125,10 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
               filters: { Markdown: ["md"] },
               openLabel: "Select File",
             });
-            if (uris && uris.length > 0) {
-              const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
-              if (!wsRoot) {
-                return;
-              }
-              const selectedPath = uris[0].fsPath;
-              const wsPath = wsRoot.fsPath;
-              const relativePath = path.relative(wsPath, selectedPath);
-              if (
-                path.isAbsolute(relativePath) ||
-                relativePath.startsWith("..")
-              ) {
-                vscode.window.showErrorMessage(
-                  this.isJa
-                    ? "ワークスペース内のファイルを選択してください。"
-                    : "File must be inside the workspace.",
-                );
-                return;
-              }
-              await this.updateMentorFile(message.field, relativePath);
-            }
+            if (!uris || uris.length === 0) return;
+            const relPath = toWorkspaceRelative(uris[0], this.isJa);
+            if (relPath === null) return;
+            await this.updateMentorFile(message.field, relPath);
           }
         } else if (message.type === "clearFile") {
           await this.updateMentorFile(message.field, null);
@@ -294,7 +278,16 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             });
             return;
           }
-          const relPath = vscode.workspace.asRelativePath(uris[0], false);
+          const relPath = toWorkspaceRelative(uris[0], this.isJa);
+          if (relPath === null) {
+            this.postMessage({
+              type: "changeActivePlanFileResult",
+              id: message.id,
+              ok: false,
+              error: "outside_workspace",
+            });
+            return;
+          }
           try {
             await this.onChangeActivePlanFile?.(message.id, relPath);
             this.postMessage({

@@ -165,6 +165,12 @@ describe("PlanPanel", () => {
     // Reset singleton so each test starts fresh
     PlanPanel.current = undefined;
     vi.clearAllMocks();
+
+    (
+      vscodeMock.workspace as unknown as {
+        workspaceFolders: { uri: vscodeMock.MockUri }[] | undefined;
+      }
+    ).workspaceFolders = [{ uri: vscodeMock.Uri.file("/workspace") }];
   });
 
   // -------------------------------------------------------------------------
@@ -477,7 +483,28 @@ describe("PlanPanel", () => {
     expect(panel.__posted).toContainEqual({
       type: "pickPlanFileResult",
       requestId: "req-pick",
-      filePath: "/workspace/myplan.md",
+      filePath: "myplan.md",
+    });
+  });
+
+  it("'pickPlanFile' with file outside workspace posts pickPlanFileResult with null and shows error", async () => {
+    vi.spyOn(vscodeMock.window, "showOpenDialog").mockResolvedValueOnce([
+      { fsPath: "/elsewhere/myplan.md" } as unknown as vscodeMock.MockUri,
+    ]);
+    const errSpy = vi.spyOn(vscodeMock.window, "showErrorMessage");
+
+    const { panel } = createPanel();
+
+    await panel.webview.__triggerMessage({
+      type: "pickPlanFile",
+      requestId: "req-pick-outside",
+    });
+
+    expect(errSpy).toHaveBeenCalledOnce();
+    expect(panel.__posted).toContainEqual({
+      type: "pickPlanFileResult",
+      requestId: "req-pick-outside",
+      filePath: null,
     });
   });
 
