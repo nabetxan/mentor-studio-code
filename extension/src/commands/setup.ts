@@ -32,9 +32,13 @@ export async function copyCliArtifacts(
 ): Promise<void> {
   await fsp.mkdir(targetToolsDir, { recursive: true });
   await fsp.copyFile(
-    join(distDir, "mentor-cli.js"),
-    join(targetToolsDir, "mentor-cli.js"),
+    join(distDir, "mentor-cli.cjs"),
+    join(targetToolsDir, "mentor-cli.cjs"),
   );
+  // Remove legacy .js bundle left over from extensions ≤ 0.6.1.
+  // Needed because host projects with `"type":"module"` in package.json
+  // load `.js` as ESM, which breaks the CJS bundle.
+  await fsp.rm(join(targetToolsDir, "mentor-cli.js"), { force: true });
 }
 
 export async function cleanupLegacyTemplates(
@@ -313,12 +317,14 @@ export async function runSetup(
     "skills/intake/SKILL.md",
   );
 
-  // CLI tool — always overwrite bundled mentor-cli.js so updates to the
+  // CLI tool — always overwrite bundled mentor-cli.cjs so updates to the
   // extension's bundled CLI take effect on setup. sql-wasm.wasm is now
-  // inlined into mentor-cli.js, so nothing else ships to tools/.
+  // inlined into mentor-cli.cjs, so nothing else ships to tools/.
+  // The .cjs extension forces CommonJS loading regardless of the host
+  // project's package.json "type" field.
   const distDir = vscode.Uri.joinPath(context.extensionUri, "dist").fsPath;
   await copyCliArtifacts(distDir, toolsDirUri.fsPath);
-  createdFiles.push("tools/mentor-cli.js");
+  createdFiles.push("tools/mentor-cli.cjs");
 
   // Bootstrap DB when data.db is missing (independent of config presence,
   // so re-running Setup after a manual DB deletion recreates the file).

@@ -13,6 +13,7 @@ export async function cleanupRuntimeArtifacts(
     { path: "data.db.lock", kind: "dir" },
     { path: "data.db.bak", kind: "file" },
     { path: "sql-wasm.wasm", kind: "file" },
+    { path: "tools/mentor-cli.cjs", kind: "file" },
     { path: "tools/mentor-cli.js", kind: "file" },
     { path: "tools/sql-wasm.wasm", kind: "file" },
   ];
