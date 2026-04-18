@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -8,8 +8,6 @@ import { copyCliArtifacts } from "../src/commands/setup";
 function sha(p: string): string {
   return createHash("sha256").update(readFileSync(p)).digest("hex");
 }
-
-import { writeFileSync } from "node:fs";
 
 describe("copyCliArtifacts", () => {
   it("copies mentor-cli.cjs byte-for-byte and does not ship sql-wasm.wasm", async () => {
