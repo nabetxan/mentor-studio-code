@@ -9,7 +9,7 @@ import { bootstrapDb } from "../../src/db";
 import { seedPlans, seedTasks } from "./helpers";
 
 const DIST = join(__dirname, "..", "..", "dist");
-const CLI = join(DIST, "mentor-cli.js");
+const CLI = join(DIST, "mentor-cli.cjs");
 
 describe("mentor-cli end-to-end (bundled)", () => {
   let mentorRoot: string;
@@ -20,8 +20,8 @@ describe("mentor-cli end-to-end (bundled)", () => {
   function run(cmd: string, argJson?: string): Record<string, unknown> {
     const args =
       argJson !== undefined
-        ? [join(toolsDir, "mentor-cli.js"), cmd, argJson]
-        : [join(toolsDir, "mentor-cli.js"), cmd];
+        ? [join(toolsDir, "mentor-cli.cjs"), cmd, argJson]
+        : [join(toolsDir, "mentor-cli.cjs"), cmd];
     const out = execFileSync("node", args, { encoding: "utf-8" });
     return JSON.parse(out.trim()) as Record<string, unknown>;
   }
@@ -30,7 +30,7 @@ describe("mentor-cli end-to-end (bundled)", () => {
     mentorRoot = mkdtempSync(join(tmpdir(), "msc-e2e-"));
     toolsDir = join(mentorRoot, "tools");
     mkdirSync(toolsDir, { recursive: true });
-    cpSync(CLI, join(toolsDir, "mentor-cli.js"));
+    cpSync(CLI, join(toolsDir, "mentor-cli.cjs"));
     // Intentionally do NOT copy sql-wasm.wasm into toolsDir:
     // the CLI bundle inlines the wasm, so it must run without a sibling file.
     const dbPath = join(mentorRoot, "data.db");
@@ -139,7 +139,7 @@ describe("mentor-cli end-to-end (bundled)", () => {
     try {
       execFileSync(
         "node",
-        [join(toolsDir, "mentor-cli.js"), "no-such-command"],
+        [join(toolsDir, "mentor-cli.cjs"), "no-such-command"],
         { encoding: "utf-8" },
       );
     } catch (e) {

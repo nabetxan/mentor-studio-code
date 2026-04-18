@@ -1,4 +1,4 @@
-// esbuild entry point for .mentor/tools/mentor-cli.js.
+// esbuild entry point for .mentor/tools/mentor-cli.cjs.
 // Registers the inlined sql-wasm bytes before any handler runs, then invokes main().
 // Kept separate from main.ts so tests (which import dispatch) don't pull in the wasm.
 

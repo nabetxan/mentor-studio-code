@@ -19,7 +19,7 @@ function makeMentor(): string {
 }
 
 describe("cleanupRuntimeArtifacts", () => {
-  it("removes data.db, data.db.lock/ (recursive), data.db.bak, sql-wasm.wasm, tools/mentor-cli.js, tools/sql-wasm.wasm", async () => {
+  it("removes data.db, data.db.lock/ (recursive), data.db.bak, sql-wasm.wasm, tools/mentor-cli.cjs, tools/mentor-cli.js (legacy), tools/sql-wasm.wasm", async () => {
     const mentor = makeMentor();
     mkdirSync(join(mentor, "data.db.lock"), { recursive: true });
     mkdirSync(join(mentor, "tools"), { recursive: true });
@@ -27,7 +27,8 @@ describe("cleanupRuntimeArtifacts", () => {
     writeFileSync(join(mentor, "data.db.lock", "owner.json"), "{}");
     writeFileSync(join(mentor, "data.db.bak"), "bak");
     writeFileSync(join(mentor, "sql-wasm.wasm"), "wasm");
-    writeFileSync(join(mentor, "tools", "mentor-cli.js"), "cli");
+    writeFileSync(join(mentor, "tools", "mentor-cli.cjs"), "cli");
+    writeFileSync(join(mentor, "tools", "mentor-cli.js"), "legacy-cli");
     writeFileSync(join(mentor, "tools", "sql-wasm.wasm"), "legacy-wasm");
 
     await cleanupRuntimeArtifacts(mentor);
@@ -36,6 +37,7 @@ describe("cleanupRuntimeArtifacts", () => {
     expect(existsSync(join(mentor, "data.db.lock"))).toBe(false);
     expect(existsSync(join(mentor, "data.db.bak"))).toBe(false);
     expect(existsSync(join(mentor, "sql-wasm.wasm"))).toBe(false);
+    expect(existsSync(join(mentor, "tools", "mentor-cli.cjs"))).toBe(false);
     expect(existsSync(join(mentor, "tools", "mentor-cli.js"))).toBe(false);
     expect(existsSync(join(mentor, "tools", "sql-wasm.wasm"))).toBe(false);
   });

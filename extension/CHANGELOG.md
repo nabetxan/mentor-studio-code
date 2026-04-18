@@ -2,6 +2,12 @@
 
 All notable changes to "Mentor Studio Code" will be documented in this file.
 
+## [0.6.2] - 2026-04-18
+
+### Fixed
+
+- Bundled CLI renamed from `mentor-cli.js` to `mentor-cli.cjs` so it loads as CommonJS regardless of the host project's `package.json` `"type"` field. Previously, workspaces with `"type": "module"` failed.
+
 ## [0.6.1] - 2026-04-18
 
 ### Changed

@@ -3,9 +3,9 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 describe("CLI bundle", () => {
-  const cliPath = join(__dirname, "..", "dist", "mentor-cli.js");
+  const cliPath = join(__dirname, "..", "dist", "mentor-cli.cjs");
 
-  it("builds extension/dist/mentor-cli.js", () => {
+  it("builds extension/dist/mentor-cli.cjs", () => {
     expect(existsSync(cliPath)).toBe(true);
     expect(statSync(cliPath).size).toBeGreaterThan(1_000);
   });

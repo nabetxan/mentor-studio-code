@@ -1,5 +1,5 @@
 // mentor-cli: SQLite-backed CLI used by the AI during mentor sessions.
-// Built as a separate esbuild entry; runtime path: .mentor/tools/mentor-cli.js
+// Built as a separate esbuild entry; runtime path: .mentor/tools/mentor-cli.cjs
 
 import { DbCorruptError } from "../db";
 import {

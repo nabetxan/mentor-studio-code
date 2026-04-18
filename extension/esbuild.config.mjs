@@ -67,7 +67,7 @@ const extensionOptions = {
 const cliOptions = {
   entryPoints: ["src/cli/entry.ts"],
   bundle: true,
-  outfile: "dist/mentor-cli.js",
+  outfile: "dist/mentor-cli.cjs",
   format: "cjs",
   platform: "node",
   target: "node18",

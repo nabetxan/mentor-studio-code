@@ -54,7 +54,7 @@ Order is fixed — never skip, never reorder:
 All reads and writes go through the bundled CLI — never edit the database or \`progress.json\` / \`config.json\` directly with the Edit/Write tool:
 
 \`\`\`
-node .mentor/tools/mentor-cli.js <command> '<json-arg>'
+node .mentor/tools/mentor-cli.cjs <command> '<json-arg>'
 \`\`\`
 
 Writes: \`record-answer\`, \`add-topic\`, \`add-plan\`, \`add-task\`, \`activate-plan\`, \`activate-task\`, \`update-plan\`, \`update-task\`, \`update-progress\`, \`update-profile\`, \`update-config\`.
@@ -120,12 +120,12 @@ GATE: feedback given AND user confirmed → proceed to (e)
 
 Execute in order:
 
-1. Resolve \`topicId\`: \`node .mentor/tools/mentor-cli.js list-topics\` → \`{"ok":true,"topics":[{"id":N,"label":"..."}]}\`.
+1. Resolve \`topicId\`: \`node .mentor/tools/mentor-cli.cjs list-topics\` → \`{"ok":true,"topics":[{"id":N,"label":"..."}]}\`.
    - Match the question's topic label against \`topics\` and use its integer \`id\`.
-   - If no matching topic exists → \`node .mentor/tools/mentor-cli.js add-topic '{"label":"<Name>"}'\` and use the returned \`id\`.
+   - If no matching topic exists → \`node .mentor/tools/mentor-cli.cjs add-topic '{"label":"<Name>"}'\` and use the returned \`id\`.
 2. Record the answer:
    - **New question** (INSERT, omit \`id\`):
-     \`node .mentor/tools/mentor-cli.js record-answer '{"taskId":12,"topicId":3,"concept":"...","question":"...","userAnswer":"...","isCorrect":false,"note":"..."}'\`
+     \`node .mentor/tools/mentor-cli.cjs record-answer '{"taskId":12,"topicId":3,"concept":"...","question":"...","userAnswer":"...","isCorrect":false,"note":"..."}'\`
      - \`taskId\`: integer id from \`session-brief.currentTask.id\`, or \`null\` for flows without a task (e.g. comprehension-check).
      - \`topicId\`: integer from step 1.
      - \`isCorrect\`: true ONLY if correct on first attempt without hints/sub-questions/explanations.
@@ -133,13 +133,13 @@ Execute in order:
      - \`note\`: short description of the misunderstanding when \`isCorrect:false\`; omit when \`isCorrect:true\` (CLI nulls it anyway).
      - Returns \`{"ok":true,"id":N,"attempts":1}\` — remember \`id\` in case the learner retries this gap later.
    - **Re-asking an existing gap** (UPDATE, pass existing \`id\`):
-     \`node .mentor/tools/mentor-cli.js record-answer '{"id":42,"userAnswer":"...","isCorrect":true}'\`
+     \`node .mentor/tools/mentor-cli.cjs record-answer '{"id":42,"userAnswer":"...","isCorrect":true}'\`
      - CLI increments \`attempts\` and updates \`lastAnsweredAt\`. When \`isCorrect:true\`, the row drops out of \`list-unresolved\` automatically.
 3. Post-record checks — evaluate ALL, ask one at a time, wait for each:
    - A concept in \`learner.weakAreas\` answered correctly in a different context → ask whether to remove it.
    - Repeated struggles on a concept not in \`weakAreas\` → ask whether to add it.
    - Strong interest shown → ask whether to add to \`interests\`.
-   - On YES: \`node .mentor/tools/mentor-cli.js update-profile '{"weak_areas":[...]}'\` or \`'{"interests":[...]}'\` (send the full updated array).
+   - On YES: \`node .mentor/tools/mentor-cli.cjs update-profile '{"weak_areas":[...]}'\` or \`'{"interests":[...]}'\` (send the full updated array).
    - On NO: no change.
    - None apply → proceed.
 
@@ -161,12 +161,12 @@ Skip this file entirely when an active plan and active task are both present.
 
 ## Procedure
 
-Run \`node .mentor/tools/mentor-cli.js list-plans '{}'\` (each plan includes \`taskCount: number\`; \`removed\`/\`completed\` plans are excluded by default). Inspect the result and handle the following cases in order:
+Run \`node .mentor/tools/mentor-cli.cjs list-plans '{}'\` (each plan includes \`taskCount: number\`; \`removed\`/\`completed\` plans are excluded by default). Inspect the result and handle the following cases in order:
 
 **Case A — No \`active\` plan (zero plans with status \`active\`)**:
 - Tell the user there is no active plan.
 - Ask: "Which plan would you like to activate?" and list the \`queued\`/\`paused\`/\`backlog\` plans returned.
-- On user selection: \`node .mentor/tools/mentor-cli.js activate-plan '{"id":<id>}'\` — this also auto-activates the plan's first queued task when no task is active globally.
+- On user selection: \`node .mentor/tools/mentor-cli.cjs activate-plan '{"id":<id>}'\` — this also auto-activates the plan's first queued task when no task is active globally.
 - Re-run \`list-plans '{}'\` and continue to Case B/C.
 
 **Case B — \`active\` plan exists but \`taskCount === 0\`** (tasks not yet registered in DB):
@@ -174,10 +174,10 @@ Run \`node .mentor/tools/mentor-cli.js list-plans '{}'\` (each plan includes \`t
 - If the plan has a \`filePath\` pointing to an existing markdown file → read it. Extract any \`## Task N\` headings as a starting point; otherwise generate a structured task list (≥ 1 task) from the goal.
 - If the plan has no \`filePath\` (UI-only plan) → ask the user about the goal, then propose creating \`.mentor/plan/YYYY-MM-DD-<slug>.md\` with the task breakdown. Never overwrite an existing file; append a counter or timestamp on collision.
 - On user confirmation:
-  - Register each task in order: \`node .mentor/tools/mentor-cli.js add-task '{"planId":<id>,"name":"<task name>"}'\` — the first \`add-task\` under an active plan with no active task auto-activates that task (\`{"activated":true}\` in the response); subsequent tasks stay \`queued\`.
-  - If a markdown file was newly created, set \`filePath\`: \`node .mentor/tools/mentor-cli.js update-plan '{"id":<id>,"filePath":"<rel path>"}'\`
+  - Register each task in order: \`node .mentor/tools/mentor-cli.cjs add-task '{"planId":<id>,"name":"<task name>"}'\` — the first \`add-task\` under an active plan with no active task auto-activates that task (\`{"activated":true}\` in the response); subsequent tasks stay \`queued\`.
+  - If a markdown file was newly created, set \`filePath\`: \`node .mentor/tools/mentor-cli.cjs update-plan '{"id":<id>,"filePath":"<rel path>"}'\`
 
-**Case C — \`active\` plan exists with tasks**: no action needed. If \`currentTask\` is still null after re-running \`session-brief\` (e.g. all tasks were queued and none were auto-activated), pick the first queued task and run \`node .mentor/tools/mentor-cli.js activate-task '{"id":<id>}'\`. The active-task invariant requires the task's plan to be active, so \`activate-task\` only succeeds within the current active plan.
+**Case C — \`active\` plan exists with tasks**: no action needed. If \`currentTask\` is still null after re-running \`session-brief\` (e.g. all tasks were queued and none were auto-activated), pick the first queued task and run \`node .mentor/tools/mentor-cli.cjs activate-task '{"id":<id>}'\`. The active-task invariant requires the task's plan to be active, so \`activate-task\` only succeeds within the current active plan.
 
 Also check any \`queued\` plan with \`taskCount === 0\` and apply the same task-generation flow as Case B before activating it.
 
@@ -205,7 +205,7 @@ description: Main learning session — loads session state, runs Teaching Cycle,
 ## First Steps
 1. Read \`.mentor/skills/shared-rules.md\`
 2. Read \`.mentor/skills/teaching-cycle-reference.md\`
-3. Run: \`node .mentor/tools/mentor-cli.js session-brief '{"flow":"mentor-session"}'\`
+3. Run: \`node .mentor/tools/mentor-cli.cjs session-brief '{"flow":"mentor-session"}'\`
    - If the command returns \`{"ok": false, ...}\`, tell the user the error and STOP.
    - Output fields you will use: \`learner\`, \`currentTask\` (\`{id, name, planId}\` or null), \`currentStep\`, \`resumeContext\`, \`relevantGaps\`, \`gapCount\`.
 
@@ -281,7 +281,7 @@ GATE: feedback given AND user confirmed → proceed to (i)
 ### (i) RECORD ← BLOCKING
 → Follow teaching-cycle-reference.md (e) RECORD procedure.
 Additionally after RECORD:
-1. Update progress: \`node .mentor/tools/mentor-cli.js update-progress '{"resume_context":"..."}'\`
+1. Update progress: \`node .mentor/tools/mentor-cli.cjs update-progress '{"resume_context":"..."}'\`
 2. Tell user progress saved.
 GATE: steps complete → check current task steps.
 - More steps remain → start next step from (a)
@@ -292,7 +292,7 @@ GATE: steps complete → check current task steps.
 When the user asks to skip the current task:
 
 \`\`\`bash
-node .mentor/tools/mentor-cli.js update-task '{"id":<currentTask.id>,"status":"skipped"}'
+node .mentor/tools/mentor-cli.cjs update-task '{"id":<currentTask.id>,"status":"skipped"}'
 \`\`\`
 
 Then handle the response exactly like Task Completion step 2.
@@ -303,7 +303,7 @@ Run in order, never skip:
 
 1. Mark the task completed:
    \`\`\`bash
-   node .mentor/tools/mentor-cli.js update-task '{"id":<currentTask.id>,"status":"completed"}'
+   node .mentor/tools/mentor-cli.cjs update-task '{"id":<currentTask.id>,"status":"completed"}'
    \`\`\`
    Response shape: \`{"ok":true,"nextTask":{"id":N,"name":"...","planId":N}|null,"planCompleted":bool}\`. The CLI auto-advances the next queued task to \`active\`.
 2. Handle the response:
@@ -312,7 +312,7 @@ Run in order, never skip:
    - \`nextTask\` is null AND \`planCompleted\` is false → the plan has no queued tasks left but is not marked complete. Tell the user to open the Plan Panel to add or reorder tasks.
 3. Update resume context:
    \`\`\`bash
-   node .mentor/tools/mentor-cli.js update-progress '{"resume_context":"<short hint for the next session>"}'
+   node .mentor/tools/mentor-cli.cjs update-progress '{"resume_context":"<short hint for the next session>"}'
    \`\`\`
 
 Plan/Task additions, renames, reordering, and deletions are done in the Plan Panel — there are no CLI commands for them.
@@ -328,8 +328,8 @@ description: Review / practice previously missed concepts (questions with isCorr
 ## First Steps
 1. Read \`.mentor/skills/shared-rules.md\`
 2. Read \`.mentor/skills/teaching-cycle-reference.md\`
-3. If the user named a topic, resolve its \`topicId\` first: \`node .mentor/tools/mentor-cli.js list-topics\` and match the label.
-4. Run: \`node .mentor/tools/mentor-cli.js session-brief '{"flow":"review"}'\` (add \`"topicId":N\` when topic-scoped).
+3. If the user named a topic, resolve its \`topicId\` first: \`node .mentor/tools/mentor-cli.cjs list-topics\` and match the label.
+4. Run: \`node .mentor/tools/mentor-cli.cjs session-brief '{"flow":"review"}'\` (add \`"topicId":N\` when topic-scoped).
    - If the command returns \`{"ok": false, ...}\`, tell the user the error and STOP.
    - Output fields you will use: \`learner\`, \`gaps\` (each has \`id\`, \`topicId\`, \`concept\`, \`question\`, \`userAnswer\`, \`note\`, \`lastAnsweredAt\`, \`attempts\`), \`gapCount\`.
 
@@ -348,9 +348,9 @@ Triggered when the user asks to review / practice previously missed concepts.
 4. Ask 1 review question (same rules as Teaching Cycle (b) Ask — include code snippet and file path when relevant, calibrate to learner level).
    GATE: question asked → WAIT for user
 5. WAIT for user response, then follow teaching-cycle-reference.md (d) Feedback → (e) RECORD. Pass the gap's \`id\` so \`record-answer\` performs an UPDATE and increments \`attempts\`:
-   \`node .mentor/tools/mentor-cli.js record-answer '{"id":42,"userAnswer":"...","isCorrect":true}'\`
+   \`node .mentor/tools/mentor-cli.cjs record-answer '{"id":42,"userAnswer":"...","isCorrect":true}'\`
    (The row already has \`taskId\` and \`topicId\` — e.g. \`{"topicId":3}\` — from its original INSERT, so only \`userAnswer\`/\`isCorrect\`/\`note\` change.)
-6. Refresh the gap list: \`node .mentor/tools/mentor-cli.js list-unresolved\` (or with \`'{"topicId":N}'\` if topic-scoped).
+6. Refresh the gap list: \`node .mentor/tools/mentor-cli.cjs list-unresolved\` (or with \`'{"topicId":N}'\` if topic-scoped).
 7. Based on the refreshed list:
    - \`gaps\` is empty → congratulate the user that all review items are cleared and stop.
    - Otherwise → ask the user whether to continue or see a summary.
@@ -372,7 +372,7 @@ description: Generate new questions across all learned topics to assess overall 
 ## First Steps
 1. Read \`.mentor/skills/shared-rules.md\`
 2. Read \`.mentor/skills/teaching-cycle-reference.md\`
-3. Run: \`node .mentor/tools/mentor-cli.js session-brief '{"flow":"comprehension-check"}'\`
+3. Run: \`node .mentor/tools/mentor-cli.cjs session-brief '{"flow":"comprehension-check"}'\`
    - If the command returns \`{"ok": false, ...}\`, tell the user the error and STOP.
 
 ## Flow
@@ -390,7 +390,7 @@ Session-brief output fields: \`learner\`, \`allTopics\` (\`[{id, label}]\`), \`c
    GATE: question asked → WAIT for user
 3. WAIT for user response, then follow teaching-cycle-reference.md (d) Feedback → (e) RECORD.
    **Comprehension-check uses \`"taskId":null\`** because questions are not tied to a specific task:
-   \`node .mentor/tools/mentor-cli.js record-answer '{"taskId":null,"topicId":3,"concept":"...","question":"...","userAnswer":"...","isCorrect":true}'\`
+   \`node .mentor/tools/mentor-cli.cjs record-answer '{"taskId":null,"topicId":3,"concept":"...","question":"...","userAnswer":"...","isCorrect":true}'\`
 4. After recording, ask whether the user wants to continue or see a summary.
    - Continue → go back to step 1.
    - Summary → proceed to step 5.
@@ -413,7 +413,7 @@ description: Review the current task's implementation against requirements.
 ## First Steps
 1. Read \`.mentor/skills/shared-rules.md\`
 2. Read \`.mentor/skills/teaching-cycle-reference.md\`
-3. Run: \`node .mentor/tools/mentor-cli.js session-brief '{"flow":"implementation-review"}'\`
+3. Run: \`node .mentor/tools/mentor-cli.cjs session-brief '{"flow":"implementation-review"}'\`
    - If the command returns \`{"ok": false, ...}\`, tell the user the error and STOP.
    - Output fields you will use: \`currentTask\` (\`{id, name, planId}\` or null), \`resumeContext\`.
    - If \`currentTask\` is null → tell the user there is no active task to review and stop.
@@ -435,7 +435,7 @@ Triggered when the user asks to review the current task's implementation.
 5. WAIT for user response, then follow teaching-cycle-reference.md (d) Feedback → (e) RECORD. Use \`currentTask.id\` as \`taskId\`.
 6. After recording, update progress:
    \`\`\`bash
-   node .mentor/tools/mentor-cli.js update-progress '{"resume_context":"..."}'
+   node .mentor/tools/mentor-cli.cjs update-progress '{"resume_context":"..."}'
    \`\`\`
 
 Scope: **task requirements** in current-task.md, not diff or branch.
@@ -461,16 +461,16 @@ Triggered when no active plan exists in the DB, or when all tasks in the current
    - **Never overwrite** an existing file — if the computed filename already exists, append a counter (e.g. \`-2\`, \`-3\`) or a short timestamp suffix before \`.md\`.
 5. Register the plan and tasks via CLI in order:
    \`\`\`bash
-   node .mentor/tools/mentor-cli.js add-plan '{"name":"<plan-name>","filePath":".mentor/plan/<dated-slug>.md"}'
+   node .mentor/tools/mentor-cli.cjs add-plan '{"name":"<plan-name>","filePath":".mentor/plan/<dated-slug>.md"}'
    \`\`\`
    Capture the returned \`id\`. Then for each task, in order:
    \`\`\`bash
-   node .mentor/tools/mentor-cli.js add-task '{"planId":<id>,"name":"<task-name>"}'
+   node .mentor/tools/mentor-cli.cjs add-task '{"planId":<id>,"name":"<task-name>"}'
    \`\`\`
 6. Ask the user which status to assign the new plan. Offer three choices:
    - **active** — start working on it right away:
      \`\`\`bash
-     node .mentor/tools/mentor-cli.js activate-plan '{"id":<id>}'
+     node .mentor/tools/mentor-cli.cjs activate-plan '{"id":<id>}'
      \`\`\`
    - **queued** — schedule it; it will auto-activate when the current active plan completes. Leave it — proceed to session without activating.
    - **backlog** — register now, work on it later (timing undecided). This is the **default**. Leave it — proceed to session without activating.
@@ -480,7 +480,7 @@ If any CLI call fails → tell the user the error and suggest retrying or checki
 
 ### All-Tasks-Complete Detection
 
-Call \`node .mentor/tools/mentor-cli.js list-plans '{}'\` and check the returned task statuses from \`session-brief\`. Each plan in the response includes a \`taskCount\` field (count of non-\`completed\`/non-\`skipped\` tasks); \`removed\` and \`completed\` plans are excluded by default (pass \`includeCompleted:true\` or \`includeRemoved:true\` to include them). If the active plan has no tasks with status \`queued\` or \`active\` (i.e. all tasks are \`completed\` or \`skipped\`) → plan complete → trigger Plan Setup Flow.
+Call \`node .mentor/tools/mentor-cli.cjs list-plans '{}'\` and check the returned task statuses from \`session-brief\`. Each plan in the response includes a \`taskCount\` field (count of non-\`completed\`/non-\`skipped\` tasks); \`removed\` and \`completed\` plans are excluded by default (pass \`includeCompleted:true\` or \`includeRemoved:true\` to include them). If the active plan has no tasks with status \`queued\` or \`active\` (i.e. all tasks are \`completed\` or \`skipped\`) → plan complete → trigger Plan Setup Flow.
 
 Do **not** count \`## Task N\` headings in the markdown file to determine completion — the DB is the authoritative source.
 
@@ -529,7 +529,7 @@ When the AI creates a new spec file, write it to \`.mentor/spec/<slug>.md\` (cre
    - If user says no → leave \`mentorFiles.spec\` unchanged.
 4. On OK:
    \`\`\`bash
-   node .mentor/tools/mentor-cli.js update-config '{"mentorFiles":{"spec":"<path>"}}'
+   node .mentor/tools/mentor-cli.cjs update-config '{"mentorFiles":{"spec":"<path>"}}'
    \`\`\`
    If write fails → tell the user to set it manually in Settings.
 
@@ -537,7 +537,7 @@ When the AI creates a new spec file, write it to \`.mentor/spec/<slug>.md\` (cre
 
 - Always ask permission before writing.
 - Always mention that this can be changed anytime from Settings.
-- Use the CLI: \`node .mentor/tools/mentor-cli.js update-config '{"mentorFiles":{"spec":"<path>"}}'\`
+- Use the CLI: \`node .mentor/tools/mentor-cli.cjs update-config '{"mentorFiles":{"spec":"<path>"}}'\`
 - The extension's fileWatcher auto-reloads.
 `;
 
@@ -596,7 +596,7 @@ Ask how they want the mentor to interact with them. Offer examples such as: hint
 
 Write the learner profile:
 \`\`\`bash
-node .mentor/tools/mentor-cli.js update-profile '{"experience":"<Q1>","level":"<beginner|intermediate|advanced from Q2>","interests":["<parsed from Q3>"],"weak_areas":["<parsed from Q4, empty array if none>"],"mentor_style":"<Q5>"}'
+node .mentor/tools/mentor-cli.cjs update-profile '{"experience":"<Q1>","level":"<beginner|intermediate|advanced from Q2>","interests":["<parsed from Q3>"],"weak_areas":["<parsed from Q4, empty array if none>"],"mentor_style":"<Q5>"}'
 \`\`\`
 
 Then tell the user that their profile has been saved and the session will now begin. Return control to the caller to continue from the relevantGaps check.

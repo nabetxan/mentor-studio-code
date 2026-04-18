@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const cliPath = join(__dirname, "..", "..", "dist", "mentor-cli.js");
+const cliPath = join(__dirname, "..", "..", "dist", "mentor-cli.cjs");
 
 function runCli(args: string[]): { code: number | null; stdout: string } {
   const res = spawnSync(process.execPath, [cliPath, ...args], {
