@@ -211,8 +211,8 @@ const translations = {
     en: "@.mentor/rules/CREATE_SPEC.md Create a spec file. Ask the user if any information is missing. use brainstorming skill if available",
   },
   "settings.prompt.plan": {
-    ja: "@.mentor/rules/CREATE_PLAN.md プランファイルを作成してください。何のプランを作るかはユーザーに質問してください。use writing-plans skill if available",
-    en: "@.mentor/rules/CREATE_PLAN.md Create a plan file. Ask the user what kind of plan to create. use writing-plans skill if available",
+    ja: "@.mentor/rules/CREATE_PLAN.md プランファイルを作成してください。何のプランを作るかはユーザーに質問してください。プラン作成に使える外部スキルがあれば活用してください。",
+    en: "@.mentor/rules/CREATE_PLAN.md Create a plan file. Ask the user what kind of plan to create. If any external skill for plan creation is available, feel free to use it.",
   },
   "settings.profile.register": {
     ja: "プロフィール登録",

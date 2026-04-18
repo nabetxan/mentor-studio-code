@@ -7,6 +7,7 @@ All notable changes to "Mentor Studio Code" will be documented in this file.
 ### Changed
 
 - `mentor-cli.js` now embeds `sql-wasm.wasm` directly in the bundle. `.mentor/tools/` no longer ships a separate `sql-wasm.wasm` file, and Setup / re-Setup no longer copies it.
+- Settings → Plan の「AIとプラン作成」コピー用プロンプトを、特定スキル名への依存をやめ、利用可能な外部スキルがあれば活用する汎用的な文面に変更。
 
 ### Added
 
