@@ -207,8 +207,8 @@ const translations = {
   "settings.language": { ja: "Language / 言語", en: "Language" },
   "settings.enableMentor": { ja: "メンター機能", en: "Mentor" },
   "settings.prompt.spec": {
-    ja: "@.mentor/rules/CREATE_SPEC.md 仕様ファイルを作成してください。不足している情報があればユーザーに質問してください。use brainstorming skill if available",
-    en: "@.mentor/rules/CREATE_SPEC.md Create a spec file. Ask the user if any information is missing. use brainstorming skill if available",
+    ja: "@.mentor/rules/CREATE_SPEC.md 仕様ファイルを作成してください。不足している情報があればユーザーに質問してください。仕様作成に使える外部スキルがあれば活用してください。",
+    en: "@.mentor/rules/CREATE_SPEC.md Create a spec file. Ask the user if any information is missing. If any external skill for spec creation is available, feel free to use it.",
   },
   "settings.prompt.plan": {
     ja: "@.mentor/rules/CREATE_PLAN.md プランファイルを作成してください。何のプランを作るかはユーザーに質問してください。プラン作成に使える外部スキルがあれば活用してください。",
