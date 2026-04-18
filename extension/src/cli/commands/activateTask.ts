@@ -20,7 +20,7 @@ export const activateTask: Command = async (rawArgs, paths) => {
   const id = args.id as number;
 
   try {
-    await activateTaskWrite(paths.dbPath, { id }, paths.wasmPath);
+    await activateTaskWrite(paths.dbPath, { id });
     return { ok: true, id, active: true };
   } catch (e) {
     if (e instanceof InvariantViolationError) {

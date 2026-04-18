@@ -31,10 +31,11 @@ describe("mentor-cli end-to-end (bundled)", () => {
     toolsDir = join(mentorRoot, "tools");
     mkdirSync(toolsDir, { recursive: true });
     cpSync(CLI, join(toolsDir, "mentor-cli.js"));
-    cpSync(join(DIST, "sql-wasm.wasm"), join(toolsDir, "sql-wasm.wasm"));
+    // Intentionally do NOT copy sql-wasm.wasm into toolsDir:
+    // the CLI bundle inlines the wasm, so it must run without a sibling file.
     const dbPath = join(mentorRoot, "data.db");
     await bootstrapDb(dbPath, {
-      wasmPath: join(toolsDir, "sql-wasm.wasm"),
+      wasmPath: join(DIST, "sql-wasm.wasm"),
       topics: [{ label: "JS" }],
     });
     topicId = 1;

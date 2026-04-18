@@ -19,7 +19,7 @@ export const deletePlan: Command = async (rawArgs, paths) => {
   const id = args.id as number;
 
   try {
-    await deletePlanWrite(paths.dbPath, { id }, paths.wasmPath);
+    await deletePlanWrite(paths.dbPath, { id });
     return { ok: true, id };
   } catch (e) {
     const msg = (e as Error).message;

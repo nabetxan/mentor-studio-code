@@ -67,16 +67,3 @@ export async function main(argv: string[]): Promise<void> {
   process.stdout.write(JSON.stringify(result) + "\n");
   if (!result.ok) process.exitCode = 1;
 }
-
-if (require.main === module) {
-  main(process.argv).catch((err: unknown) => {
-    process.stdout.write(
-      JSON.stringify({
-        ok: false,
-        error: "unexpected",
-        detail: err instanceof Error ? err.message : String(err),
-      }) + "\n",
-    );
-    process.exitCode = 1;
-  });
-}

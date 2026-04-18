@@ -1,4 +1,4 @@
-![version](https://img.shields.io/badge/version-0.6.0-blue)
+![version](https://img.shields.io/badge/version-0.6.1-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 [![website](https://img.shields.io/badge/%F0%9F%8C%90_Website-Landing_Page-7ec8e3)](https://nabetxan.github.io/mentor-studio-code/)
 
@@ -91,6 +91,8 @@ This extension creates files and references outside the extension itself (`.ment
 
 [MIT](LICENSE)
 
+This extension bundles third-party code; see [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md) for attributions.
+
 ---
 
 # Mentor Studio Code（日本語）
@@ -175,3 +177,5 @@ Plan Panel はコマンドパレットから `Mentor Studio Code: Open Plan Pane
 ## ライセンス
 
 [MIT](LICENSE)
+
+この拡張機能にはサードパーティのコードが含まれています。帰属表示は [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md) を参照してください。

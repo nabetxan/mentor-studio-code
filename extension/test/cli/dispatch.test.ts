@@ -7,7 +7,6 @@ const paths: CliPaths = {
   mentorRoot: "/tmp/fake",
   dbPath: "/tmp/fake/data.db",
   progressPath: "/tmp/fake/progress.json",
-  wasmPath: "/tmp/fake/tools/sql-wasm.wasm",
   configPath: "/tmp/fake/config.json",
 };
 

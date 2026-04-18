@@ -64,7 +64,7 @@ export const updateTask: Command = async (rawArgs, paths) => {
   try {
     advance = await withWriteTransaction(
       paths.dbPath,
-      { wasmPath: paths.wasmPath, purpose: "normal" },
+      { purpose: "normal" },
       (db) => {
         const chk = db.prepare("SELECT planId, status FROM tasks WHERE id = ?");
         let current: { planId: number; status: string } | null = null;

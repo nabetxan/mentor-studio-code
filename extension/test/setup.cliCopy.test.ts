@@ -10,17 +10,14 @@ function sha(p: string): string {
 }
 
 describe("copyCliArtifacts", () => {
-  it("copies mentor-cli.js and sql-wasm.wasm byte-for-byte", async () => {
+  it("copies mentor-cli.js byte-for-byte and does not ship sql-wasm.wasm", async () => {
     const dist = join(__dirname, "..", "dist");
     const target = mkdtempSync(join(tmpdir(), "msc-setup-"));
     await copyCliArtifacts(dist, target);
     expect(existsSync(join(target, "mentor-cli.js"))).toBe(true);
-    expect(existsSync(join(target, "sql-wasm.wasm"))).toBe(true);
+    expect(existsSync(join(target, "sql-wasm.wasm"))).toBe(false);
     expect(sha(join(target, "mentor-cli.js"))).toBe(
       sha(join(dist, "mentor-cli.js")),
-    );
-    expect(sha(join(target, "sql-wasm.wasm"))).toBe(
-      sha(join(dist, "sql-wasm.wasm")),
     );
   });
 });

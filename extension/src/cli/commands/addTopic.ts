@@ -17,7 +17,7 @@ export const addTopic: Command = async (rawArgs, paths) => {
   const label = args.label;
   const id = await withWriteTransaction(
     paths.dbPath,
-    { wasmPath: paths.wasmPath, purpose: "normal" },
+    { purpose: "normal" },
     (db) => {
       const stmt = db.prepare("INSERT INTO topics(label) VALUES (?)");
       try {

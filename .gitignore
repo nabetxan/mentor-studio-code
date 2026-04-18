@@ -19,3 +19,4 @@ docsBackup/
 # Project local config
 settings.local.json
 .mentor/
+.mentorbackup*

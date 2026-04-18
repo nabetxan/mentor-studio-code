@@ -5,7 +5,8 @@ import { acquireLock, releaseLock, type LockPurpose } from "./lock";
 import { loadSqlJs } from "./sqlJsLoader";
 
 export interface TxOptions {
-  wasmPath: string;
+  /** Omit when the CLI bundle has wasm embedded; required for extension-side use. */
+  wasmPath?: string;
   purpose: LockPurpose;
   lockTimeoutMs?: number;
 }

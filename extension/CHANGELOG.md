@@ -2,6 +2,17 @@
 
 All notable changes to "Mentor Studio Code" will be documented in this file.
 
+## [0.6.1] - 2026-04-18
+
+### Changed
+
+- `mentor-cli.js` now embeds `sql-wasm.wasm` directly in the bundle. `.mentor/tools/` no longer ships a separate `sql-wasm.wasm` file, and Setup / re-Setup no longer copies it.
+- Settings → Plan / Spec の「AIと作成」コピー用プロンプトを、特定スキル名への依存をやめ、利用可能な外部スキルがあれば活用する汎用的な文面に変更。
+
+### Added
+
+- `THIRD_PARTY_NOTICES.md` with attribution for sql.js, SQLite, Emscripten, React, and @dnd-kit. The `mentor-cli.js` bundle also inlines the sql.js / SQLite / Emscripten notices as a banner comment. Both README language sections link to the notices file from their License section.
+
 ## [0.6.0] - 2026-04-17
 
 This release migrates the runtime data store from JSON files to SQLite, and rebuilds the Plan Panel around a richer plan lifecycle.

@@ -38,10 +38,10 @@ export const activatePlan: Command = async (rawArgs, paths) => {
 
   try {
     if (deactivate) {
-      await deactivatePlanWrite(paths.dbPath, { id }, paths.wasmPath);
+      await deactivatePlanWrite(paths.dbPath, { id });
       return { ok: true, id, active: false };
     }
-    await activatePlanWrite(paths.dbPath, { id }, paths.wasmPath);
+    await activatePlanWrite(paths.dbPath, { id });
     return { ok: true, id, active: true };
   } catch (e) {
     const msg = (e as Error).message;

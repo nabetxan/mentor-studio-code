@@ -14,7 +14,7 @@ export const listPlans: Command = async (rawArgs, paths) => {
   const includeCompleted = args.includeCompleted ? 1 : 0;
 
   try {
-    const SQL = await loadSqlJs(paths.wasmPath);
+    const SQL = await loadSqlJs();
     const db = new SQL.Database(readFileSync(paths.dbPath));
     try {
       const res = db.exec(

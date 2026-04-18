@@ -5,7 +5,6 @@ export interface CliPaths {
   dbPath: string;
   progressPath: string;
   configPath: string;
-  wasmPath: string;
 }
 
 export function resolvePaths(toolsDir: string): CliPaths {
@@ -15,6 +14,5 @@ export function resolvePaths(toolsDir: string): CliPaths {
     dbPath: join(mentorRoot, "data.db"),
     progressPath: join(mentorRoot, "progress.json"),
     configPath: join(mentorRoot, "config.json"),
-    wasmPath: join(toolsDir, "sql-wasm.wasm"),
   };
 }

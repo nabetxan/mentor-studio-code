@@ -1,5 +1,5 @@
 import { build, context } from "esbuild";
-import { copyFileSync, mkdirSync } from "node:fs";
+import { copyFileSync, mkdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -7,6 +7,32 @@ import { fileURLToPath } from "node:url";
 const require = createRequire(import.meta.url);
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const isWatch = process.argv.includes("--watch");
+
+function cliNoticesBanner() {
+  const file = resolve(__dirname, "THIRD_PARTY_NOTICES.md");
+  const raw = readFileSync(file, "utf8");
+  const match = raw.match(
+    /<!-- cli-notices-start -->([\s\S]*?)<!-- cli-notices-end -->/,
+  );
+  if (!match) {
+    throw new Error(`CLI notices markers not found in ${file}`);
+  }
+  const body = match[1]
+    .trim()
+    .split("\n")
+    .map((line) => (line.length === 0 ? " *" : ` * ${line}`))
+    .join("\n");
+  return [
+    "#!/usr/bin/env node",
+    "/*!",
+    " * mentor-cli — part of Mentor Studio Code",
+    " *",
+    " * Third-party notices for code bundled into this file:",
+    " *",
+    body,
+    " */",
+  ].join("\n");
+}
 
 function copyWasm() {
   const entry = require.resolve("sql.js");
@@ -39,7 +65,7 @@ const extensionOptions = {
 
 /** @type {import('esbuild').BuildOptions} */
 const cliOptions = {
-  entryPoints: ["src/cli/main.ts"],
+  entryPoints: ["src/cli/entry.ts"],
   bundle: true,
   outfile: "dist/mentor-cli.js",
   format: "cjs",
@@ -47,7 +73,8 @@ const cliOptions = {
   target: "node18",
   sourcemap: false,
   minify: !isWatch,
-  banner: { js: "#!/usr/bin/env node" },
+  banner: { js: cliNoticesBanner() },
+  loader: { ".wasm": "binary" },
 };
 
 /** @type {import('esbuild').BuildOptions} */
