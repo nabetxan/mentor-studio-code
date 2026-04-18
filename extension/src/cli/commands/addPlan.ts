@@ -37,11 +37,7 @@ export const addPlan: Command = async (rawArgs, paths) => {
   const name = args.name;
 
   try {
-    const { id } = await createPlan(
-      paths.dbPath,
-      { name, filePath },
-      paths.wasmPath,
-    );
+    const { id } = await createPlan(paths.dbPath, { name, filePath });
     return { ok: true, id, name, filePath };
   } catch (e) {
     return { ok: false, error: "unexpected", detail: (e as Error).message };

@@ -35,10 +35,6 @@ export async function copyCliArtifacts(
     join(distDir, "mentor-cli.js"),
     join(targetToolsDir, "mentor-cli.js"),
   );
-  await fsp.copyFile(
-    join(distDir, "sql-wasm.wasm"),
-    join(targetToolsDir, "sql-wasm.wasm"),
-  );
 }
 
 export async function cleanupLegacyTemplates(
@@ -317,17 +313,21 @@ export async function runSetup(
     "skills/intake/SKILL.md",
   );
 
-  // CLI tool — always overwrite bundled mentor-cli.js and sql-wasm.wasm
-  // so updates to the extension's bundled CLI take effect on setup.
+  // CLI tool — always overwrite bundled mentor-cli.js so updates to the
+  // extension's bundled CLI take effect on setup. sql-wasm.wasm is now
+  // inlined into mentor-cli.js, so nothing else ships to tools/.
   const distDir = vscode.Uri.joinPath(context.extensionUri, "dist").fsPath;
   await copyCliArtifacts(distDir, toolsDirUri.fsPath);
   createdFiles.push("tools/mentor-cli.js");
-  createdFiles.push("tools/sql-wasm.wasm");
 
   // Bootstrap DB when data.db is missing (independent of config presence,
   // so re-running Setup after a manual DB deletion recreates the file).
   const dbPath = vscode.Uri.joinPath(mentorDirUri, "data.db").fsPath;
-  const wasmPath = vscode.Uri.joinPath(toolsDirUri, "sql-wasm.wasm").fsPath;
+  const wasmPath = vscode.Uri.joinPath(
+    context.extensionUri,
+    "dist",
+    "sql-wasm.wasm",
+  ).fsPath;
   if (!existsSync(dbPath)) {
     await openDb(dbPath, { wasmPath, bootstrap: { topics: DEFAULT_TOPICS } });
     createdFiles.push("data.db");

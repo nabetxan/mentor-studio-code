@@ -22,7 +22,7 @@ export const listUnresolved: Command = async (rawArgs, paths) => {
 
   if (!existsSync(paths.dbPath)) return { ok: false, error: "db_missing" };
 
-  const SQL = await loadSqlJs(paths.wasmPath);
+  const SQL = await loadSqlJs();
   const db = new SQL.Database(readFileSync(paths.dbPath));
   try {
     const totalRes = db.exec(

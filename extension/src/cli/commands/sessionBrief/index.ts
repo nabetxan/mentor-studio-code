@@ -68,7 +68,7 @@ export const sessionBrief: Command = async (rawArgs, paths) => {
   >;
   const learner = mapLearner(profile, flow);
 
-  const SQL = await loadSqlJs(paths.wasmPath);
+  const SQL = await loadSqlJs();
   const db = new SQL.Database(readFileSync(paths.dbPath));
   try {
     return runFlow(db, flow, learner, progress.value, topicId.value);

@@ -37,7 +37,7 @@ export async function updateQuestion(
 
   return withWriteTransaction(
     paths.dbPath,
-    { wasmPath: paths.wasmPath, purpose: "normal" },
+    { purpose: "normal" },
     (db) => {
       const findStmt = db.prepare("SELECT 1 FROM questions WHERE id = ?");
       let found = false;

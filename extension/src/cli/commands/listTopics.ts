@@ -5,7 +5,7 @@ import type { Command } from "./types";
 
 export const listTopics: Command = async (_args, paths) => {
   if (!existsSync(paths.dbPath)) return { ok: false, error: "db_missing" };
-  const SQL = await loadSqlJs(paths.wasmPath);
+  const SQL = await loadSqlJs();
   const db = new SQL.Database(readFileSync(paths.dbPath));
   try {
     const res = db.exec("SELECT id, label FROM topics ORDER BY id ASC");

@@ -58,7 +58,7 @@ export const updatePlan: Command = async (rawArgs, paths) => {
   const id = args.id as number;
 
   try {
-    await updatePlanWrite(paths.dbPath, { id, ...update }, paths.wasmPath);
+    await updatePlanWrite(paths.dbPath, { id, ...update });
     return { ok: true, id };
   } catch (e) {
     const msg = (e as Error).message;

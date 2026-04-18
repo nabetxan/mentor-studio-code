@@ -14,7 +14,7 @@ function rowExists(
 export async function createTask(
   dbPath: string,
   args: { planId: number; name: string },
-  wasmPath: string,
+  wasmPath?: string,
 ): Promise<{ id: number; activated: boolean }> {
   return withWriteTransaction(dbPath, { wasmPath, purpose: "normal" }, (db) => {
     const planStmt = db.prepare("SELECT status FROM plans WHERE id = ?");
@@ -79,7 +79,7 @@ export async function createTask(
 export async function updateTask(
   dbPath: string,
   args: { id: number; name?: string },
-  wasmPath: string,
+  wasmPath?: string,
 ): Promise<void> {
   await withWriteTransaction(dbPath, { wasmPath, purpose: "normal" }, (db) => {
     if (!rowExists(db, "tasks", args.id)) {
@@ -102,7 +102,7 @@ export async function updateTask(
 export async function deleteTask(
   dbPath: string,
   args: { id: number },
-  wasmPath: string,
+  wasmPath?: string,
 ): Promise<void> {
   await withWriteTransaction(dbPath, { wasmPath, purpose: "normal" }, (db) => {
     if (!rowExists(db, "tasks", args.id)) {
@@ -121,7 +121,7 @@ export async function deleteTask(
 export async function reorderTasks(
   dbPath: string,
   args: { planId: number; orderedIds: number[] },
-  wasmPath: string,
+  wasmPath?: string,
 ): Promise<void> {
   await withWriteTransaction(dbPath, { wasmPath, purpose: "normal" }, (db) => {
     if (!rowExists(db, "plans", args.planId)) {
@@ -154,7 +154,7 @@ export async function reorderTasks(
 export async function activateTask(
   dbPath: string,
   args: { id: number },
-  wasmPath: string,
+  wasmPath?: string,
 ): Promise<void> {
   await withWriteTransaction(dbPath, { wasmPath, purpose: "normal" }, (db) => {
     if (!rowExists(db, "tasks", args.id)) {

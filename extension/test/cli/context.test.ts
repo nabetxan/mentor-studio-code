@@ -13,6 +13,6 @@ describe("resolvePaths", () => {
     expect(p.mentorRoot).toBe(mentorRoot);
     expect(p.dbPath).toBe(join(mentorRoot, "data.db"));
     expect(p.progressPath).toBe(join(mentorRoot, "progress.json"));
-    expect(p.wasmPath).toBe(join(toolsDir, "sql-wasm.wasm"));
+    expect(p).not.toHaveProperty("wasmPath");
   });
 });

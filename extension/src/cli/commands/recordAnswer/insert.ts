@@ -70,7 +70,7 @@ export async function insertQuestion(
   try {
     const id = await withWriteTransaction(
       paths.dbPath,
-      { wasmPath: paths.wasmPath, purpose: "normal" },
+      { purpose: "normal" },
       (db) => {
         if (taskIdValue !== null) {
           const chk = db.prepare("SELECT 1 FROM tasks WHERE id = ?");

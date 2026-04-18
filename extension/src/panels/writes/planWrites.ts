@@ -16,7 +16,7 @@ function rowExists(
 export async function createPlan(
   dbPath: string,
   args: { name: string; filePath: string | null },
-  wasmPath: string,
+  wasmPath?: string,
 ): Promise<{ id: number }> {
   return withWriteTransaction(dbPath, { wasmPath, purpose: "normal" }, (db) => {
     const maxRes = db.exec("SELECT COALESCE(MAX(sortOrder), 0) FROM plans");
@@ -42,7 +42,7 @@ export async function createPlan(
 export async function updatePlan(
   dbPath: string,
   args: { id: number; name?: string; filePath?: string | null },
-  wasmPath: string,
+  wasmPath?: string,
 ): Promise<void> {
   await withWriteTransaction(dbPath, { wasmPath, purpose: "normal" }, (db) => {
     if (!rowExists(db, "plans", args.id)) {
@@ -80,7 +80,7 @@ export async function updatePlan(
 export async function deletePlan(
   dbPath: string,
   args: { id: number },
-  wasmPath: string,
+  wasmPath?: string,
 ): Promise<void> {
   await withWriteTransaction(dbPath, { wasmPath, purpose: "normal" }, (db) => {
     if (!rowExists(db, "plans", args.id)) {
@@ -108,7 +108,7 @@ export async function deletePlan(
 export async function removePlan(
   dbPath: string,
   args: { id: number },
-  wasmPath: string,
+  wasmPath?: string,
 ): Promise<void> {
   await withWriteTransaction(dbPath, { wasmPath, purpose: "normal" }, (db) => {
     if (!rowExists(db, "plans", args.id)) {
@@ -132,7 +132,7 @@ export async function removePlan(
 export async function restorePlan(
   dbPath: string,
   args: { id: number; toStatus: Exclude<PlanStatus, "active" | "removed"> },
-  wasmPath: string,
+  wasmPath?: string,
 ): Promise<void> {
   await withWriteTransaction(dbPath, { wasmPath, purpose: "normal" }, (db) => {
     const stmt = db.prepare(
@@ -150,7 +150,7 @@ export async function restorePlan(
 export async function activatePlan(
   dbPath: string,
   args: { id: number },
-  wasmPath: string,
+  wasmPath?: string,
 ): Promise<void> {
   await withWriteTransaction(dbPath, { wasmPath, purpose: "normal" }, (db) => {
     if (!rowExists(db, "plans", args.id)) {
@@ -208,7 +208,7 @@ export async function activatePlan(
 export async function reorderPlans(
   dbPath: string,
   args: { orderedIds: number[] },
-  wasmPath: string,
+  wasmPath?: string,
 ): Promise<void> {
   await withWriteTransaction(dbPath, { wasmPath, purpose: "normal" }, (db) => {
     const stmt = db.prepare("UPDATE plans SET sortOrder = ? WHERE id = ?");
@@ -230,7 +230,7 @@ export async function reorderPlans(
 export async function deactivatePlan(
   dbPath: string,
   args: { id: number },
-  wasmPath: string,
+  wasmPath?: string,
 ): Promise<void> {
   await withWriteTransaction(dbPath, { wasmPath, purpose: "normal" }, (db) => {
     // Demote any active task under this plan first, otherwise queueing the
@@ -258,7 +258,7 @@ export async function deactivatePlan(
 export async function pausePlan(
   dbPath: string,
   id: number,
-  wasmPath: string,
+  wasmPath?: string,
 ): Promise<void> {
   await withWriteTransaction(dbPath, { wasmPath, purpose: "normal" }, (db) => {
     if (!rowExists(db, "plans", id)) {
@@ -287,7 +287,7 @@ export async function pausePlan(
 export async function changeStatus(
   dbPath: string,
   args: { id: number; toStatus: Exclude<PlanStatus, "active" | "removed"> },
-  wasmPath: string,
+  wasmPath?: string,
 ): Promise<void> {
   await withWriteTransaction(dbPath, { wasmPath, purpose: "normal" }, (db) => {
     if (!rowExists(db, "plans", args.id)) {
