@@ -17,6 +17,20 @@ vi.mock("../../src/panels/writes/planWrites", () => ({
   deactivatePlan: vi.fn().mockResolvedValue(undefined),
   reorderPlans: vi.fn().mockResolvedValue(undefined),
   changeStatus: vi.fn().mockResolvedValue(undefined),
+  setAsActivePlan: vi.fn().mockResolvedValue({
+    id: 1,
+    created: true,
+    restored: false,
+    activated: true,
+    demoted: false,
+  }),
+  addPlanToBacklog: vi.fn().mockResolvedValue({
+    id: 1,
+    created: true,
+    restored: false,
+    activated: false,
+    demoted: false,
+  }),
 }));
 
 vi.mock("../../src/panels/readConfigLocale", () => ({
@@ -345,7 +359,7 @@ describe("PlanPanel", () => {
     );
   });
 
-  it("'createPlan' request calls planWrites.createPlan and posts writeOk with same requestId", async () => {
+  it("'createPlan' request calls planWrites.addPlanToBacklog and posts writeOk with same requestId", async () => {
     const { panel } = createPanel();
     const planWritesMod = await import("../../src/panels/writes/planWrites.js");
 
@@ -356,7 +370,7 @@ describe("PlanPanel", () => {
       filePath: "/workspace/new-plan.md",
     });
 
-    expect(planWritesMod.createPlan).toHaveBeenCalledWith(
+    expect(planWritesMod.addPlanToBacklog).toHaveBeenCalledWith(
       FAKE_PATHS.dbPath,
       { name: "New Plan", filePath: "/workspace/new-plan.md" },
       FAKE_PATHS.wasmPath,
@@ -369,7 +383,7 @@ describe("PlanPanel", () => {
 
   it("write error posts writeError with the requestId and message", async () => {
     const planWritesMod = await import("../../src/panels/writes/planWrites.js");
-    vi.mocked(planWritesMod.createPlan).mockRejectedValueOnce(
+    vi.mocked(planWritesMod.addPlanToBacklog).mockRejectedValueOnce(
       new Error("DB locked"),
     );
 

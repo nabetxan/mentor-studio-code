@@ -118,7 +118,7 @@ function ActivePlanRow({
         <div className="setting-actions">
           <button
             className="btn-primary"
-            onClick={() => postMessage({ type: "changeActivePlanFile", id })}
+            onClick={() => postMessage({ type: "changeActivePlanFile" })}
           >
             {t("settings.change", locale)}
           </button>

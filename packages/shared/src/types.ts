@@ -131,7 +131,6 @@ export type ExtensionMessage =
   | { type: "pauseActivePlanResult"; id: number; ok: boolean; error?: string }
   | {
       type: "changeActivePlanFileResult";
-      id: number;
       ok: boolean;
       error?: string;
     };
@@ -158,4 +157,4 @@ export type WebviewMessage =
   | { type: "deactivatePlan"; id: number }
   | { type: "openPlanPanel" }
   | { type: "pauseActivePlan"; id: number }
-  | { type: "changeActivePlanFile"; id: number };
+  | { type: "changeActivePlanFile" };

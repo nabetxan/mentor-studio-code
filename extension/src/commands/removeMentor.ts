@@ -143,6 +143,7 @@ export async function runCleanupMentor(
   outputChannel: vscode.OutputChannel,
   globalState: vscode.Memento,
   postResult: (deleted: CleanupOptions, isJa: boolean) => void,
+  onMentorFolderDeleted?: () => void | Promise<void>,
 ): Promise<void> {
   const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
 
@@ -190,6 +191,18 @@ export async function runCleanupMentor(
       outputChannel.appendLine(
         ".mentor folder not found or could not be deleted",
       );
+    }
+    // FileSystemWatcher's onDidDelete for .mentor/config.json is unreliable
+    // after a recursive parent-dir delete (macOS fsevents). Signal the sidebar
+    // explicitly so it flips to the noConfig / "Run Setup" view.
+    if (onMentorFolderDeleted) {
+      try {
+        await onMentorFolderDeleted();
+      } catch (err) {
+        outputChannel.appendLine(
+          `onMentorFolderDeleted hook failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
     }
   }
 

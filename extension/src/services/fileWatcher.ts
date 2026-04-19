@@ -6,10 +6,10 @@ import * as vscode from "vscode";
 import { loadSqlJs } from "../db";
 import {
   activatePlan as dbActivatePlan,
-  createPlan as dbCreatePlan,
+  addPlanToBacklog as dbAddPlanToBacklog,
   deactivatePlan as dbDeactivatePlan,
   pausePlan as dbPausePlan,
-  updatePlan as dbUpdatePlan,
+  setAsActivePlan as dbSetAsActivePlan,
 } from "../panels/writes/planWrites";
 import { parseConfig, parseLearnerProfile } from "./dataParser";
 import {
@@ -105,14 +105,28 @@ export class FileWatcherService implements vscode.Disposable {
         .then(() => this.emitConfig())
         .catch((err) => this.log?.(`loadConfig failed: ${String(err)}`));
     };
-    configWatcher.onDidChange(reloadConfig);
-    configWatcher.onDidCreate(reloadConfig);
-    configWatcher.onDidDelete(() => {
+    const handleConfigDelete = (): void => {
       this.config = null;
       this.rawConfig = null;
       this.onConfigChanged?.(null);
-    });
+    };
+    configWatcher.onDidChange(reloadConfig);
+    configWatcher.onDidCreate(reloadConfig);
+    configWatcher.onDidDelete(handleConfigDelete);
     this.disposables.push(configWatcher);
+
+    // macOS fsevents may skip the config.json delete when .mentor is
+    // recursively removed. Watch the directory itself so we still flip the
+    // sidebar to the noConfig view when the whole folder disappears.
+    const mentorDirPattern = new vscode.RelativePattern(
+      this.workspaceRoot,
+      this.mentorPath,
+    );
+    const mentorDirWatcher =
+      vscode.workspace.createFileSystemWatcher(mentorDirPattern);
+    mentorDirWatcher.onDidDelete(handleConfigDelete);
+    mentorDirWatcher.onDidCreate(reloadConfig);
+    this.disposables.push(mentorDirWatcher);
 
     await this.refresh();
   }
@@ -264,23 +278,27 @@ export class FileWatcherService implements vscode.Disposable {
     await this.notifyWrite();
   }
 
-  async changeActivePlanFile(id: number, relPath: string): Promise<void> {
+  async changeActivePlanFile(relPath: string): Promise<void> {
     if (!this.dbPath || !this.wasmPath) {
       throw new Error("db_not_ready");
     }
-    await dbUpdatePlan(this.dbPath, { id, filePath: relPath }, this.wasmPath);
+    const name = basename(relPath, ".md");
+    await dbSetAsActivePlan(
+      this.dbPath,
+      { name, filePath: relPath },
+      this.wasmPath,
+    );
     await this.notifyWrite();
   }
 
   async createAndActivatePlan(relPath: string): Promise<void> {
     if (!this.dbPath || !this.wasmPath) throw new Error("db_not_ready");
     const name = basename(relPath, ".md");
-    const { id } = await dbCreatePlan(
+    await dbSetAsActivePlan(
       this.dbPath,
       { name, filePath: relPath },
       this.wasmPath,
     );
-    await dbActivatePlan(this.dbPath, { id }, this.wasmPath);
     await this.notifyWrite();
   }
 
@@ -371,32 +389,25 @@ export class FileWatcherService implements vscode.Disposable {
     let added = 0;
     let skipped = 0;
 
-    for (const uri of uris) {
-      if (!uri.fsPath.endsWith(".md")) continue;
+    // Bulk selection (2+ files) must never silently auto-activate one of the
+    // chosen files; the user asked for "add to plan", not "pick one to start".
+    const mdUris = uris.filter((u) => u.fsPath.endsWith(".md"));
+    const autoActivate = mdUris.length === 1;
 
+    for (const uri of mdUris) {
       const relPath = vscode.workspace.asRelativePath(uri, false);
       const name = basename(relPath, ".md");
 
-      // Check for existing plan with this filePath (NULL rows must not match)
-      const SQL = await loadSqlJs(wasmPath);
-      const db = new SQL.Database(readFileSync(dbPath));
-      let count = 0;
-      try {
-        const res = db.exec("SELECT COUNT(*) FROM plans WHERE filePath = ?", [
-          relPath,
-        ]);
-        count = Number(res[0]?.values?.[0]?.[0] ?? 0);
-      } finally {
-        db.close();
-      }
-
-      if (count > 0) {
+      const result = await dbAddPlanToBacklog(
+        dbPath,
+        { name, filePath: relPath, autoActivate },
+        wasmPath,
+      );
+      if (result.created || result.restored) {
+        added++;
+      } else {
         skipped++;
-        continue;
       }
-
-      await dbCreatePlan(dbPath, { name, filePath: relPath }, wasmPath);
-      added++;
     }
 
     // No .md files at all — do nothing

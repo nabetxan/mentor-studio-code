@@ -71,7 +71,7 @@ describe("FileWatcherService.addFilesToPlan", () => {
     vi.restoreAllMocks();
   });
 
-  it("single .md file creates 1 plan with correct name and filePath", async () => {
+  it("single .md file creates 1 plan with correct name and filePath (auto-activates when no active plan)", async () => {
     const infoSpy = vi
       .spyOn(vscodeMock.window, "showInformationMessage")
       .mockResolvedValue(undefined);
@@ -86,7 +86,8 @@ describe("FileWatcherService.addFilesToPlan", () => {
       const [name, fp, status] = res[0].values[0];
       expect(name).toBe("my-plan");
       expect(fp).toBe("my-plan.md");
-      expect(status).toBe("backlog");
+      // No prior active plan exists → first added file auto-activates.
+      expect(status).toBe("active");
     } finally {
       db.close();
     }
@@ -273,6 +274,107 @@ describe("FileWatcherService.addFilesToPlan", () => {
 
     expect(infoSpy).not.toHaveBeenCalled();
     expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it("re-adding a soft-deleted (removed) plan restores it instead of silently skipping", async () => {
+    const infoSpy = vi
+      .spyOn(vscodeMock.window, "showInformationMessage")
+      .mockResolvedValue(undefined);
+    vi.spyOn(vscodeMock.window, "showWarningMessage").mockResolvedValue(
+      undefined,
+    );
+
+    // Seed a removed plan for the target file. This is the bug's trigger:
+    // a pre-existing row with filePath that used to block any re-add.
+    const { withWriteTransaction } = await import("../../src/db/index.js");
+    await withWriteTransaction(
+      env.paths.dbPath,
+      { wasmPath: WASM, purpose: "normal" },
+      (db: import("sql.js").Database) => {
+        db.exec(
+          "INSERT INTO plans (name, filePath, status, sortOrder, createdAt) VALUES ('ghost', 'ghost.md', 'removed', 1, '2026-01-01T00:00:00Z')",
+        );
+        return undefined;
+      },
+    );
+
+    await svc.addFilesToPlan([makeUri(join(env.dir, "ghost.md"))]);
+
+    const db = await openReadOnly(env.paths.dbPath);
+    try {
+      // No duplicate created; the existing row is reused.
+      const res = db.exec("SELECT id, status FROM plans");
+      expect(res[0].values).toHaveLength(1);
+      const [id, status] = res[0].values[0];
+      expect(Number(id)).toBe(1);
+      // No prior active plan → the restored row is auto-activated.
+      expect(status).toBe("active");
+    } finally {
+      db.close();
+    }
+
+    // User sees the "added" message (counted as an add), not a silent skip warning.
+    expect(infoSpy).toHaveBeenCalledOnce();
+    const msg = infoSpy.mock.calls[0][0] as string;
+    expect(msg).toContain("1");
+  });
+
+  it("adding a file when an active plan already exists keeps the existing active and puts the new file in backlog", async () => {
+    vi.spyOn(vscodeMock.window, "showInformationMessage").mockResolvedValue(
+      undefined,
+    );
+
+    // Seed an existing active plan.
+    const { withWriteTransaction } = await import("../../src/db/index.js");
+    await withWriteTransaction(
+      env.paths.dbPath,
+      { wasmPath: WASM, purpose: "normal" },
+      (db: import("sql.js").Database) => {
+        db.exec(
+          "INSERT INTO plans (name, filePath, status, sortOrder, createdAt) VALUES ('active', 'active.md', 'active', 1, '2026-01-01T00:00:00Z')",
+        );
+        return undefined;
+      },
+    );
+
+    await svc.addFilesToPlan([makeUri(join(env.dir, "new.md"))]);
+
+    const db = await openReadOnly(env.paths.dbPath);
+    try {
+      const res = db.exec(
+        "SELECT filePath, status FROM plans ORDER BY id",
+      );
+      const statuses = Object.fromEntries(
+        res[0].values.map(([fp, s]) => [String(fp), String(s)]),
+      );
+      expect(statuses["active.md"]).toBe("active");
+      expect(statuses["new.md"]).toBe("backlog");
+    } finally {
+      db.close();
+    }
+  });
+
+  it("bulk add (2+ files) with no prior active: nothing is auto-activated, all land in backlog", async () => {
+    vi.spyOn(vscodeMock.window, "showInformationMessage").mockResolvedValue(
+      undefined,
+    );
+
+    await svc.addFilesToPlan([
+      makeUri(join(env.dir, "one.md")),
+      makeUri(join(env.dir, "two.md")),
+      makeUri(join(env.dir, "three.md")),
+    ]);
+
+    const db = await openReadOnly(env.paths.dbPath);
+    try {
+      const res = db.exec(
+        "SELECT filePath, status FROM plans ORDER BY id",
+      );
+      const statuses = res[0].values.map(([, s]) => String(s));
+      expect(statuses).toEqual(["backlog", "backlog", "backlog"]);
+    } finally {
+      db.close();
+    }
   });
 
   it("NULL filePath plans do not block adding a new plan with a file path", async () => {

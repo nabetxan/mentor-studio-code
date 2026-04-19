@@ -2,6 +2,20 @@
 
 All notable changes to "Mentor Studio Code" will be documented in this file.
 
+## [0.6.3] - 2026-04-19
+
+### Fixed
+
+- Re-adding a file whose plan was soft-deleted now restores the existing row instead of silently failing with "already exists".
+- Uninstall post-hook now reliably locates every workspace that has a `.mentor/config.json`, including those where the `MENTOR_RULES.md` reference was added to project `CLAUDE.md` only (previously such workspaces were skipped).
+- Sidebar now flips to the "Run Setup" (no-config) view when the `.mentor/` folder is removed recursively on macOS, where fsevents can miss the individual `config.json` delete event.
+- Reduced `ENOTEMPTY` errors when releasing the DB write lock by waiting for any in-flight heartbeat rename before removing the lock directory.
+
+### Changed
+
+- Settings "Change" (変更) and Explorer "Add to Mentor Plan" now reuse any existing row for the same file path (restoring `removed` rows to `backlog`). Settings activates the selected plan and demotes the prior active to `paused`. Explorer single-select / Plan Panel add to `backlog` and auto-activate only when no plan is currently active; Explorer bulk select (2+ files) never auto-activates — all added files stay in `backlog`.
+- The "Delete Data" confirmation dialog no longer offers a one-click Uninstall button; it now directs the user to uninstall from the Extensions view. This avoids races between cleanup and the VS Code uninstall hook.
+
 ## [0.6.2] - 2026-04-18
 
 ### Fixed

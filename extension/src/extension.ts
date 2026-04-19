@@ -48,6 +48,7 @@ export function activate(context: vscode.ExtensionContext): void {
         context.globalState,
         (deleted, isJa) =>
           sidebarProvider.showCleanupResultDialog(deleted, isJa),
+        () => sidebarProvider.sendNoConfig(),
       ),
   );
   context.subscriptions.push(cleanupMentorCommand);
@@ -156,8 +157,7 @@ export function activate(context: vscode.ExtensionContext): void {
     activatePlan: (id) => watcher.activatePlan(id),
     deactivatePlan: (id) => watcher.deactivatePlan(id),
     pauseActivePlan: (id) => watcher.pauseActivePlan(id),
-    changeActivePlanFile: (id, relPath) =>
-      watcher.changeActivePlanFile(id, relPath),
+    changeActivePlanFile: (relPath) => watcher.changeActivePlanFile(relPath),
     createAndActivatePlan: (relPath) => watcher.createAndActivatePlan(relPath),
   });
 

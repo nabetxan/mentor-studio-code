@@ -193,7 +193,6 @@ describe("Settings", () => {
     fireEvent.click(screen.getByText("変更"));
     expect(postMessage).toHaveBeenCalledWith({
       type: "changeActivePlanFile",
-      id: 9,
     });
   });
 

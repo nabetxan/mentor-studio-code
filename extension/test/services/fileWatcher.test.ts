@@ -137,34 +137,37 @@ describe("FileWatcherService: pauseActivePlan / changeActivePlanFile / createAnd
     await expect(noDbSvc.pauseActivePlan(1)).rejects.toThrow("db_not_ready");
   });
 
-  it("changeActivePlanFile updates filePath on the plan", async () => {
+  it("changeActivePlanFile activates the plan that matches the selected file, pausing the prior active", async () => {
+    // Setup: existing active plan + a queued plan for a different file.
     await withWriteTransaction(
       env.paths.dbPath,
       { wasmPath: WASM, purpose: "normal" },
       (db: Database) => {
         db.exec(
-          "INSERT INTO plans (name, filePath, status, sortOrder, createdAt) VALUES ('p2', 'old.md', 'queued', 1, '2026-01-01T00:00:00Z')",
+          "INSERT INTO plans (name, filePath, status, sortOrder, createdAt) VALUES ('prior-active', 'prior.md', 'active', 1, '2026-01-01T00:00:00Z')",
+        );
+        db.exec(
+          "INSERT INTO plans (name, filePath, status, sortOrder, createdAt) VALUES ('queued', 'new-path.md', 'queued', 2, '2026-01-01T00:00:00Z')",
         );
         return undefined;
       },
     );
-    const id = await (async () => {
-      const db = await openDb(env.paths.dbPath);
-      try {
-        return Number(
-          db.exec("SELECT id FROM plans WHERE name='p2'")[0].values[0][0],
-        );
-      } finally {
-        db.close();
-      }
-    })();
 
-    await svc.changeActivePlanFile(id, "new-path.md");
+    await svc.changeActivePlanFile("new-path.md");
 
     const db = await openDb(env.paths.dbPath);
     try {
-      const rows = db.exec("SELECT filePath FROM plans WHERE id = ?", [id]);
-      expect(rows[0].values[0][0]).toBe("new-path.md");
+      const rows = db.exec(
+        "SELECT filePath, status FROM plans ORDER BY id",
+      );
+      const statuses = Object.fromEntries(
+        rows[0].values.map(([fp, s]) => [String(fp), String(s)]),
+      );
+      // Prior active is now paused; the queued plan for the selected file is active.
+      expect(statuses["prior.md"]).toBe("paused");
+      expect(statuses["new-path.md"]).toBe("active");
+      // No new row was created (reused existing).
+      expect(rows[0].values).toHaveLength(2);
     } finally {
       db.close();
     }
@@ -172,7 +175,7 @@ describe("FileWatcherService: pauseActivePlan / changeActivePlanFile / createAnd
 
   it("changeActivePlanFile throws when db not ready", async () => {
     const noDbSvc = new FileWatcherService(env.dir, ".mentor", () => {});
-    await expect(noDbSvc.changeActivePlanFile(1, "x.md")).rejects.toThrow(
+    await expect(noDbSvc.changeActivePlanFile("x.md")).rejects.toThrow(
       "db_not_ready",
     );
   });
@@ -196,7 +199,7 @@ describe("FileWatcherService: pauseActivePlan / changeActivePlanFile / createAnd
     }
   });
 
-  it("createAndActivatePlan calling twice: second plan is active, first is demoted to queued", async () => {
+  it("createAndActivatePlan calling twice: second plan is active, first is demoted to paused", async () => {
     await svc.createAndActivatePlan("plans/first.md");
     await svc.createAndActivatePlan("plans/second.md");
 
@@ -204,10 +207,10 @@ describe("FileWatcherService: pauseActivePlan / changeActivePlanFile / createAnd
     try {
       const rows = db.exec("SELECT COUNT(*) FROM plans");
       expect(Number(rows[0].values[0][0])).toBe(2);
-      // activatePlan demotes the previous active plan to queued
+      // Settings-driven activation (setAsActivePlan) demotes prior active to 'paused'.
       const statusRows = db.exec("SELECT status FROM plans ORDER BY id");
       const statuses = statusRows[0].values.map(([s]) => s);
-      expect(statuses).toEqual(["queued", "active"]);
+      expect(statuses).toEqual(["paused", "active"]);
     } finally {
       db.close();
     }
@@ -231,16 +234,6 @@ describe("FileWatcherService: pauseActivePlan / changeActivePlanFile / createAnd
         return undefined;
       },
     );
-    const id = await (async () => {
-      const db = await openDb(env.paths.dbPath);
-      try {
-        return Number(
-          db.exec("SELECT id FROM plans WHERE name='p3'")[0].values[0][0],
-        );
-      } finally {
-        db.close();
-      }
-    })();
 
     const onDbChanged = vi.fn();
     const svcWithHook = new FileWatcherService(
@@ -255,7 +248,7 @@ describe("FileWatcherService: pauseActivePlan / changeActivePlanFile / createAnd
       WASM,
     );
 
-    await svcWithHook.changeActivePlanFile(id, "new-path.md");
+    await svcWithHook.changeActivePlanFile("new-path.md");
     expect(onDbChanged).toHaveBeenCalledTimes(1);
   });
 });

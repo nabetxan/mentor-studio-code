@@ -6,11 +6,10 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 
-const MENTOR_REF = "@.mentor/rules/MENTOR_RULES.md";
-
 function findWorkspacePaths() {
   const claudeProjectsDir = path.join(os.homedir(), ".claude", "projects");
   const workspacePaths = [];
+  const seen = new Set();
 
   let dirs;
   try {
@@ -21,17 +20,6 @@ function findWorkspacePaths() {
 
   for (const dirent of dirs) {
     if (!dirent.isDirectory()) continue;
-
-    // Check if this project's CLAUDE.md contains the mentor ref
-    const claudeMdPath = path.join(claudeProjectsDir, dirent.name, "CLAUDE.md");
-    let claudeContent;
-    try {
-      claudeContent = fs.readFileSync(claudeMdPath, "utf-8");
-    } catch {
-      continue;
-    }
-
-    if (!claudeContent.includes(MENTOR_REF)) continue;
 
     // Derive workspace path candidate from directory name.
     // Encoding replaces [:\\/] with '-', so we reverse that here.
@@ -45,7 +33,10 @@ function findWorkspacePaths() {
       candidate = candidate.replace(/^([A-Za-z])\\/, "$1:\\");
     }
 
-    // Try to read config.json and get the authoritative workspacePath
+    // Scan every claude-projects entry for a matching .mentor/config.json —
+    // earlier versions filtered on the MENTOR_REF appearing in personal
+    // CLAUDE.md, which missed workspaces that added the ref only to project
+    // CLAUDE.md. config.json existence is the authoritative signal.
     const candidateConfigPath = path.join(candidate, ".mentor", "config.json");
     let configPath = candidateConfigPath;
 
@@ -63,7 +54,10 @@ function findWorkspacePaths() {
           configPath = authConfigPath;
         }
       }
-      workspacePaths.push(configPath);
+      if (!seen.has(configPath)) {
+        seen.add(configPath);
+        workspacePaths.push(configPath);
+      }
     } catch {
       // candidate path doesn't work — silent failure, best effort
       continue;

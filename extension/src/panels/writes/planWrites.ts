@@ -13,6 +13,118 @@ function rowExists(
   return Boolean(r[0]?.values?.length);
 }
 
+function findExistingPlanByFilePath(
+  db: Database,
+  filePath: string,
+): { id: number; status: string } | null {
+  // Prefer non-removed rows; among ties pick the oldest (lowest id) so
+  // pre-existing duplicates resolve to the canonical (longest-lived) plan.
+  const stmt = db.prepare(
+    "SELECT id, status FROM plans WHERE filePath = ? ORDER BY (status='removed') ASC, id ASC LIMIT 1",
+  );
+  try {
+    stmt.bind([filePath]);
+    if (stmt.step()) {
+      const row = stmt.get();
+      return { id: Number(row[0]), status: String(row[1]) };
+    }
+    return null;
+  } finally {
+    stmt.free();
+  }
+}
+
+function insertPlanRow(
+  db: Database,
+  args: { name: string; filePath: string | null },
+): number {
+  const maxRes = db.exec("SELECT COALESCE(MAX(sortOrder), 0) FROM plans");
+  const maxVal = maxRes[0]?.values?.[0]?.[0];
+  const nextSort = Number(maxVal ?? 0) + 1;
+  const createdAt = new Date().toISOString();
+  const stmt = db.prepare(
+    "INSERT INTO plans (name, filePath, status, sortOrder, createdAt) VALUES (?, ?, 'backlog', ?, ?)",
+  );
+  try {
+    stmt.run([args.name, args.filePath, nextSort, createdAt]);
+  } finally {
+    stmt.free();
+  }
+  const idRes = db.exec("SELECT last_insert_rowid()");
+  return Number(idRes[0].values[0][0]);
+}
+
+function restoreFromRemoved(db: Database, id: number): void {
+  const stmt = db.prepare("UPDATE plans SET status = 'backlog' WHERE id = ?");
+  try {
+    stmt.run([id]);
+  } finally {
+    stmt.free();
+  }
+}
+
+function activatePlanRow(
+  db: Database,
+  targetId: number,
+  demoteTo: "queued" | "paused",
+): void {
+  // Demote any active task that doesn't belong to the target plan, otherwise
+  // moving its plan away from 'active' would violate the active-task-under-
+  // active-plan invariant.
+  const demoteTasks = db.prepare(
+    "UPDATE tasks SET status = 'queued' WHERE status = 'active' AND planId != ?",
+  );
+  try {
+    demoteTasks.run([targetId]);
+  } finally {
+    demoteTasks.free();
+  }
+  const demotePlans = db.prepare(
+    "UPDATE plans SET status = ? WHERE status = 'active'",
+  );
+  try {
+    demotePlans.run([demoteTo]);
+  } finally {
+    demotePlans.free();
+  }
+  const stmt = db.prepare("UPDATE plans SET status = 'active' WHERE id = ?");
+  try {
+    stmt.run([targetId]);
+  } finally {
+    stmt.free();
+  }
+  autoActivateFirstQueuedTask(db, targetId);
+}
+
+function autoActivateFirstQueuedTask(db: Database, planId: number): void {
+  const hasActive = db.exec(
+    "SELECT 1 FROM tasks WHERE status = 'active' LIMIT 1",
+  );
+  if (hasActive[0]?.values?.length) return;
+  const firstQueued = db.prepare(
+    "SELECT id FROM tasks WHERE planId = ? AND status = 'queued' ORDER BY sortOrder ASC, id ASC LIMIT 1",
+  );
+  let firstId: number | null = null;
+  try {
+    firstQueued.bind([planId]);
+    if (firstQueued.step()) firstId = Number(firstQueued.get()[0]);
+  } finally {
+    firstQueued.free();
+  }
+  if (firstId === null) return;
+  const stmt = db.prepare("UPDATE tasks SET status = 'active' WHERE id = ?");
+  try {
+    stmt.run([firstId]);
+  } finally {
+    stmt.free();
+  }
+}
+
+function hasActivePlan(db: Database): boolean {
+  const r = db.exec("SELECT 1 FROM plans WHERE status = 'active' LIMIT 1");
+  return Boolean(r[0]?.values?.length);
+}
+
 export async function createPlan(
   dbPath: string,
   args: { name: string; filePath: string | null },
@@ -316,5 +428,116 @@ export async function changeStatus(
       stmt.free();
     }
     assertStatusInvariants(db);
+  });
+}
+
+export interface UpsertPlanResult {
+  id: number;
+  created: boolean;
+  restored: boolean;
+  activated: boolean;
+  demoted: boolean;
+}
+
+interface UpsertByFilePathResult {
+  id: number;
+  created: boolean;
+  restored: boolean;
+  alreadyActive: boolean;
+}
+
+function upsertPlanByFilePath(
+  db: Database,
+  args: { name: string; filePath: string },
+): UpsertByFilePathResult {
+  const existing = findExistingPlanByFilePath(db, args.filePath);
+  if (existing?.status === "active") {
+    return { id: existing.id, created: false, restored: false, alreadyActive: true };
+  }
+  if (existing) {
+    let restored = false;
+    if (existing.status === "removed") {
+      restoreFromRemoved(db, existing.id);
+      restored = true;
+    }
+    return { id: existing.id, created: false, restored, alreadyActive: false };
+  }
+  const newId = insertPlanRow(db, { name: args.name, filePath: args.filePath });
+  return { id: newId, created: true, restored: false, alreadyActive: false };
+}
+
+const NO_OP_RESULT = (id: number): UpsertPlanResult => ({
+  id,
+  created: false,
+  restored: false,
+  activated: false,
+  demoted: false,
+});
+
+/**
+ * Settings-driven "set as Active Plan" (Pattern A).
+ * Finds-or-creates plan by filePath, then makes it the single active plan.
+ * Any currently-active plan is demoted to 'paused' (not 'queued', unlike
+ * activatePlan). If the existing match is already active, this is a no-op.
+ */
+export async function setAsActivePlan(
+  dbPath: string,
+  args: { filePath: string; name: string },
+  wasmPath?: string,
+): Promise<UpsertPlanResult> {
+  return withWriteTransaction(dbPath, { wasmPath, purpose: "normal" }, (db) => {
+    const upserted = upsertPlanByFilePath(db, args);
+    if (upserted.alreadyActive) {
+      assertStatusInvariants(db);
+      return NO_OP_RESULT(upserted.id);
+    }
+    const demoted = hasActivePlan(db);
+    activatePlanRow(db, upserted.id, "paused");
+    assertStatusInvariants(db);
+    return {
+      id: upserted.id,
+      created: upserted.created,
+      restored: upserted.restored,
+      activated: true,
+      demoted,
+    };
+  });
+}
+
+/**
+ * Explorer / Plan Panel "Add to Plan" (Pattern B).
+ * Finds-or-creates plan by filePath in 'backlog' (restoring from 'removed' if
+ * needed). When `autoActivate` is true (default) and no plan is currently
+ * active, the target is promoted to 'active'. An existing active plan is
+ * never demoted by this function.
+ *
+ * Bulk callers (Explorer multi-select) should pass `autoActivate: false` so a
+ * single bulk operation never silently activates one of the selected files.
+ */
+export async function addPlanToBacklog(
+  dbPath: string,
+  args: { filePath: string; name: string; autoActivate?: boolean },
+  wasmPath?: string,
+): Promise<UpsertPlanResult> {
+  const autoActivate = args.autoActivate ?? true;
+  return withWriteTransaction(dbPath, { wasmPath, purpose: "normal" }, (db) => {
+    const upserted = upsertPlanByFilePath(db, args);
+    if (upserted.alreadyActive) {
+      assertStatusInvariants(db);
+      return NO_OP_RESULT(upserted.id);
+    }
+    let activated = false;
+    if (autoActivate && !hasActivePlan(db)) {
+      activatePlanRow(db, upserted.id, "paused");
+      activated = true;
+    }
+    assertStatusInvariants(db);
+    return {
+      id: upserted.id,
+      created: upserted.created,
+      restored: upserted.restored,
+      activated,
+      demoted: false,
+    };
   });
 }
