@@ -6,7 +6,6 @@ import {
   seedPlans,
   seedTasks,
   withDb,
-  writeProgress,
   type TestEnv,
 } from "./helpers";
 
@@ -41,7 +40,6 @@ describe("update-task", () => {
       { planId: 1, name: "T1", status: "active", sortOrder: 0 },
       { planId: 1, name: "T2", status: "queued", sortOrder: 1 },
     ]);
-    writeProgress(env.paths.progressPath, { current_task: 1, other: "keep" });
   });
 
   it("returns invalid_args when id missing", async () => {

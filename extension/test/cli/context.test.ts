@@ -12,7 +12,8 @@ describe("resolvePaths", () => {
     const p = resolvePaths(toolsDir);
     expect(p.mentorRoot).toBe(mentorRoot);
     expect(p.dbPath).toBe(join(mentorRoot, "data.db"));
-    expect(p.progressPath).toBe(join(mentorRoot, "progress.json"));
+    expect(p.configPath).toBe(join(mentorRoot, "config.json"));
     expect(p).not.toHaveProperty("wasmPath");
+    expect(p).not.toHaveProperty("progressPath");
   });
 });

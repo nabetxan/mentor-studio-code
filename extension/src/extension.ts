@@ -4,7 +4,11 @@ import * as vscode from "vscode";
 import { runCleanupMentor, runRemoveMentor } from "./commands/removeMentor";
 import { runSetup } from "./commands/setup";
 import { migrate } from "./migration/migrate";
-import { shouldMigrate } from "./migration/shouldMigrate";
+import { shouldMigrate, shouldMigrateV2 } from "./migration/shouldMigrate";
+import {
+  cleanupOrphanProgressJson,
+  migrateToV2,
+} from "./migration/v2ProfileAppState";
 import { PlanPanel } from "./panels/planPanel";
 import { BroadcastBus } from "./services/broadcastBus";
 import { FileWatcherService } from "./services/fileWatcher";
@@ -205,6 +209,35 @@ export function activate(context: vscode.ExtensionContext): void {
       });
   };
 
+  const runV2IfNeeded = async (): Promise<void> => {
+    try {
+      if (await shouldMigrateV2(mentorDir, wasmPath)) {
+        const res = await migrateToV2(mentorDir, wasmPath);
+        if (!res.ok) {
+          getOutputChannel().appendLine(
+            `v2 migration failed: ${res.error} ${res.detail ?? ""}`,
+          );
+          void vscode.window.showWarningMessage(
+            `Mentor v2 migration failed: ${res.detail ?? res.error}. Profile / resume context may be missing.`,
+          );
+          return;
+        }
+      }
+      // Covers the crash-between-DB-write-and-JSON-unlink window: if DB is
+      // already v2 but progress.json lingers, back it up and remove it.
+      const orphan = await cleanupOrphanProgressJson(mentorDir, wasmPath);
+      if (!orphan.ok) {
+        getOutputChannel().appendLine(
+          `orphan progress.json cleanup failed: ${orphan.error} ${orphan.detail ?? ""}`,
+        );
+      }
+    } catch (err) {
+      getOutputChannel().appendLine(
+        `v2 migration threw: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  };
+
   if (shouldMigrate(mentorDir)) {
     void (async () => {
       try {
@@ -229,11 +262,15 @@ export function activate(context: vscode.ExtensionContext): void {
           `Migration threw: ${err instanceof Error ? err.message : String(err)}`,
         );
       } finally {
+        await runV2IfNeeded();
         startWatcher();
       }
     })();
   } else {
-    startWatcher();
+    void (async () => {
+      await runV2IfNeeded();
+      startWatcher();
+    })();
   }
 
   context.subscriptions.push(watcher);

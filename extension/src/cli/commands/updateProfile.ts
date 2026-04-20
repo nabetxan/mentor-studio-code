@@ -1,17 +1,27 @@
-import { existsSync, readFileSync } from "node:fs";
-
-import { atomicWriteFile } from "../../db";
+import { withWriteTransaction } from "../../db";
 import type { Command } from "./types";
 
 const STRING_KEYS = ["experience", "level", "mentor_style"] as const;
 const ARRAY_KEYS = ["interests", "weak_areas"] as const;
 
-function defaultProgress(): Record<string, unknown> {
-  return {
-    resume_context: null,
-    learner_profile: {},
-  };
+type StringKey = (typeof STRING_KEYS)[number];
+type ArrayKey = (typeof ARRAY_KEYS)[number];
+
+interface Snapshot {
+  experience: string;
+  level: string;
+  mentor_style: string;
+  interests: string[];
+  weak_areas: string[];
 }
+
+const EMPTY_SNAPSHOT: Snapshot = {
+  experience: "",
+  level: "",
+  mentor_style: "",
+  interests: [],
+  weak_areas: [],
+};
 
 export const updateProfile: Command = async (rawArgs, paths) => {
   const args = (rawArgs ?? {}) as Record<string, unknown>;
@@ -38,43 +48,66 @@ export const updateProfile: Command = async (rawArgs, paths) => {
     }
   }
 
-  let progress: Record<string, unknown>;
-  if (existsSync(paths.progressPath)) {
-    try {
-      progress = JSON.parse(
-        readFileSync(paths.progressPath, "utf-8"),
-      ) as Record<string, unknown>;
-    } catch (e) {
-      return {
-        ok: false,
-        error: "invalid_json",
-        detail: (e as Error).message,
-      };
-    }
-  } else {
-    progress = defaultProgress();
-  }
-
-  const existing =
-    (progress.learner_profile as Record<string, unknown> | undefined) ?? {};
-  const profile: Record<string, unknown> = { ...existing };
-  for (const k of [...STRING_KEYS, ...ARRAY_KEYS]) {
-    if (k in args) profile[k] = args[k];
-  }
-  profile.last_updated = new Date().toISOString();
-  progress.learner_profile = profile;
-
   try {
-    await atomicWriteFile(
-      paths.progressPath,
-      Buffer.from(`${JSON.stringify(progress, null, 2)}\n`, "utf-8"),
+    await withWriteTransaction(
+      paths.dbPath,
+      { purpose: "normal" },
+      (db) => {
+        const latestRes = db.exec(
+          `SELECT experience, level, interests, weakAreas, mentorStyle
+           FROM learner_profile
+           ORDER BY lastUpdated DESC, id DESC
+           LIMIT 1`,
+        )[0];
+
+        const base: Snapshot =
+          latestRes && latestRes.values.length > 0
+            ? {
+                experience: String(latestRes.values[0][0] ?? ""),
+                level: String(latestRes.values[0][1] ?? ""),
+                interests: JSON.parse(
+                  String(latestRes.values[0][2] ?? "[]"),
+                ) as string[],
+                weak_areas: JSON.parse(
+                  String(latestRes.values[0][3] ?? "[]"),
+                ) as string[],
+                mentor_style: String(latestRes.values[0][4] ?? ""),
+              }
+            : { ...EMPTY_SNAPSHOT };
+
+        const next: Snapshot = { ...base };
+        for (const k of STRING_KEYS) {
+          if (k in args) next[k as StringKey] = args[k] as string;
+        }
+        for (const k of ARRAY_KEYS) {
+          if (k in args) next[k as ArrayKey] = args[k] as string[];
+        }
+
+        const stmt = db.prepare(
+          `INSERT INTO learner_profile
+             (experience, level, interests, weakAreas, mentorStyle, lastUpdated)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+        );
+        try {
+          stmt.run([
+            next.experience,
+            next.level,
+            JSON.stringify(next.interests),
+            JSON.stringify(next.weak_areas),
+            next.mentor_style,
+            new Date().toISOString(),
+          ]);
+        } finally {
+          stmt.free();
+        }
+      },
     );
   } catch (e) {
     return {
       ok: false,
-      error: "progress_write_failed",
+      error: "db_write_failed",
       recoverable: true,
-      detail: (e as Error).message,
+      detail: e instanceof Error ? e.message : String(e),
     };
   }
 

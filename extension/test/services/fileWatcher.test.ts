@@ -8,7 +8,22 @@ import { FileWatcherService } from "../../src/services/fileWatcher";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore — test mock
 import { __resetWatchers, __watchers } from "../__mocks__/vscode";
-import { makeEnvWithDb, WASM } from "../cli/helpers";
+import { makeEnvWithDb, seedProfileRow, WASM } from "../cli/helpers";
+
+class MementoStub {
+  private store = new Map<string, unknown>();
+  get<T>(key: string): T | undefined {
+    return this.store.get(key) as T | undefined;
+  }
+  update(key: string, value: unknown): Promise<void> {
+    if (value === undefined) this.store.delete(key);
+    else this.store.set(key, value);
+    return Promise.resolve();
+  }
+  keys(): readonly string[] {
+    return Array.from(this.store.keys());
+  }
+}
 
 async function wait(ms: number): Promise<void> {
   await new Promise((r) => setTimeout(r, ms));
@@ -250,5 +265,135 @@ describe("FileWatcherService: pauseActivePlan / changeActivePlanFile / createAnd
 
     await svcWithHook.changeActivePlanFile("new-path.md");
     expect(onDbChanged).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("FileWatcherService: learner_profile sync on refresh", () => {
+  let env: Awaited<ReturnType<typeof makeEnvWithDb>>;
+
+  beforeEach(async () => {
+    __resetWatchers();
+    env = await makeEnvWithDb([]);
+  });
+
+  afterEach(() => {
+    rmSync(env.dir, { recursive: true, force: true });
+  });
+
+  it("appends a new learner_profile row when globalState is newer than DB", async () => {
+    const state = new MementoStub();
+    const newerProfile = {
+      experience: "3 years TS",
+      level: "intermediate",
+      interests: ["react"],
+      weak_areas: ["async"],
+      mentor_style: "socratic",
+      last_updated: "2026-05-01T00:00:00Z",
+    };
+    await state.update("learnerProfile", newerProfile);
+    await seedProfileRow(env.paths.dbPath, {
+      experience: "old",
+      level: "beginner",
+      interests: [],
+      weak_areas: [],
+      mentor_style: "",
+      last_updated: "2026-04-01T00:00:00Z",
+    });
+
+    const svc = new FileWatcherService(
+      env.dir,
+      ".mentor",
+      () => {},
+      undefined,
+      undefined,
+      state as unknown as import("vscode").Memento,
+      undefined,
+      env.paths.dbPath,
+      WASM,
+    );
+    await svc.refresh();
+
+    const SQL = await loadSqlJs(WASM);
+    const db = new SQL.Database(readFileSync(env.paths.dbPath));
+    try {
+      const rows = db.exec(
+        "SELECT experience, lastUpdated FROM learner_profile ORDER BY id",
+      )[0];
+      expect(rows.values).toHaveLength(2);
+      expect(rows.values[1]).toEqual(["3 years TS", "2026-05-01T00:00:00Z"]);
+    } finally {
+      db.close();
+    }
+
+    svc.dispose();
+  });
+
+  it("updates globalState when DB is newer than globalState", async () => {
+    const state = new MementoStub();
+    await state.update("learnerProfile", {
+      experience: "old",
+      level: "beginner",
+      interests: [],
+      weak_areas: [],
+      mentor_style: "",
+      last_updated: "2026-04-01T00:00:00Z",
+    });
+    await seedProfileRow(env.paths.dbPath, {
+      experience: "newer",
+      level: "advanced",
+      interests: ["go"],
+      weak_areas: ["types"],
+      mentor_style: "direct",
+      last_updated: "2026-05-01T00:00:00Z",
+    });
+
+    const svc = new FileWatcherService(
+      env.dir,
+      ".mentor",
+      () => {},
+      undefined,
+      undefined,
+      state as unknown as import("vscode").Memento,
+      undefined,
+      env.paths.dbPath,
+      WASM,
+    );
+    await svc.refresh();
+
+    const updated = state.get<{ experience: string; last_updated: string }>(
+      "learnerProfile",
+    );
+    expect(updated?.experience).toBe("newer");
+    expect(updated?.last_updated).toBe("2026-05-01T00:00:00Z");
+
+    svc.dispose();
+  });
+
+  it("does nothing when both DB and globalState are empty", async () => {
+    const state = new MementoStub();
+    const svc = new FileWatcherService(
+      env.dir,
+      ".mentor",
+      () => {},
+      undefined,
+      undefined,
+      state as unknown as import("vscode").Memento,
+      undefined,
+      env.paths.dbPath,
+      WASM,
+    );
+    await svc.refresh();
+
+    const SQL = await loadSqlJs(WASM);
+    const db = new SQL.Database(readFileSync(env.paths.dbPath));
+    try {
+      const rows = db.exec("SELECT COUNT(*) FROM learner_profile")[0];
+      expect(Number(rows.values[0][0])).toBe(0);
+    } finally {
+      db.close();
+    }
+    expect(state.get("learnerProfile")).toBeUndefined();
+
+    svc.dispose();
   });
 });

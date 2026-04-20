@@ -1,38 +1,72 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-
+import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { updateProfile } from "../../src/cli/commands/updateProfile";
-import { makeEnv, writeProgress, type TestEnv } from "./helpers";
-
-function readProgress(path: string): Record<string, unknown> {
-  return JSON.parse(readFileSync(path, "utf-8")) as Record<string, unknown>;
-}
+import { loadSqlJs } from "../../src/db";
+import { makeEnvWithDb, WASM, type TestEnv } from "./helpers";
 
 const ISO_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 
-describe("update-profile", () => {
+async function readLatestProfile(dbPath: string): Promise<{
+  experience: string;
+  level: string;
+  interests: string[];
+  weak_areas: string[];
+  mentor_style: string;
+  last_updated: string;
+} | null> {
+  const SQL = await loadSqlJs(WASM);
+  const db = new SQL.Database(readFileSync(dbPath));
+  try {
+    const res = db.exec(
+      "SELECT experience, level, interests, weakAreas, mentorStyle, lastUpdated FROM learner_profile ORDER BY lastUpdated DESC, id DESC LIMIT 1",
+    )[0];
+    if (!res || res.values.length === 0) return null;
+    const [exp, lvl, inter, weak, style, lu] = res.values[0];
+    return {
+      experience: String(exp),
+      level: String(lvl),
+      interests: JSON.parse(String(inter)) as string[],
+      weak_areas: JSON.parse(String(weak)) as string[],
+      mentor_style: String(style),
+      last_updated: String(lu),
+    };
+  } finally {
+    db.close();
+  }
+}
+
+async function countProfileRows(dbPath: string): Promise<number> {
+  const SQL = await loadSqlJs(WASM);
+  const db = new SQL.Database(readFileSync(dbPath));
+  try {
+    return Number(
+      db.exec("SELECT COUNT(*) FROM learner_profile")[0].values[0][0],
+    );
+  } finally {
+    db.close();
+  }
+}
+
+describe("update-profile (DB-backed)", () => {
   let env: TestEnv;
 
-  beforeEach(() => {
-    env = makeEnv();
+  beforeEach(async () => {
+    env = await makeEnvWithDb();
   });
 
-  it("merges partial updates into learner_profile and sets last_updated", async () => {
-    writeProgress(env.paths.progressPath, {
-      current_task: 1,
-      current_step: "s",
-      resume_context: "c",
-      learner_profile: {
+  it("each update inserts a new history row carrying full snapshot (partial update merges from latest)", async () => {
+    await updateProfile(
+      {
         experience: "5y",
-        level: "mid",
+        level: "intermediate",
         interests: ["web"],
         weak_areas: ["css"],
         mentor_style: "socratic",
-        last_updated: "2020-01-01T00:00:00.000Z",
       },
-    });
+      env.paths,
+    );
+    expect(await countProfileRows(env.paths.dbPath)).toBe(1);
 
     const before = Date.now();
     const res = await updateProfile(
@@ -42,27 +76,23 @@ describe("update-profile", () => {
     const after = Date.now();
     expect(res).toEqual({ ok: true });
 
-    const progress = readProgress(env.paths.progressPath);
-    const profile = progress.learner_profile as Record<string, unknown>;
-    expect(profile.experience).toBe("5y");
-    expect(profile.level).toBe("senior");
-    expect(profile.interests).toEqual(["web", "security"]);
-    expect(profile.weak_areas).toEqual(["css"]);
-    expect(profile.mentor_style).toBe("socratic");
-    expect(typeof profile.last_updated).toBe("string");
-    expect(profile.last_updated as string).toMatch(ISO_RE);
-    const ts = Date.parse(profile.last_updated as string);
+    expect(await countProfileRows(env.paths.dbPath)).toBe(2);
+
+    const latest = await readLatestProfile(env.paths.dbPath);
+    expect(latest).not.toBeNull();
+    expect(latest!.experience).toBe("5y");
+    expect(latest!.level).toBe("senior");
+    expect(latest!.interests).toEqual(["web", "security"]);
+    expect(latest!.weak_areas).toEqual(["css"]);
+    expect(latest!.mentor_style).toBe("socratic");
+    expect(latest!.last_updated).toMatch(ISO_RE);
+    const ts = Date.parse(latest!.last_updated);
     expect(ts).toBeGreaterThanOrEqual(before);
     expect(ts).toBeLessThanOrEqual(after);
-
-    // Top-level keys preserved.
-    expect(progress.current_task).toBe(1);
-    expect(progress.current_step).toBe("s");
-    expect(progress.resume_context).toBe("c");
   });
 
-  it("creates progress.json when missing", async () => {
-    expect(existsSync(env.paths.progressPath)).toBe(false);
+  it("inserts the very first row when learner_profile is empty", async () => {
+    expect(await countProfileRows(env.paths.dbPath)).toBe(0);
 
     const res = await updateProfile(
       {
@@ -76,42 +106,49 @@ describe("update-profile", () => {
     );
     expect(res).toEqual({ ok: true });
 
-    const progress = readProgress(env.paths.progressPath);
-    expect(progress.resume_context).toBeNull();
-    const profile = progress.learner_profile as Record<string, unknown>;
-    expect(profile.experience).toBe("3y");
-    expect(profile.level).toBe("junior");
-    expect(profile.interests).toEqual(["ts"]);
-    expect(profile.weak_areas).toEqual([]);
-    expect(profile.mentor_style).toBe("direct");
-    expect(profile.last_updated as string).toMatch(ISO_RE);
+    expect(await countProfileRows(env.paths.dbPath)).toBe(1);
+    const latest = await readLatestProfile(env.paths.dbPath);
+    expect(latest!.experience).toBe("3y");
+    expect(latest!.level).toBe("junior");
+    expect(latest!.interests).toEqual(["ts"]);
+    expect(latest!.weak_areas).toEqual([]);
+    expect(latest!.mentor_style).toBe("direct");
+    expect(latest!.last_updated).toMatch(ISO_RE);
   });
 
-  it("sets last_updated even when no fields are provided", async () => {
-    writeProgress(env.paths.progressPath, {
-      current_task: null,
-      current_step: null,
-      resume_context: null,
-      learner_profile: {
-        experience: "old",
-        last_updated: "2020-01-01T00:00:00.000Z",
-      },
-    });
+  it("defaults to empty values on first insert when caller provides only some fields", async () => {
+    const res = await updateProfile({ level: "mid" }, env.paths);
+    expect(res).toEqual({ ok: true });
+
+    const latest = await readLatestProfile(env.paths.dbPath);
+    expect(latest!.level).toBe("mid");
+    expect(latest!.experience).toBe("");
+    expect(latest!.interests).toEqual([]);
+    expect(latest!.weak_areas).toEqual([]);
+    expect(latest!.mentor_style).toBe("");
+  });
+
+  it("empty args still append a row that bumps lastUpdated (explicit 're-confirm profile' semantics)", async () => {
+    await updateProfile({ experience: "old" }, env.paths);
+    const first = await readLatestProfile(env.paths.dbPath);
+    const firstTs = first!.last_updated;
+
+    await new Promise((r) => setTimeout(r, 5));
 
     const res = await updateProfile({}, env.paths);
     expect(res).toEqual({ ok: true });
 
-    const profile = readProgress(env.paths.progressPath)
-      .learner_profile as Record<string, unknown>;
-    expect(profile.experience).toBe("old");
-    expect(profile.last_updated as string).not.toBe("2020-01-01T00:00:00.000Z");
-    expect(profile.last_updated as string).toMatch(ISO_RE);
+    expect(await countProfileRows(env.paths.dbPath)).toBe(2);
+    const latest = await readLatestProfile(env.paths.dbPath);
+    expect(latest!.experience).toBe("old");
+    expect(latest!.last_updated).not.toBe(firstTs);
+    expect(latest!.last_updated).toMatch(ISO_RE);
   });
 
   it("returns invalid_args when a string key is not a string", async () => {
     const res = await updateProfile({ experience: 5 }, env.paths);
     expect(res).toMatchObject({ ok: false, error: "invalid_args" });
-    expect(existsSync(env.paths.progressPath)).toBe(false);
+    expect(await countProfileRows(env.paths.dbPath)).toBe(0);
   });
 
   it("returns invalid_args when an array key is not an array", async () => {
@@ -125,44 +162,22 @@ describe("update-profile", () => {
   });
 
   it("ignores unknown keys", async () => {
-    writeProgress(env.paths.progressPath, {
-      current_task: null,
-      current_step: null,
-      resume_context: null,
-      learner_profile: {},
-    });
-
-    const res = await updateProfile({ level: "mid", bogus: "x" }, env.paths);
+    const res = await updateProfile(
+      { level: "mid", bogus: "x" } as Record<string, unknown>,
+      env.paths,
+    );
     expect(res).toEqual({ ok: true });
-
-    const profile = readProgress(env.paths.progressPath)
-      .learner_profile as Record<string, unknown>;
-    expect(profile.level).toBe("mid");
-    expect(profile.bogus).toBeUndefined();
+    const latest = await readLatestProfile(env.paths.dbPath);
+    expect(latest!.level).toBe("mid");
+    expect(
+      (latest as unknown as Record<string, unknown>).bogus,
+    ).toBeUndefined();
   });
 
-  it("returns invalid_json when progress.json is malformed", async () => {
-    writeFileSync(env.paths.progressPath, "{ not json", "utf-8");
+  it("returns db_write_failed when DB write errors (simulated by removing file)", async () => {
+    const { unlinkSync } = await import("node:fs");
+    unlinkSync(env.paths.dbPath);
     const res = await updateProfile({ level: "mid" }, env.paths);
-    expect(res).toMatchObject({ ok: false, error: "invalid_json" });
-  });
-
-  it("writes progress.json with trailing newline", async () => {
-    await updateProfile({ level: "mid" }, env.paths);
-    const raw = readFileSync(env.paths.progressPath, "utf-8");
-    expect(raw.endsWith("\n")).toBe(true);
-  });
-
-  it("returns progress_write_failed when progress.json cannot be written", async () => {
-    const badPaths = {
-      ...env.paths,
-      progressPath: join(env.paths.mentorRoot, "no-such-dir", "progress.json"),
-    };
-    const res = await updateProfile({ level: "mid" }, badPaths);
-    expect(res).toMatchObject({
-      ok: false,
-      error: "progress_write_failed",
-      recoverable: true,
-    });
+    expect(res).toMatchObject({ ok: false });
   });
 });

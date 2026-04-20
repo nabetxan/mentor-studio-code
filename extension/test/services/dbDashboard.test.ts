@@ -8,12 +8,12 @@ import {
   dbMergeTopic,
   dbReadTopics,
   dbUpdateTopicLabel,
-  parseMinimalProgress,
   topicIdToKey,
 } from "../../src/services/dbDashboard";
 import {
   makeEnvWithDb,
   seedPlans,
+  seedProfileRow,
   seedQuestions,
   seedTasks,
   WASM,
@@ -25,26 +25,6 @@ async function openReadOnly(
   const SQL = await loadSqlJs(WASM);
   return new SQL.Database(readFileSync(dbPath));
 }
-
-describe("parseMinimalProgress", () => {
-  it("extracts learner_profile.last_updated", () => {
-    const raw = JSON.stringify({
-      learner_profile: { last_updated: "2026-04-13T00:00:00Z" },
-    });
-    const p = parseMinimalProgress(raw);
-    expect(p.learner_profile?.last_updated).toBe("2026-04-13T00:00:00Z");
-  });
-
-  it("returns empty object when learner_profile is missing", () => {
-    const p = parseMinimalProgress("{}");
-    expect(p.learner_profile).toBeNull();
-  });
-
-  it("tolerates invalid JSON", () => {
-    const p = parseMinimalProgress("not json");
-    expect(p.learner_profile).toBeUndefined();
-  });
-});
 
 describe("computeDashboardDataFromDb", () => {
   it("computes expected dashboard from seeded DB", async () => {
@@ -88,12 +68,13 @@ describe("computeDashboardDataFromDb", () => {
         lastAnsweredAt: "2026-04-11T00:00:00Z",
       },
     ]);
+    await seedProfileRow(env.paths.dbPath, {
+      last_updated: "2026-04-13T00:00:00Z",
+    });
 
     const db = await openReadOnly(env.paths.dbPath);
     try {
-      const out = computeDashboardDataFromDb(db, {
-        learner_profile: { last_updated: "2026-04-13T00:00:00Z" },
-      });
+      const out = computeDashboardDataFromDb(db);
       expect(out.totalQuestions).toBe(3);
       expect(out.correctRate).toBeCloseTo(1 / 3);
       expect(out.byTopic.map((t) => t.topic).sort()).toEqual(
@@ -137,7 +118,7 @@ describe("computeDashboardDataFromDb", () => {
     const env = await makeEnvWithDb([]);
     const db = await openReadOnly(env.paths.dbPath);
     try {
-      const out = computeDashboardDataFromDb(db, {});
+      const out = computeDashboardDataFromDb(db);
       expect(out.totalQuestions).toBe(0);
       expect(out.byTopic).toEqual([]);
       expect(out.allTopics).toEqual([]);
@@ -180,7 +161,7 @@ describe("computeDashboardDataFromDb", () => {
 
     const db = await openReadOnly(env.paths.dbPath);
     try {
-      const out = computeDashboardDataFromDb(db, {});
+      const out = computeDashboardDataFromDb(db);
       expect(out.plans.map((p) => p.name)).toEqual([
         "Phase 1",
         "Phase 2",
@@ -225,7 +206,7 @@ describe("computeDashboardDataFromDb", () => {
 
     const db = await openReadOnly(env.paths.dbPath);
     try {
-      const out = computeDashboardDataFromDb(db, {});
+      const out = computeDashboardDataFromDb(db);
       expect(out.activePlan).toBeNull();
       expect(out.nextPlan?.name).toBe("Queued A");
       expect(out.nextPlan?.sortOrder).toBe(2);
@@ -253,7 +234,7 @@ describe("computeDashboardDataFromDb", () => {
 
     const db = await openReadOnly(env.paths.dbPath);
     try {
-      const out = computeDashboardDataFromDb(db, {});
+      const out = computeDashboardDataFromDb(db);
       expect(out.nextPlan).toBeNull();
     } finally {
       db.close();

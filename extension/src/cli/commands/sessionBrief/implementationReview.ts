@@ -9,11 +9,10 @@ export interface ImplementationReviewOutput {
 
 export function implementationReviewBrief(
   db: Database,
-  progress: Record<string, unknown>,
+  resumeContext: string | null,
 ): ImplementationReviewOutput {
-  const resumeContext = progress.resume_context;
   return {
     currentTask: selectActiveTask(db),
-    resumeContext: typeof resumeContext === "string" ? resumeContext : null,
+    resumeContext,
   };
 }

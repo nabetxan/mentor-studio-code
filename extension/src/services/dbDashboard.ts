@@ -20,30 +20,6 @@ export function topicKeyToId(key: string): number | null {
   return m ? Number(m[1]) : null;
 }
 
-export interface MinimalProgress {
-  learner_profile?: { last_updated?: string | null } | null;
-}
-
-export function parseMinimalProgress(raw: string): MinimalProgress {
-  try {
-    const obj = JSON.parse(raw) as Record<string, unknown>;
-    if (typeof obj !== "object" || obj === null) {
-      return {};
-    }
-    const lp =
-      typeof obj.learner_profile === "object" && obj.learner_profile !== null
-        ? (obj.learner_profile as Record<string, unknown>)
-        : null;
-    const lastUpdated =
-      lp && typeof lp.last_updated === "string" ? lp.last_updated : null;
-    return {
-      learner_profile: lp ? { last_updated: lastUpdated } : null,
-    };
-  } catch {
-    return {};
-  }
-}
-
 interface RowQuery {
   columns: string[];
   values: SqlValue[][];
@@ -73,10 +49,7 @@ export function readTopicsFromDb(db: Database): TopicConfig[] {
   }));
 }
 
-export function computeDashboardDataFromDb(
-  db: Database,
-  progress: MinimalProgress,
-): DashboardData {
+export function computeDashboardDataFromDb(db: Database): DashboardData {
   // Total + correct
   const totalRow = exec(
     db,
@@ -160,12 +133,14 @@ export function computeDashboardDataFromDb(
     currentTask = String(activeName);
   }
 
+  const profileRes = exec(
+    db,
+    "SELECT lastUpdated FROM learner_profile ORDER BY lastUpdated DESC, id DESC LIMIT 1",
+  )[0];
   const profileLastUpdated =
-    (typeof progress.learner_profile === "object" &&
-      progress.learner_profile !== null &&
-      typeof progress.learner_profile.last_updated === "string" &&
-      progress.learner_profile.last_updated) ||
-    null;
+    profileRes && profileRes.values.length > 0 && profileRes.values[0][0] !== null
+      ? String(profileRes.values[0][0])
+      : null;
 
   // Plans
   const plansRes = exec(

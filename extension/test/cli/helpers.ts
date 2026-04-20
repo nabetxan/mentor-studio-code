@@ -17,7 +17,6 @@ export function makeEnv(): TestEnv {
   const paths: CliPaths = {
     mentorRoot: dir,
     dbPath: join(dir, "data.db"),
-    progressPath: join(dir, "progress.json"),
     configPath: join(dir, "config.json"),
   };
   return { dir, paths };
@@ -171,9 +170,51 @@ export async function seedQuestions(
   });
 }
 
-export function writeProgress(
-  progressPath: string,
-  progress: Record<string, unknown>,
-): void {
-  writeFileSync(progressPath, JSON.stringify(progress), "utf-8");
+export async function seedProfileRow(
+  dbPath: string,
+  profile: {
+    experience?: string;
+    level?: string;
+    interests?: string[];
+    weak_areas?: string[];
+    mentor_style?: string;
+    last_updated: string;
+  },
+): Promise<void> {
+  await mutateDb(dbPath, (db) => {
+    const stmt = db.prepare(
+      `INSERT INTO learner_profile
+         (experience, level, interests, weakAreas, mentorStyle, lastUpdated)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    );
+    try {
+      stmt.run([
+        profile.experience ?? "",
+        profile.level ?? "",
+        JSON.stringify(profile.interests ?? []),
+        JSON.stringify(profile.weak_areas ?? []),
+        profile.mentor_style ?? "",
+        profile.last_updated,
+      ]);
+    } finally {
+      stmt.free();
+    }
+  });
+}
+
+export async function seedResumeContext(
+  dbPath: string,
+  value: string | null,
+): Promise<void> {
+  await mutateDb(dbPath, (db) => {
+    const stmt = db.prepare(
+      `INSERT INTO app_state (key, value) VALUES ('resume_context', ?)
+       ON CONFLICT(key) DO UPDATE SET value=excluded.value`,
+    );
+    try {
+      stmt.run([value]);
+    } finally {
+      stmt.free();
+    }
+  });
 }
