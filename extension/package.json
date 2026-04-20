@@ -88,6 +88,18 @@
           "when": "resourceExtname == .md && workspaceFolderCount > 0",
           "group": "mentor@2"
         }
+      ],
+      "editor/title/context": [
+        {
+          "command": "mentor-studio.addFilesToPlan",
+          "when": "resourceExtname == .md",
+          "group": "mentor@1"
+        },
+        {
+          "command": "mentor-studio.setFileAsSpec",
+          "when": "resourceExtname == .md",
+          "group": "mentor@2"
+        }
       ]
     }
   },

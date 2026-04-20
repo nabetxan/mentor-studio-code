@@ -4,6 +4,12 @@ All notable changes to "Mentor Studio Code" will be documented in this file.
 
 ## [0.6.3] - 2026-04-20
 
+### Added
+
+- Right-clicking a markdown file's editor tab now shows **Add to Mentor Plan** and **Add to Mentor Spec**, matching the existing Explorer context menu.
+- Session start (plan-health) detects when the active plan's `filePath` looks like a Spec document (no `## Task N` headings, contains spec-style headings such as `## Overview` / `## Requirements` / `## Non-Goals`) and asks the user whether to convert it: the plan is moved to `removed` and the file is registered as `mentorFiles.spec`.
+- New CLI commands: `deactivate-plan` (moves an active plan back to `queued`, demoting any active task) and `remove-plan` (soft-deletes a non-active plan to `removed`). Used internally by the new Spec-handoff flow; also available for AI/script use.
+
 ### Fixed
 
 - Re-adding a file whose plan was soft-deleted now restores the existing row instead of silently failing with "already exists".
