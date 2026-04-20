@@ -2,7 +2,7 @@
 
 All notable changes to "Mentor Studio Code" will be documented in this file.
 
-## [0.6.3] - 2026-04-19
+## [0.6.3] - 2026-04-20
 
 ### Fixed
 
@@ -13,6 +13,7 @@ All notable changes to "Mentor Studio Code" will be documented in this file.
 
 ### Changed
 
+- **SQLite schema bumped to v2.** `learner_profile` moved into a new append-only history table (one row per update, latest row wins on read) and `resume_context` moved into a new `app_state` key/value table. `.mentor/progress.json` is now obsolete: on first activation of v0.6.3, existing workspaces migrate their profile + resume context into the DB, back up the original to `.mentor/progress.json.bak`, then delete the live file. Fresh setups no longer create `progress.json`. Profile history (`learner_profile` rows) is retained going forward to support future time-series views; there is no automated pruning in this release.
 - Settings "Change" (変更) and Explorer "Add to Mentor Plan" now reuse any existing row for the same file path (restoring `removed` rows to `backlog`). Settings activates the selected plan and demotes the prior active to `paused`. Explorer single-select / Plan Panel add to `backlog` and auto-activate only when no plan is currently active; Explorer bulk select (2+ files) never auto-activates — all added files stay in `backlog`.
 - The "Delete Data" confirmation dialog no longer offers a one-click Uninstall button; it now directs the user to uninstall from the Extensions view. This avoids races between cleanup and the VS Code uninstall hook.
 

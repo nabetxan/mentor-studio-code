@@ -13,30 +13,25 @@ export interface Learner {
   lastUpdated?: string | null;
 }
 
-function asString(raw: unknown): string {
-  return typeof raw === "string" ? raw : "";
+export interface DbProfileInput {
+  experience: string;
+  level: string;
+  interests: string[];
+  weakAreas: string[];
+  mentorStyle: string;
+  lastUpdated: string | null;
 }
 
-function asStringArray(raw: unknown): string[] {
-  return Array.isArray(raw)
-    ? raw.filter((x): x is string => typeof x === "string")
-    : [];
-}
-
-export function mapLearner(
-  profile: Record<string, unknown>,
-  flow: Flow,
-): Learner {
+export function mapLearner(profile: DbProfileInput, flow: Flow): Learner {
   const out: Learner = {
-    experience: asString(profile.experience),
-    level: asString(profile.level),
-    interests: asStringArray(profile.interests),
-    weakAreas: asStringArray(profile.weak_areas),
-    mentorStyle: asString(profile.mentor_style),
+    experience: profile.experience,
+    level: profile.level,
+    interests: profile.interests,
+    weakAreas: profile.weakAreas,
+    mentorStyle: profile.mentorStyle,
   };
   if (flow === "mentor-session") {
-    const lu = profile.last_updated;
-    out.lastUpdated = typeof lu === "string" ? lu : null;
+    out.lastUpdated = profile.lastUpdated;
   }
   return out;
 }

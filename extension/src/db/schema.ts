@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export const SCHEMA_DDL = `
 CREATE TABLE IF NOT EXISTS topics (
@@ -39,6 +39,21 @@ CREATE TABLE IF NOT EXISTS questions (
   FOREIGN KEY (topicId) REFERENCES topics(id) ON DELETE RESTRICT
 );
 
+CREATE TABLE IF NOT EXISTS learner_profile (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  experience TEXT NOT NULL DEFAULT '',
+  level TEXT NOT NULL DEFAULT '',
+  interests TEXT NOT NULL DEFAULT '[]',
+  weakAreas TEXT NOT NULL DEFAULT '[]',
+  mentorStyle TEXT NOT NULL DEFAULT '',
+  lastUpdated TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS app_state (
+  key TEXT PRIMARY KEY,
+  value TEXT
+);
+
 CREATE INDEX IF NOT EXISTS idx_questions_isCorrect ON questions(isCorrect);
 CREATE INDEX IF NOT EXISTS idx_questions_topicId ON questions(topicId);
 CREATE INDEX IF NOT EXISTS idx_questions_taskId ON questions(taskId) WHERE taskId IS NOT NULL;
@@ -47,4 +62,5 @@ CREATE INDEX IF NOT EXISTS idx_plans_sort ON plans(sortOrder);
 CREATE INDEX IF NOT EXISTS idx_plans_status ON plans(status);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_plans_active ON plans(status) WHERE status = 'active';
 CREATE UNIQUE INDEX IF NOT EXISTS uq_tasks_active ON tasks(status) WHERE status = 'active';
+CREATE INDEX IF NOT EXISTS idx_learner_profile_lastUpdated ON learner_profile(lastUpdated DESC);
 `;

@@ -51,7 +51,7 @@ Order is fixed — never skip, never reorder:
 
 ## CLI Tool
 
-All reads and writes go through the bundled CLI — never edit the database or \`progress.json\` / \`config.json\` directly with the Edit/Write tool:
+All reads and writes go through the bundled CLI — never edit the database or \`config.json\` directly with the Edit/Write tool:
 
 \`\`\`
 node .mentor/tools/mentor-cli.cjs <command> '<json-arg>'
@@ -541,25 +541,9 @@ When the AI creates a new spec file, write it to \`.mentor/spec/<slug>.md\` (cre
 - The extension's fileWatcher auto-reloads.
 `;
 
-export const PROGRESS_JSON = JSON.stringify(
-  {
-    resume_context: null,
-    learner_profile: {
-      experience: "",
-      level: "",
-      interests: [],
-      weak_areas: [],
-      mentor_style: "",
-      last_updated: null,
-    },
-  },
-  null,
-  2,
-);
-
 export const INTAKE_SKILL_MD = `---
 name: intake
-description: Use when learner_profile.last_updated is null in progress.json or user requests profile update — collects learner background, level, interests, weak areas, and mentor style through 5 sequential questions.
+description: Use when learner_profile has not been set (learner.lastUpdated is null from session-brief) or user requests profile update — collects learner background, level, interests, weak areas, and mentor style through 5 sequential questions.
 ---
 
 # Intake
@@ -567,7 +551,7 @@ description: Use when learner_profile.last_updated is null in progress.json or u
 ## NEVER
 
 - Ask more than 1 question at a time
-- Proceed to session work before writing learner_profile to progress.json
+- Proceed to session work before writing learner_profile via mentor-cli update-profile
 
 ## Intake Flow
 

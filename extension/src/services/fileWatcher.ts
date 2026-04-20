@@ -1,9 +1,13 @@
-import type { DashboardData, MentorStudioConfig } from "@mentor-studio/shared";
+import type {
+  DashboardData,
+  LearnerProfile,
+  MentorStudioConfig,
+} from "@mentor-studio/shared";
 import { readFile, writeFile } from "fs/promises";
 import { existsSync, readFileSync } from "node:fs";
 import { basename, join } from "path";
 import * as vscode from "vscode";
-import { loadSqlJs } from "../db";
+import { loadSqlJs, parseJsonStringArray } from "../db";
 import {
   activatePlan as dbActivatePlan,
   addPlanToBacklog as dbAddPlanToBacklog,
@@ -18,8 +22,8 @@ import {
   dbDeleteTopics,
   dbMergeTopic,
   dbUpdateTopicLabel,
-  parseMinimalProgress,
 } from "./dbDashboard";
+import { insertLearnerProfileRow } from "./profileWrites";
 
 export function generateTopicKey(label: string): string {
   const sanitized = label
@@ -51,21 +55,6 @@ export class FileWatcherService implements vscode.Disposable {
 
   async start(): Promise<void> {
     await this.loadConfig();
-
-    const progressPattern = new vscode.RelativePattern(
-      this.workspaceRoot,
-      `${this.mentorPath}/progress.json`,
-    );
-    const progressWatcher =
-      vscode.workspace.createFileSystemWatcher(progressPattern);
-    const onProgressChange = (): void => {
-      void this.refresh().catch((err) =>
-        this.log?.(`refresh failed: ${String(err)}`),
-      );
-    };
-    progressWatcher.onDidChange(onProgressChange);
-    progressWatcher.onDidCreate(onProgressChange);
-    this.disposables.push(progressWatcher);
 
     const dbPattern = new vscode.RelativePattern(
       this.workspaceRoot,
@@ -166,20 +155,6 @@ export class FileWatcherService implements vscode.Disposable {
   }
 
   async refresh(): Promise<void> {
-    const progressPath = join(
-      this.workspaceRoot,
-      this.mentorPath,
-      "progress.json",
-    );
-
-    let progressRaw: string | null = null;
-    try {
-      progressRaw = await readFile(progressPath, "utf-8");
-    } catch {
-      progressRaw = null;
-    }
-    const progress = progressRaw ? parseMinimalProgress(progressRaw) : {};
-
     if (!this.dbPath || !this.wasmPath || !existsSync(this.dbPath)) {
       // DB not yet created (pre-migration or fresh setup) — emit empty dashboard
       this.onDataChanged({
@@ -190,7 +165,7 @@ export class FileWatcherService implements vscode.Disposable {
         unresolvedGaps: [],
         completedTasks: [],
         currentTask: null,
-        profileLastUpdated: progress.learner_profile?.last_updated ?? null,
+        profileLastUpdated: null,
         topicsWithHistory: [],
         plans: [],
         activePlan: null,
@@ -203,7 +178,7 @@ export class FileWatcherService implements vscode.Disposable {
       const SQL = await loadSqlJs(this.wasmPath);
       const db = new SQL.Database(readFileSync(this.dbPath));
       try {
-        const data = computeDashboardDataFromDb(db, progress);
+        const data = computeDashboardDataFromDb(db);
         this.onDataChanged(data);
       } finally {
         db.close();
@@ -217,7 +192,7 @@ export class FileWatcherService implements vscode.Disposable {
       this.onConfigChanged?.(this.config);
     }
 
-    if (progressRaw) await this.syncLearnerProfile(progressPath);
+    await this.syncLearnerProfileFromDb();
   }
 
   async mergeTopic(fromKey: string, toKey: string): Promise<void> {
@@ -443,42 +418,77 @@ export class FileWatcherService implements vscode.Disposable {
     }
   }
 
-  private async syncLearnerProfile(progressPath: string): Promise<void> {
-    if (this.syncing || !this.globalState) return;
+  private async syncLearnerProfileFromDb(): Promise<void> {
+    if (
+      this.syncing ||
+      !this.globalState ||
+      !this.dbPath ||
+      !this.wasmPath ||
+      !existsSync(this.dbPath)
+    ) {
+      return;
+    }
     try {
-      const rawText = await readFile(progressPath, "utf-8");
-      const rawObj = JSON.parse(rawText) as Record<string, unknown>;
-      const fileProfile = parseLearnerProfile(rawObj.learner_profile);
+      let dbProfile: LearnerProfile | null;
+      const SQL = await loadSqlJs(this.wasmPath);
+      const db = new SQL.Database(readFileSync(this.dbPath));
+      try {
+        const res = db.exec(
+          `SELECT experience, level, interests, weakAreas, mentorStyle, lastUpdated
+           FROM learner_profile
+           ORDER BY lastUpdated DESC, id DESC
+           LIMIT 1`,
+        )[0];
+        if (!res || res.values.length === 0) {
+          dbProfile = null;
+        } else {
+          const [exp, lvl, inter, weak, style, lu] = res.values[0];
+          dbProfile = {
+            experience: String(exp ?? ""),
+            level: String(lvl ?? ""),
+            interests: parseJsonStringArray(inter),
+            weak_areas: parseJsonStringArray(weak),
+            mentor_style: String(style ?? ""),
+            last_updated:
+              lu === null || lu === undefined ? null : String(lu),
+          };
+        }
+      } finally {
+        db.close();
+      }
+
       const globalProfile = parseLearnerProfile(
         this.globalState.get<unknown>("learnerProfile"),
       );
-
-      const fileTime = fileProfile?.last_updated
-        ? new Date(fileProfile.last_updated).getTime() || 0
+      const dbTime = dbProfile?.last_updated
+        ? new Date(dbProfile.last_updated).getTime() || 0
         : 0;
       const globalTime = globalProfile?.last_updated
         ? new Date(globalProfile.last_updated).getTime() || 0
         : 0;
 
-      if (fileTime === 0 && globalTime === 0) return;
+      if (dbTime === 0 && globalTime === 0) return;
 
-      if (globalTime > fileTime) {
+      if (globalTime > dbTime && globalProfile) {
         this.syncing = true;
         try {
-          rawObj.learner_profile = globalProfile;
-          await writeFile(progressPath, JSON.stringify(rawObj, null, 2) + "\n");
+          await insertLearnerProfileRow(
+            this.dbPath,
+            this.wasmPath,
+            globalProfile,
+          );
           this.log?.(
-            "Synced learner_profile from globalState to progress.json",
+            "Synced learner_profile from globalState to DB (append)",
           );
         } finally {
           this.syncing = false;
         }
-      } else if (fileTime > globalTime) {
-        await this.globalState.update("learnerProfile", fileProfile);
-        this.log?.("Synced learner_profile from progress.json to globalState");
+      } else if (dbTime > globalTime && dbProfile) {
+        await this.globalState.update("learnerProfile", dbProfile);
+        this.log?.("Synced learner_profile from DB to globalState");
       }
     } catch (err) {
-      this.log?.(`syncLearnerProfile failed: ${String(err)}`);
+      this.log?.(`syncLearnerProfileFromDb failed: ${String(err)}`);
     }
   }
 

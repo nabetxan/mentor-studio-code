@@ -21,7 +21,7 @@ describe("mentorSessionBrief", () => {
 
   it("returns nulls and zeros on empty DB", async () => {
     const out = await withDb(env.paths.dbPath, (db) =>
-      mentorSessionBrief(db, {}),
+      mentorSessionBrief(db, null),
     );
     expect(out).toEqual({
       currentTask: null,
@@ -79,12 +79,8 @@ describe("mentorSessionBrief", () => {
       },
     ]);
 
-    const progress = {
-      resume_context: "resuming after break",
-    };
-
     const out = await withDb(env.paths.dbPath, (db) =>
-      mentorSessionBrief(db, progress),
+      mentorSessionBrief(db, "resuming after break"),
     );
     expect(out.currentTask).toEqual({ id: 1, name: "Task1", planId: 1 });
     expect(out.resumeContext).toBe("resuming after break");
@@ -105,7 +101,7 @@ describe("mentorSessionBrief", () => {
     await seedQuestions(env.paths.dbPath, questions);
 
     const out = await withDb(env.paths.dbPath, (db) =>
-      mentorSessionBrief(db, {}),
+      mentorSessionBrief(db, null),
     );
     expect(out.relevantGaps.length).toBe(5);
     expect(out.relevantGaps.map((g) => g.concept)).toEqual([
