@@ -131,10 +131,11 @@ export async function acquireLock(
       await writeOwner();
       const handle: LockHandle = { lockDir, dbPath, purpose: opts.purpose };
       handle.heartbeatTimer = setInterval(() => {
-        // Track the in-flight write so releaseLock can wait for the rename
-        // to finish before rm'ing the lock dir; otherwise atomicWriteFile's
-        // tmp file can reappear mid-rm and trigger ENOTEMPTY.
-        handle.pendingHeartbeat = writeOwner().catch(() => {});
+        // Chain onto the previous write so concurrent ticks serialize. Tracking
+        // only the latest promise would let earlier renames race with rm() in
+        // releaseLock and revive atomicWriteFile's tmp file mid-rm (ENOTEMPTY).
+        const prev = handle.pendingHeartbeat ?? Promise.resolve();
+        handle.pendingHeartbeat = prev.then(() => writeOwner()).catch(() => {});
       }, heartbeat);
       // Don't let the heartbeat keep the event loop alive.
       handle.heartbeatTimer.unref?.();
