@@ -126,9 +126,11 @@ describe("session-brief (integration)", () => {
 
       const res = await sessionBrief({ flow: "mentor-session" }, env.paths);
       if (!res.ok) throw new Error("expected ok");
-      expect(res.learner.experience).toBe("new");
-      expect(res.learner.level).toBe("senior");
-      expect(res.learner.lastUpdated).toBe("2026-04-18T00:00:00Z");
+      expect(res.learner).toMatchObject({
+        experience: "new",
+        level: "senior",
+        lastUpdated: "2026-04-18T00:00:00Z",
+      });
     });
 
     it("review shape omits lastUpdated and exposes gaps/gapCount", async () => {

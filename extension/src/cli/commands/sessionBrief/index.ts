@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import type { Database } from "sql.js";
 
-import { loadSqlJs } from "../../../db";
+import { loadSqlJs, parseJsonStringArray } from "../../../db";
 import { narrowTopicId } from "../narrow";
 import type { Command, CommandResult } from "../types";
 import { comprehensionCheckBrief } from "./comprehensionCheck";
@@ -21,17 +21,6 @@ function isFlow(value: unknown): value is Flow {
   return (
     typeof value === "string" && (FLOWS as readonly string[]).includes(value)
   );
-}
-
-function parseArr(raw: unknown): string[] {
-  try {
-    const v: unknown = JSON.parse(String(raw ?? "[]"));
-    return Array.isArray(v)
-      ? v.filter((x): x is string => typeof x === "string")
-      : [];
-  } catch {
-    return [];
-  }
 }
 
 function readDbProfile(db: Database): DbProfileInput {
@@ -55,8 +44,8 @@ function readDbProfile(db: Database): DbProfileInput {
   return {
     experience: String(exp ?? ""),
     level: String(lvl ?? ""),
-    interests: parseArr(inter),
-    weakAreas: parseArr(weak),
+    interests: parseJsonStringArray(inter),
+    weakAreas: parseJsonStringArray(weak),
     mentorStyle: String(style ?? ""),
     lastUpdated: lu === null || lu === undefined ? null : String(lu),
   };

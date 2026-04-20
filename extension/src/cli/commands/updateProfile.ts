@@ -1,4 +1,4 @@
-import { withWriteTransaction } from "../../db";
+import { parseJsonStringArray, withWriteTransaction } from "../../db";
 import type { Command } from "./types";
 
 const STRING_KEYS = ["experience", "level", "mentor_style"] as const;
@@ -65,12 +65,8 @@ export const updateProfile: Command = async (rawArgs, paths) => {
             ? {
                 experience: String(latestRes.values[0][0] ?? ""),
                 level: String(latestRes.values[0][1] ?? ""),
-                interests: JSON.parse(
-                  String(latestRes.values[0][2] ?? "[]"),
-                ) as string[],
-                weak_areas: JSON.parse(
-                  String(latestRes.values[0][3] ?? "[]"),
-                ) as string[],
+                interests: parseJsonStringArray(latestRes.values[0][2]),
+                weak_areas: parseJsonStringArray(latestRes.values[0][3]),
                 mentor_style: String(latestRes.values[0][4] ?? ""),
               }
             : { ...EMPTY_SNAPSHOT };

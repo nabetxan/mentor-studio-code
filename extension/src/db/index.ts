@@ -2,6 +2,7 @@ export { atomicWriteFile } from "./atomicWrite";
 export { bootstrapDb } from "./bootstrap";
 export type { BootstrapOptions } from "./bootstrap";
 export { checkIntegrity, quarantineCorruptDb } from "./integrity";
+export { parseJsonStringArray } from "./jsonColumn";
 export type { IntegrityResult } from "./integrity";
 export { acquireLock, LockTimeoutError, releaseLock } from "./lock";
 export type { LockHandle, LockOptions, LockPurpose } from "./lock";

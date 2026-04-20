@@ -7,7 +7,7 @@ import { readFile, writeFile } from "fs/promises";
 import { existsSync, readFileSync } from "node:fs";
 import { basename, join } from "path";
 import * as vscode from "vscode";
-import { loadSqlJs } from "../db";
+import { loadSqlJs, parseJsonStringArray } from "../db";
 import {
   activatePlan as dbActivatePlan,
   addPlanToBacklog as dbAddPlanToBacklog,
@@ -446,8 +446,8 @@ export class FileWatcherService implements vscode.Disposable {
           dbProfile = {
             experience: String(exp ?? ""),
             level: String(lvl ?? ""),
-            interests: JSON.parse(String(inter ?? "[]")) as string[],
-            weak_areas: JSON.parse(String(weak ?? "[]")) as string[],
+            interests: parseJsonStringArray(inter),
+            weak_areas: parseJsonStringArray(weak),
             mentor_style: String(style ?? ""),
             last_updated:
               lu === null || lu === undefined ? null : String(lu),

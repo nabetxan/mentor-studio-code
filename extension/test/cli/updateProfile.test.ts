@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { updateProfile } from "../../src/cli/commands/updateProfile";
 import { loadSqlJs } from "../../src/db";
-import { makeEnvWithDb, WASM, type TestEnv } from "./helpers";
+import { makeEnvWithDb, mutateDb, WASM, type TestEnv } from "./helpers";
 
 const ISO_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 
@@ -179,5 +179,37 @@ describe("update-profile (DB-backed)", () => {
     unlinkSync(env.paths.dbPath);
     const res = await updateProfile({ level: "mid" }, env.paths);
     expect(res).toMatchObject({ ok: false });
+  });
+
+  it("still writes when the latest row has corrupt JSON in interests/weakAreas", async () => {
+    await mutateDb(env.paths.dbPath, (db) => {
+      const stmt = db.prepare(
+        `INSERT INTO learner_profile
+           (experience, level, interests, weakAreas, mentorStyle, lastUpdated)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      );
+      try {
+        stmt.run([
+          "5y",
+          "mid",
+          "{not-json",
+          "also-broken",
+          "socratic",
+          "2026-04-01T00:00:00.000Z",
+        ]);
+      } finally {
+        stmt.free();
+      }
+    });
+
+    const res = await updateProfile({ level: "senior" }, env.paths);
+    expect(res).toEqual({ ok: true });
+
+    const latest = await readLatestProfile(env.paths.dbPath);
+    expect(latest!.level).toBe("senior");
+    expect(latest!.experience).toBe("5y");
+    expect(latest!.interests).toEqual([]);
+    expect(latest!.weak_areas).toEqual([]);
+    expect(latest!.mentor_style).toBe("socratic");
   });
 });
