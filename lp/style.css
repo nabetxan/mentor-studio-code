@@ -102,7 +102,8 @@ a {
   color: var(--text-heading);
 }
 
-.nav-github {
+.nav-github,
+.nav-instagram {
   display: flex;
   align-items: center;
 }
@@ -374,7 +375,7 @@ a {
     font-size: 22px;
   }
 
-  .nav a:not(.nav-github) {
+  .nav a:not(.nav-github):not(.nav-instagram) {
     display: none;
   }
 
@@ -404,7 +405,7 @@ a {
 /* 右側 TOC (desktop) */
 .walkthrough-toc {
   position: sticky;
-  top: 80px;
+  top: 72px;
   align-self: start;
   font-size: 0.875rem;
 }
@@ -431,7 +432,7 @@ a {
 .walkthrough-pill-nav {
   display: none;
   position: sticky;
-  top: 60px;
+  top: 52px;
   z-index: 10;
   background: rgba(26, 21, 37, 0.95);
   backdrop-filter: blur(8px);

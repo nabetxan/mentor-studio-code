@@ -195,7 +195,7 @@ export async function runCleanupMentor(
     // FileSystemWatcher's onDidDelete for .mentor/config.json is unreliable
     // after a recursive parent-dir delete (macOS fsevents). Signal the sidebar
     // explicitly so it flips to the noConfig / "Run Setup" view.
-    if (onMentorFolderDeleted) {
+    if (deleted.mentorFolder && onMentorFolderDeleted) {
       try {
         await onMentorFolderDeleted();
       } catch (err) {
