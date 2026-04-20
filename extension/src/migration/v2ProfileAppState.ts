@@ -76,6 +76,30 @@ export async function migrateToV2(
         return { ok: true, skipped: true };
       }
 
+      // Phase 1: apply the v2 schema unconditionally. Don't bump user_version
+      // yet — that signals "data is migrated", which we can't claim until the
+      // JSON import finishes. If later phases fail, the DB is still v2-shaped
+      // so queries against learner_profile/app_state don't throw, and the next
+      // activation will retry (user_version still < V2).
+      db.exec("BEGIN IMMEDIATE");
+      try {
+        db.exec(SCHEMA_DDL);
+        db.exec("COMMIT");
+      } catch (e) {
+        try {
+          db.exec("ROLLBACK");
+        } catch {
+          /* ignore */
+        }
+        return {
+          ok: false,
+          error: "schema_failed",
+          detail: e instanceof Error ? e.message : String(e),
+        };
+      }
+      await atomicWriteFile(dbPath, Buffer.from(db.export()));
+
+      // Phase 2: read progress.json, import data, and bump user_version.
       const progressResult = await readProgress(progressPath);
       if (!progressResult.ok) return progressResult;
       const progress = progressResult.value;
@@ -88,8 +112,6 @@ export async function migrateToV2(
 
       db.exec("BEGIN IMMEDIATE");
       try {
-        db.exec(SCHEMA_DDL);
-
         const legacyLastUpdated =
           typeof profileRaw.last_updated === "string"
             ? profileRaw.last_updated
@@ -138,8 +160,7 @@ export async function migrateToV2(
         };
       }
 
-      const bytes = Buffer.from(db.export());
-      await atomicWriteFile(dbPath, bytes);
+      await atomicWriteFile(dbPath, Buffer.from(db.export()));
     } finally {
       db.close();
     }

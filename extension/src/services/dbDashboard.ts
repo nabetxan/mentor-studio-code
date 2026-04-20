@@ -133,28 +133,14 @@ export function computeDashboardDataFromDb(db: Database): DashboardData {
     currentTask = String(activeName);
   }
 
-  // Tolerate pre-v2 schemas: the v2 migration may have failed or not yet run,
-  // in which case learner_profile does not exist. Fall back to null rather
-  // than throwing, so the rest of the dashboard still renders.
-  const hasProfileTable =
-    (exec(
-      db,
-      "SELECT 1 FROM sqlite_master WHERE type='table' AND name='learner_profile'",
-    )[0]?.values.length ?? 0) > 0;
-  let profileLastUpdated: string | null = null;
-  if (hasProfileTable) {
-    const profileRes = exec(
-      db,
-      "SELECT lastUpdated FROM learner_profile ORDER BY lastUpdated DESC, id DESC LIMIT 1",
-    )[0];
-    if (
-      profileRes &&
-      profileRes.values.length > 0 &&
-      profileRes.values[0][0] !== null
-    ) {
-      profileLastUpdated = String(profileRes.values[0][0]);
-    }
-  }
+  const profileRes = exec(
+    db,
+    "SELECT lastUpdated FROM learner_profile ORDER BY lastUpdated DESC, id DESC LIMIT 1",
+  )[0];
+  const profileLastUpdated =
+    profileRes && profileRes.values.length > 0 && profileRes.values[0][0] !== null
+      ? String(profileRes.values[0][0])
+      : null;
 
   // Plans
   const plansRes = exec(

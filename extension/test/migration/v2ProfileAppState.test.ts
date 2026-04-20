@@ -130,12 +130,57 @@ describe("migrateToV2", () => {
     db.close();
   });
 
-  it("returns error when progress.json has invalid JSON (leaves DB untouched)", async () => {
+  it("returns error when progress.json has invalid JSON but still applies schema (user_version stays 1, progress.json preserved for retry)", async () => {
     writeFileSync(progressPath, "{ not json");
     const res = await migrateToV2(dir, WASM);
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.error).toBe("invalid_progress_json");
     expect(existsSync(progressPath)).toBe(true);
+
+    const SQL = await loadSqlJs(WASM);
+    const db = new SQL.Database(readFileSync(dbPath));
+    // Schema is applied so dashboards/queries don't crash against v2 tables.
+    const tables = db.exec(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('learner_profile','app_state')",
+    )[0];
+    expect(tables.values.map((r) => r[0]).sort()).toEqual([
+      "app_state",
+      "learner_profile",
+    ]);
+    // user_version remains 1 so the next activation retries the migration.
+    expect(Number(db.exec("PRAGMA user_version")[0].values[0][0])).toBe(1);
+    db.close();
+  });
+
+  it("retries successfully after a failed run once progress.json is fixed", async () => {
+    writeFileSync(progressPath, "{ not json");
+    const first = await migrateToV2(dir, WASM);
+    expect(first.ok).toBe(false);
+
+    writeFileSync(
+      progressPath,
+      JSON.stringify({
+        resume_context: "restored",
+        learner_profile: {
+          last_updated: "2026-04-20T00:00:00.000Z",
+          experience: "x",
+        },
+      }),
+    );
+    const second = await migrateToV2(dir, WASM);
+    expect(second.ok).toBe(true);
+
+    const SQL = await loadSqlJs(WASM);
+    const db = new SQL.Database(readFileSync(dbPath));
+    expect(Number(db.exec("PRAGMA user_version")[0].values[0][0])).toBe(2);
+    expect(
+      Number(db.exec("SELECT COUNT(*) FROM learner_profile")[0].values[0][0]),
+    ).toBe(1);
+    expect(
+      db.exec("SELECT value FROM app_state WHERE key='resume_context'")[0]
+        .values[0][0],
+    ).toBe("restored");
+    db.close();
   });
 });
 
