@@ -1,6 +1,9 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  INTAKE_SKILL_MD,
   MENTOR_SESSION_SKILL_MD,
   MENTOR_SKILLS,
   PLAN_HEALTH_MD,
@@ -74,6 +77,24 @@ describe("plan-health.md template", () => {
     expect(PLAN_HEALTH_MD).not.toMatch(/tracker-format/);
     expect(PLAN_HEALTH_MD).not.toMatch(/mentorFiles\.plan/);
   });
+
+  it("contains Spec handoff sub-flow", () => {
+    expect(PLAN_HEALTH_MD).toMatch(/Spec handoff/);
+    expect(PLAN_HEALTH_MD).toMatch(/deactivate-plan/);
+    expect(PLAN_HEALTH_MD).toMatch(/remove-plan/);
+    expect(PLAN_HEALTH_MD).toMatch(/update-config.*mentorFiles.*spec/s);
+    expect(PLAN_HEALTH_MD).toMatch(/## Overview/);
+    expect(PLAN_HEALTH_MD).toMatch(/## Non-Goals/);
+  });
+
+  it("matches the checked-in .mentor/skills/mentor-session/plan-health.md", () => {
+    const repoRoot = resolve(__dirname, "..", "..", "..");
+    const onDisk = readFileSync(
+      resolve(repoRoot, ".mentor/skills/mentor-session/plan-health.md"),
+      "utf8",
+    );
+    expect(onDisk).toBe(PLAN_HEALTH_MD);
+  });
 });
 
 describe("mentor-session/SKILL.md after split", () => {
@@ -113,5 +134,47 @@ describe("shared-rules.md after dedup", () => {
     expect(SHARED_RULES_MD).toMatch(/session-brief/);
     expect(SHARED_RULES_MD).toMatch(/list-unresolved/);
     expect(SHARED_RULES_MD).toMatch(/list-topics/);
+  });
+});
+
+describe("INTAKE_SKILL_MD", () => {
+  it("contains both flow headings", () => {
+    expect(INTAKE_SKILL_MD).toMatch(/^## Initial Intake Flow$/m);
+    expect(INTAKE_SKILL_MD).toMatch(/^## Update Flow$/m);
+  });
+
+  it("has entry branching on learner.lastUpdated", () => {
+    expect(INTAKE_SKILL_MD).toMatch(/^## Entry Branching$/m);
+    expect(INTAKE_SKILL_MD).toMatch(/learner\.lastUpdated/);
+  });
+
+  it("documents the 最初から escape hatch", () => {
+    expect(INTAKE_SKILL_MD).toMatch(/最初から/);
+  });
+
+  it("Update Flow references a diff confirmation step", () => {
+    expect(INTAKE_SKILL_MD).toMatch(/変更前/);
+    expect(INTAKE_SKILL_MD).toMatch(/変更後/);
+  });
+
+  it("still contains all 5 initial intake questions", () => {
+    for (const q of [
+      "Question 1: Experience",
+      "Question 2: Self-assessed Level",
+      "Question 3: Interests",
+      "Question 4: Weak Areas",
+      "Question 5: Mentor Style",
+    ]) {
+      expect(INTAKE_SKILL_MD).toContain(q);
+    }
+  });
+
+  it("matches the checked-in .mentor/skills/intake/SKILL.md", () => {
+    const repoRoot = resolve(__dirname, "..", "..", "..");
+    const onDisk = readFileSync(
+      resolve(repoRoot, ".mentor/skills/intake/SKILL.md"),
+      "utf8",
+    );
+    expect(onDisk).toBe(INTAKE_SKILL_MD);
   });
 });

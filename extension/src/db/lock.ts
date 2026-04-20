@@ -17,6 +17,7 @@ export interface LockHandle {
   dbPath: string;
   purpose: LockPurpose;
   heartbeatTimer?: NodeJS.Timeout;
+  pendingHeartbeat?: Promise<void>;
 }
 
 export class LockTimeoutError extends Error {
@@ -130,7 +131,11 @@ export async function acquireLock(
       await writeOwner();
       const handle: LockHandle = { lockDir, dbPath, purpose: opts.purpose };
       handle.heartbeatTimer = setInterval(() => {
-        writeOwner().catch(() => {});
+        // Chain onto the previous write so concurrent ticks serialize. Tracking
+        // only the latest promise would let earlier renames race with rm() in
+        // releaseLock and revive atomicWriteFile's tmp file mid-rm (ENOTEMPTY).
+        const prev = handle.pendingHeartbeat ?? Promise.resolve();
+        handle.pendingHeartbeat = prev.then(() => writeOwner()).catch(() => {});
       }, heartbeat);
       // Don't let the heartbeat keep the event loop alive.
       handle.heartbeatTimer.unref?.();
@@ -151,5 +156,21 @@ export async function acquireLock(
 export async function releaseLock(handle: LockHandle): Promise<void> {
   if (handle.heartbeatTimer) clearInterval(handle.heartbeatTimer);
   activeHandles.delete(handle);
+  // Wait for any heartbeat write still in flight so its rename finishes
+  // before we try to rmdir the lock directory.
+  if (handle.pendingHeartbeat) {
+    await handle.pendingHeartbeat;
+  }
+  // Short retry for residual FS-level races (e.g. concurrent acquirers
+  // reading metadata). ENOTEMPTY clears as soon as those operations settle.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await rm(handle.lockDir, { recursive: true, force: true });
+      return;
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== "ENOTEMPTY") throw err;
+      await sleep(20);
+    }
+  }
   await rm(handle.lockDir, { recursive: true, force: true });
 }

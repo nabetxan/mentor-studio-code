@@ -351,11 +351,10 @@ describe("SidebarProvider", () => {
     const changeActivePlanFile = vi.fn(() => Promise.resolve());
     provider.setPlanHandlers({ ...noopPlanHandlers(), changeActivePlanFile });
     vi.spyOn(vscodeMock.window, "showOpenDialog").mockResolvedValue(undefined);
-    await view.__trigger({ type: "changeActivePlanFile", id: 4 });
+    await view.__trigger({ type: "changeActivePlanFile" });
     expect(changeActivePlanFile).not.toHaveBeenCalled();
     expect(view.__posted).toContainEqual({
       type: "changeActivePlanFileResult",
-      id: 4,
       ok: true,
     });
   });
@@ -374,12 +373,11 @@ describe("SidebarProvider", () => {
     provider.setPlanHandlers({ ...noopPlanHandlers(), changeActivePlanFile });
     const fakeUri = vscodeMock.Uri.file("/workspace/plans/chapter1.md");
     vi.spyOn(vscodeMock.window, "showOpenDialog").mockResolvedValue([fakeUri]);
-    await view.__trigger({ type: "changeActivePlanFile", id: 4 });
+    await view.__trigger({ type: "changeActivePlanFile" });
     expect(changeActivePlanFile).toHaveBeenCalledOnce();
-    expect(changeActivePlanFile).toHaveBeenCalledWith(4, "plans/chapter1.md");
+    expect(changeActivePlanFile).toHaveBeenCalledWith("plans/chapter1.md");
     expect(view.__posted).toContainEqual({
       type: "changeActivePlanFileResult",
-      id: 4,
       ok: true,
     });
   });
@@ -461,12 +459,11 @@ describe("SidebarProvider", () => {
       outsideUri,
     ]);
     const errSpy = vi.spyOn(vscodeMock.window, "showErrorMessage");
-    await view.__trigger({ type: "changeActivePlanFile", id: 4 });
+    await view.__trigger({ type: "changeActivePlanFile" });
     expect(changeActivePlanFile).not.toHaveBeenCalled();
     expect(errSpy).toHaveBeenCalledOnce();
     expect(view.__posted).toContainEqual({
       type: "changeActivePlanFileResult",
-      id: 4,
       ok: false,
       error: "outside_workspace",
     });

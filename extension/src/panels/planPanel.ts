@@ -40,7 +40,7 @@ async function handleWrite(
       );
       return;
     case "createPlan":
-      await planWrites.createPlan(
+      await planWrites.addPlanToBacklog(
         dbPath,
         { name: req.name, filePath: req.filePath },
         wasmPath,

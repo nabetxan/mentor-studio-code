@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title
+      data-ja="Mentor Studio Code — 使い方 Walkthrough"
+      data-en="Mentor Studio Code — Walkthrough"
+    >Mentor Studio Code — Walkthrough</title>
+    <meta
+      name="description"
+      data-ja="Mentor Studio Code の使い方（初回セットアップと1セッションの流れ）を紹介します。"
+      data-en="A walkthrough of Mentor Studio Code: initial setup and one session flow."
+      content="A walkthrough of Mentor Studio Code."
+    />
+    <meta property="og:title" content="Mentor Studio Code — 使い方 Walkthrough" />
+    <meta
+      property="og:description"
+      content="Mentor Studio Code の使い方を紹介します。"
+    />
+    <meta
+      property="og:image"
+      content="https://nabetxan.github.io/mentor-studio-code/images/icon.png"
+    />
+    <meta
+      property="og:url"
+      content="https://nabetxan.github.io/mentor-studio-code/walkthrough.html"
+    />
+    <meta property="og:type" content="website" />
+    <link rel="icon" href="images/icon.png" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <!-- Header (LP と共通構造、ロゴのみ index.html にリンク) -->
+    <header class="header">
+      <div class="header-inner">
+        <a href="index.html" class="logo">
+          <img
+            src="images/icon.png"
+            alt="Mentor Studio Code"
+            class="logo-icon"
+          />
+          <span class="logo-text">Mentor Studio Code</span>
+        </a>
+        <nav class="nav">
+          <a href="index.html#features" data-ja="特徴" data-en="Features">特徴</a>
+          <a
+            href="walkthrough.html"
+            aria-current="page"
+            data-ja="使い方"
+            data-en="Walkthrough"
+          >使い方</a>
+          <a
+            href="https://github.com/nabetxan/mentor-studio-code"
+            class="nav-github"
+            aria-label="GitHub"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor">
+              <path
+                d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"
+              />
+            </svg>
+          </a>
+          <a
+            href="https://www.instagram.com/platypus_code/"
+            class="nav-instagram"
+            aria-label="Instagram"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+              <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+              <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+            </svg>
+          </a>
+          <button
+            class="lang-toggle"
+            id="lang-toggle"
+            aria-label="Toggle language"
+          >
+            <span class="lang-option" data-lang="ja">JA</span>
+            <span class="lang-separator">/</span>
+            <span class="lang-option" data-lang="en">EN</span>
+          </button>
+        </nav>
+      </div>
+    </header>
+
+    <!-- Hero (コンパクト版: hero-label, cta-group なし) -->
+    <section class="hero">
+      <h1 data-ja="使い方 Walkthrough" data-en="Walkthrough">使い方 Walkthrough</h1>
+      <p
+        class="hero-sub"
+        data-ja="Mentor Studio Code の使い方を紹介します"
+        data-en="A guide to using Mentor Studio Code"
+      >
+        Mentor Studio Code の使い方を紹介します
+      </p>
+      <p
+        class="hero-note"
+        data-ja="※ この拡張機能は <a href='https://docs.anthropic.com/en/docs/claude-code/overview'>Claude Code</a> と合わせて使用することを前提としています。<br/>インストール・動作要件・利用可能なプランについては Anthropic 公式ドキュメントをご確認ください。<br/>本拡張機能は独立したオープンソースプロジェクトであり、<br/>Anthropic, PBC との提携・推薦・後援関係はありません。"
+        data-en="* This extension is designed to work with <a href='https://docs.anthropic.com/en/docs/claude-code/overview'>Claude Code</a>. Please refer to Anthropic's official documentation for installation, requirements, and available plans.<br/>This extension is an independent open-source project and is not affiliated with, <br/>endorsed by, or sponsored by Anthropic, PBC."
+      >
+        ※ この拡張機能は
+        <a href="https://docs.anthropic.com/en/docs/claude-code/overview"
+          >Claude Code</a
+        >
+        と合わせて使用することを前提としています。インストール・動作要件・利用可能なプランについては
+        Anthropic 公式ドキュメントをご確認ください。<br />
+        本拡張機能は独立したオープンソースプロジェクトであり、<br />Anthropic,
+        PBC との提携・推薦・後援関係はありません。
+      </p>
+    </section>
+
+    <!-- モバイルピルバー（〜850px のみ表示） -->
+    <nav class="walkthrough-pill-nav" aria-label="Sections">
+      <a href="#setup" data-ja="① セットアップ" data-en="① Setup">① セットアップ</a>
+      <a href="#session" data-ja="② セッション" data-en="② Session">② セッション</a>
+    </nav>
+
+    <!-- メインコンテンツ (2カラム) -->
+    <div class="walkthrough-layout">
+      <main>
+        <!-- ① Setup -->
+        <section class="wt-section" id="setup">
+          <h2 data-ja="① 初回セットアップ" data-en="① Initial Setup">① 初回セットアップ</h2>
+          <p
+            class="wt-section-lead"
+            data-ja="インストールしてメンターが使える状態になるまでの7ステップ。"
+            data-en="Seven steps from installing to having a working mentor."
+          >
+            インストールしてメンターが使える状態になるまでの7ステップ。
+          </p>
+
+          <div class="step-card">
+            <div class="step-number">1</div>
+            <div class="step-body">
+              <h3 data-ja="拡張をインストール" data-en="Install the extension">拡張をインストール</h3>
+              <p
+                data-ja="VS Code の Extensions タブで「Mentor Studio Code」を検索してインストールします。Marketplace ページから直接インストールすることもできます。"
+                data-en='Search for "Mentor Studio Code" in the VS Code Extensions tab and install. You can also install directly from the Marketplace page.'
+              >
+                VS Code の Extensions タブで「Mentor Studio Code」を検索してインストールします。Marketplace ページから直接インストールすることもできます。
+              </p>
+              <figure class="step-screenshot">
+                <img
+                  src="images/walkthrough/setup-01-install.png"
+                  alt="Mentor Studio Code on the VS Code Marketplace"
+                />
+              </figure>
+            </div>
+          </div>
+
+          <div class="step-card">
+            <div class="step-number">2</div>
+            <div class="step-body">
+              <h3 data-ja="Setup ボタンを押す" data-en="Press the Setup button">Setup ボタンを押す</h3>
+              <p
+                data-ja="Activity Bar の Mentor Studio Code アイコンをクリックし、Setup ボタンを押します。サイドバーにアイコンが見当たらない場合は、コマンドパレット（Cmd+Shift+P）から「Mentor Studio Code: Setup Mentor」を実行してください。"
+                data-en='Click the Mentor Studio Code icon in the Activity Bar and press the Setup button. If the icon is not visible, open the Command Palette (Cmd+Shift+P) and run "Mentor Studio Code: Setup Mentor".'
+              >
+                Activity Bar の Mentor Studio Code アイコンをクリックし、Setup ボタンを押します。サイドバーにアイコンが見当たらない場合は、コマンドパレット（Cmd+Shift+P）から「Mentor Studio Code: Setup Mentor」を実行してください。
+              </p>
+              <figure class="step-screenshot">
+                <img
+                  src="images/walkthrough/setup-02-setup-button.png"
+                  alt="Activity Bar icon and Setup button"
+                />
+              </figure>
+            </div>
+          </div>
+
+          <div class="step-card">
+            <div class="step-number">3</div>
+            <div class="step-body">
+              <h3 data-ja="CLAUDE.md 参照先を選ぶ" data-en="Choose the CLAUDE.md reference location">CLAUDE.md 参照先を選ぶ</h3>
+              <p
+                data-ja="メンタールールの参照追加先を選択します。プロジェクト共通で使う場合は Project CLAUDE.md、個人用なら Personal CLAUDE.md を選んでください。"
+                data-en="Choose where to add the mentor rule reference. Pick Project CLAUDE.md to share across the team, or Personal CLAUDE.md for personal use."
+              >
+                メンタールールの参照追加先を選択します。プロジェクト共通で使う場合は Project CLAUDE.md、個人用なら Personal CLAUDE.md を選んでください。
+              </p>
+              <figure class="step-screenshot">
+                <img
+                  src="images/walkthrough/setup-03-claude-md-choice.png"
+                  alt="QuickPick asking where to add the CLAUDE.md reference"
+                />
+              </figure>
+            </div>
+          </div>
+
+          <div class="step-card">
+            <div class="step-number">4</div>
+            <div class="step-body">
+              <h3 data-ja="Reload Window を押す" data-en="Reload Window">Reload Window を押す</h3>
+              <p
+                data-ja="セットアップ完了後に表示される「ウィンドウを再読み込み」ダイアログをクリックします。リロード後、自動でダッシュボードが開きます。"
+                data-en='Click the "Reload Window" dialog that appears after setup. The dashboard opens automatically after reload.'
+              >
+                セットアップ完了後に表示される「ウィンドウを再読み込み」ダイアログをクリックします。リロード後、自動でダッシュボードが開きます。
+              </p>
+              <figure class="step-screenshot">
+                <img
+                  src="images/walkthrough/setup-04-reload.png"
+                  alt="Reload Window dialog after Mentor Studio Code setup completes"
+                />
+              </figure>
+            </div>
+          </div>
+
+          <div class="step-card">
+            <div class="step-number">5</div>
+            <div class="step-body">
+              <h3 data-ja="プロフィール登録" data-en="Register your profile">プロフィール登録</h3>
+              <p
+                data-ja="Settings タブの「プロフィール登録」ボタンを押すとプロンプトがクリップボードにコピーされます。そのまま Claude Code のチャットに貼り付けると、AI が対話でレベル・興味・メンタースタイルを聞き取りながらプロフィールを登録します。"
+                data-en='In the Settings tab, clicking the "Register Profile" button copies a prompt to your clipboard. Paste it into the Claude Code chat, and the AI registers your level, interests, and mentor style through a dialogue.'
+              >
+                Settings タブの「プロフィール登録」ボタンを押すとプロンプトがクリップボードにコピーされます。そのまま Claude Code のチャットに貼り付けると、AI が対話でレベル・興味・メンタースタイルを聞き取りながらプロフィールを登録します。
+              </p>
+              <figure class="step-screenshot">
+                <img
+                  src="images/walkthrough/setup-05-profile.png"
+                  alt="Settings tab: clicking the Register Profile button copies a prompt to paste into Claude Code"
+                />
+              </figure>
+            </div>
+          </div>
+
+          <div class="step-card">
+            <div class="step-number">6</div>
+            <div class="step-body">
+              <h3 data-ja="仕様（Spec）を紐付ける（任意）" data-en="Link a Spec file (optional)">仕様（Spec）を紐付ける（任意）</h3>
+              <p
+                data-ja="すでに仕様ドキュメントがある場合は、Settings タブの「仕様」カードの「ファイルを選択」ボタンから選ぶか、Explorer でファイルを右クリックして「Add to Mentor Spec」を選びます。任意項目なのでスキップしても構いません。"
+                data-en='If you already have a spec document, either click "Select File" in the Spec card of the Settings tab, or right-click the file in the Explorer and choose "Add to Mentor Spec". This step is optional and can be skipped.'
+              >
+                すでに仕様ドキュメントがある場合は、Settings タブの「仕様」カードの「ファイルを選択」ボタンから選ぶか、Explorer でファイルを右クリックして「Add to Mentor Spec」を選びます。任意項目なのでスキップしても構いません。
+              </p>
+              <figure class="step-screenshot">
+                <img
+                  src="images/walkthrough/setup-06-spec.png"
+                  alt="Linking a Spec file in the Settings tab (optional)"
+                />
+              </figure>
+            </div>
+          </div>
+
+          <div class="step-card">
+            <div class="step-number">7</div>
+            <div class="step-body">
+              <h3 data-ja="プラン（Plan）を紐付ける（必須）" data-en="Link a Plan file (required)">プラン（Plan）を紐付ける（必須）</h3>
+              <p
+                data-ja="プランはメンターセッションの進行に必須です。すでにプランファイルがある場合は、Settings タブの「プラン」カードの「ファイルを選択」ボタンから選ぶか、Explorer でファイルを右クリックして「Add to Mentor Plan」を選びます。まだプランがない場合は「AIとプランを作成」ボタンから AI に生成を依頼できます。"
+                data-en='A plan is required for mentor sessions to proceed. If you already have a plan file, either click "Select File" in the Plan card of the Settings tab, or right-click the file in the Explorer and choose "Add to Mentor Plan". If you do not have one yet, use the "Create Plan with AI" button to have the AI generate one.'
+              >
+                プランはメンターセッションの進行に必須です。すでにプランファイルがある場合は、Settings タブの「プラン」カードの「ファイルを選択」ボタンから選ぶか、Explorer でファイルを右クリックして「Add to Mentor Plan」を選びます。まだプランがない場合は「AIとプランを作成」ボタンから AI に生成を依頼できます。
+              </p>
+              <figure class="step-screenshot">
+                <img
+                  src="images/walkthrough/setup-07-plan.png"
+                  alt="Linking a Plan file in the Settings tab (required)"
+                />
+              </figure>
+            </div>
+          </div>
+        </section>
+
+        <!-- ② Session -->
+        <section class="wt-section" id="session">
+          <h2 data-ja="② 1セッションの流れ" data-en="② One Session Flow">② 1セッションの流れ</h2>
+          <p
+            class="wt-section-lead"
+            data-ja="Actions タブからプロンプトをコピーして、Claude Code でメンターと対話する1回の学習サイクル。"
+            data-en="Copy a prompt from the Actions tab and talk with the mentor in Claude Code — one learning cycle."
+          >
+            Actions タブからプロンプトをコピーして、Claude Code でメンターと対話する1回の学習サイクル。
+          </p>
+
+          <div class="step-card">
+            <div class="step-number">1</div>
+            <div class="step-body">
+              <h3 data-ja='Actions タブで「タスクを始める」をコピー' data-en='Copy "Start a task" from the Actions tab'>Actions タブで「タスクを始める」をコピー</h3>
+              <p
+                data-ja="ダッシュボードの Actions タブを開き、「タスクを始める」ボタンを押してプロンプトをクリップボードにコピーします。用途に応じて「実装をレビューする」「復習を始める」「理解度チェックを始める」も選べます。"
+                data-en='Open the Actions tab and press "Start a task" to copy the prompt to your clipboard. "Review Implementation", "Start Review", and "Start Check" are also available depending on your purpose.'
+              >
+                ダッシュボードの Actions タブを開き、「タスクを始める」ボタンを押してプロンプトをクリップボードにコピーします。用途に応じて「実装をレビューする」「復習を始める」「理解度チェックを始める」も選べます。
+              </p>
+              <figure class="step-screenshot">
+                <img
+                  src="images/walkthrough/session-01-actions.png"
+                  alt="Actions tab with Start Next Task button"
+                />
+              </figure>
+            </div>
+          </div>
+
+          <div class="step-card">
+            <div class="step-number">2</div>
+            <div class="step-body">
+              <h3 data-ja="Claude Code に貼る" data-en="Paste into Claude Code">Claude Code に貼る</h3>
+              <p
+                data-ja="コピーしたプロンプトを Claude Code のチャット欄に貼り付けて送信します。メンターセッションが開始されます。"
+                data-en="Paste the copied prompt into the Claude Code chat and send. The mentor session begins."
+              >
+                コピーしたプロンプトを Claude Code のチャット欄に貼り付けて送信します。メンターセッションが開始されます。
+              </p>
+            </div>
+          </div>
+
+          <div class="step-card">
+            <div class="step-number">3</div>
+            <div class="step-body">
+              <h3 data-ja="メンターの質問に答える" data-en="Answer the mentor's questions">メンターの質問に答える</h3>
+              <p
+                data-ja="メンターがあなたの理解度を確認する質問を投げかけてきます。自分の言葉で答えてみましょう。間違えても、ヒントをくれます。"
+                data-en="The mentor asks questions to check your understanding. Try answering in your own words. If you miss, you'll get hints."
+              >
+                メンターがあなたの理解度を確認する質問を投げかけてきます。自分の言葉で答えてみましょう。間違えても、ヒントをくれます。
+              </p>
+            </div>
+          </div>
+
+          <div class="step-card">
+            <div class="step-number">4</div>
+            <div class="step-body">
+              <h3 data-ja="フィードバックを受ける" data-en="Receive feedback">フィードバックを受ける</h3>
+              <p
+                data-ja="答えに対してメンターがフィードバックを返します。合っていれば次に進み、間違っていればヒントやサブクエスチョンで理解を助けてくれます。"
+                data-en="The mentor responds to your answer. If correct, you move on; if not, you'll receive hints or sub-questions to deepen your understanding."
+              >
+                答えに対してメンターがフィードバックを返します。合っていれば次に進み、間違っていればヒントやサブクエスチョンで理解を助けてくれます。
+              </p>
+            </div>
+          </div>
+
+          <div class="step-card">
+            <div class="step-number">5</div>
+            <div class="step-body">
+              <h3 data-ja="Overview タブで進捗確認" data-en="Check progress in the Overview tab">Overview タブで進捗確認</h3>
+              <p
+                data-ja="ダッシュボードの Overview タブで、現在のタスク・正答率・トピック別進捗を確認できます。苦手なトピックの復習もここから始められます。"
+                data-en="The Overview tab shows your current task, accuracy rate, and per-topic progress. You can also start a review of weak topics from here."
+              >
+                ダッシュボードの Overview タブで、現在のタスク・正答率・トピック別進捗を確認できます。苦手なトピックの復習もここから始められます。
+              </p>
+              <figure class="step-screenshot">
+                <video controls playsinline preload="metadata">
+                  <source src="images/walkthrough/overview-review.mp4" type="video/mp4" />
+                </video>
+              </figure>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <!-- 右側 TOC (desktop) -->
+      <aside class="walkthrough-toc" aria-label="On this page">
+        <div class="walkthrough-toc-title" data-ja="このページの内容" data-en="On this page">このページの内容</div>
+        <a href="#setup" data-ja="① 初回セットアップ" data-en="① Initial Setup">① 初回セットアップ</a>
+        <a href="#session" data-ja="② 1セッションの流れ" data-en="② One Session Flow">② 1セッションの流れ</a>
+      </aside>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <h2 data-ja="今すぐ始めよう" data-en="Get Started">今すぐ始めよう</h2>
+      <div class="cta-group">
+        <a
+          href="https://marketplace.visualstudio.com/items?itemName=nabetxan.mentor-studio-code"
+          class="btn btn-primary"
+          data-ja="Marketplaceからインストール"
+          data-en="Install from Marketplace"
+          >Marketplaceからインストール</a
+        >
+      </div>
+      <p
+        class="footer-note"
+        data-ja="※ Claude Code と合わせて使用することを前提としています。本拡張機能は Anthropic, PBC とは無関係の独立プロジェクトです。"
+        data-en="* Designed for use with Claude Code. This extension is an independent project, not affiliated with Anthropic, PBC."
+      >
+        ※ Claude Code と合わせて使用することを前提としています。本拡張機能は
+        Anthropic, PBC とは無関係の独立プロジェクトです。
+      </p>
+      <p class="footer-license">MIT License · Free & Open Source</p>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>

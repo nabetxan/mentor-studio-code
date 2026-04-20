@@ -108,10 +108,57 @@ describe("SCHEMA_DDL", () => {
     expect(rows).toContain("idx_questions_topicId");
   });
 
-  it("sets user_version to 1", async () => {
+  it("sets user_version to SCHEMA_VERSION", async () => {
     const db = await createDb();
     const version = db.exec("PRAGMA user_version")[0].values[0][0];
     expect(version).toBe(SCHEMA_VERSION);
+  });
+
+  it("SCHEMA_VERSION is 2", () => {
+    expect(SCHEMA_VERSION).toBe(2);
+  });
+
+  it("creates learner_profile and app_state tables", async () => {
+    const db = await createDb();
+    const tables = db
+      .exec(
+        `SELECT name FROM sqlite_master WHERE type='table' ORDER BY name`,
+      )[0]
+      .values.flat()
+      .map(String);
+
+    expect(tables).toContain("learner_profile");
+    expect(tables).toContain("app_state");
+  });
+
+  it("learner_profile is append-only (multiple rows allowed, id AUTOINCREMENT)", async () => {
+    const db = await createDb();
+    db.exec(
+      "INSERT INTO learner_profile (experience, level, lastUpdated) VALUES ('a', 'beginner', '2026-04-18T00:00:00.000Z')",
+    );
+    db.exec(
+      "INSERT INTO learner_profile (experience, level, lastUpdated) VALUES ('b', 'intermediate', '2026-04-19T00:00:00.000Z')",
+    );
+    const count = Number(
+      db.exec("SELECT COUNT(*) FROM learner_profile")[0].values[0][0],
+    );
+    expect(count).toBe(2);
+    const latest = db.exec(
+      "SELECT experience, level FROM learner_profile ORDER BY lastUpdated DESC, id DESC LIMIT 1",
+    )[0];
+    expect(latest.values[0]).toEqual(["b", "intermediate"]);
+  });
+
+  it("app_state uses key as PRIMARY KEY", async () => {
+    const db = await createDb();
+    db.exec(
+      "INSERT INTO app_state (key, value) VALUES ('resume_context', 'a')",
+    );
+    expect(() =>
+      db.exec(
+        "INSERT INTO app_state (key, value) VALUES ('resume_context', 'b')",
+      ),
+    ).toThrow();
   });
 
   it("accepts backlog as a valid plans.status", async () => {

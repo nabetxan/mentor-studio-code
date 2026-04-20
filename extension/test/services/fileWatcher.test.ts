@@ -8,7 +8,22 @@ import { FileWatcherService } from "../../src/services/fileWatcher";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore — test mock
 import { __resetWatchers, __watchers } from "../__mocks__/vscode";
-import { makeEnvWithDb, WASM } from "../cli/helpers";
+import { makeEnvWithDb, seedProfileRow, WASM } from "../cli/helpers";
+
+class MementoStub {
+  private store = new Map<string, unknown>();
+  get<T>(key: string): T | undefined {
+    return this.store.get(key) as T | undefined;
+  }
+  update(key: string, value: unknown): Promise<void> {
+    if (value === undefined) this.store.delete(key);
+    else this.store.set(key, value);
+    return Promise.resolve();
+  }
+  keys(): readonly string[] {
+    return Array.from(this.store.keys());
+  }
+}
 
 async function wait(ms: number): Promise<void> {
   await new Promise((r) => setTimeout(r, ms));
@@ -137,34 +152,37 @@ describe("FileWatcherService: pauseActivePlan / changeActivePlanFile / createAnd
     await expect(noDbSvc.pauseActivePlan(1)).rejects.toThrow("db_not_ready");
   });
 
-  it("changeActivePlanFile updates filePath on the plan", async () => {
+  it("changeActivePlanFile activates the plan that matches the selected file, pausing the prior active", async () => {
+    // Setup: existing active plan + a queued plan for a different file.
     await withWriteTransaction(
       env.paths.dbPath,
       { wasmPath: WASM, purpose: "normal" },
       (db: Database) => {
         db.exec(
-          "INSERT INTO plans (name, filePath, status, sortOrder, createdAt) VALUES ('p2', 'old.md', 'queued', 1, '2026-01-01T00:00:00Z')",
+          "INSERT INTO plans (name, filePath, status, sortOrder, createdAt) VALUES ('prior-active', 'prior.md', 'active', 1, '2026-01-01T00:00:00Z')",
+        );
+        db.exec(
+          "INSERT INTO plans (name, filePath, status, sortOrder, createdAt) VALUES ('queued', 'new-path.md', 'queued', 2, '2026-01-01T00:00:00Z')",
         );
         return undefined;
       },
     );
-    const id = await (async () => {
-      const db = await openDb(env.paths.dbPath);
-      try {
-        return Number(
-          db.exec("SELECT id FROM plans WHERE name='p2'")[0].values[0][0],
-        );
-      } finally {
-        db.close();
-      }
-    })();
 
-    await svc.changeActivePlanFile(id, "new-path.md");
+    await svc.changeActivePlanFile("new-path.md");
 
     const db = await openDb(env.paths.dbPath);
     try {
-      const rows = db.exec("SELECT filePath FROM plans WHERE id = ?", [id]);
-      expect(rows[0].values[0][0]).toBe("new-path.md");
+      const rows = db.exec(
+        "SELECT filePath, status FROM plans ORDER BY id",
+      );
+      const statuses = Object.fromEntries(
+        rows[0].values.map(([fp, s]) => [String(fp), String(s)]),
+      );
+      // Prior active is now paused; the queued plan for the selected file is active.
+      expect(statuses["prior.md"]).toBe("paused");
+      expect(statuses["new-path.md"]).toBe("active");
+      // No new row was created (reused existing).
+      expect(rows[0].values).toHaveLength(2);
     } finally {
       db.close();
     }
@@ -172,7 +190,7 @@ describe("FileWatcherService: pauseActivePlan / changeActivePlanFile / createAnd
 
   it("changeActivePlanFile throws when db not ready", async () => {
     const noDbSvc = new FileWatcherService(env.dir, ".mentor", () => {});
-    await expect(noDbSvc.changeActivePlanFile(1, "x.md")).rejects.toThrow(
+    await expect(noDbSvc.changeActivePlanFile("x.md")).rejects.toThrow(
       "db_not_ready",
     );
   });
@@ -196,7 +214,7 @@ describe("FileWatcherService: pauseActivePlan / changeActivePlanFile / createAnd
     }
   });
 
-  it("createAndActivatePlan calling twice: second plan is active, first is demoted to queued", async () => {
+  it("createAndActivatePlan calling twice: second plan is active, first is demoted to paused", async () => {
     await svc.createAndActivatePlan("plans/first.md");
     await svc.createAndActivatePlan("plans/second.md");
 
@@ -204,10 +222,10 @@ describe("FileWatcherService: pauseActivePlan / changeActivePlanFile / createAnd
     try {
       const rows = db.exec("SELECT COUNT(*) FROM plans");
       expect(Number(rows[0].values[0][0])).toBe(2);
-      // activatePlan demotes the previous active plan to queued
+      // Settings-driven activation (setAsActivePlan) demotes prior active to 'paused'.
       const statusRows = db.exec("SELECT status FROM plans ORDER BY id");
       const statuses = statusRows[0].values.map(([s]) => s);
-      expect(statuses).toEqual(["queued", "active"]);
+      expect(statuses).toEqual(["paused", "active"]);
     } finally {
       db.close();
     }
@@ -231,16 +249,6 @@ describe("FileWatcherService: pauseActivePlan / changeActivePlanFile / createAnd
         return undefined;
       },
     );
-    const id = await (async () => {
-      const db = await openDb(env.paths.dbPath);
-      try {
-        return Number(
-          db.exec("SELECT id FROM plans WHERE name='p3'")[0].values[0][0],
-        );
-      } finally {
-        db.close();
-      }
-    })();
 
     const onDbChanged = vi.fn();
     const svcWithHook = new FileWatcherService(
@@ -255,7 +263,137 @@ describe("FileWatcherService: pauseActivePlan / changeActivePlanFile / createAnd
       WASM,
     );
 
-    await svcWithHook.changeActivePlanFile(id, "new-path.md");
+    await svcWithHook.changeActivePlanFile("new-path.md");
     expect(onDbChanged).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("FileWatcherService: learner_profile sync on refresh", () => {
+  let env: Awaited<ReturnType<typeof makeEnvWithDb>>;
+
+  beforeEach(async () => {
+    __resetWatchers();
+    env = await makeEnvWithDb([]);
+  });
+
+  afterEach(() => {
+    rmSync(env.dir, { recursive: true, force: true });
+  });
+
+  it("appends a new learner_profile row when globalState is newer than DB", async () => {
+    const state = new MementoStub();
+    const newerProfile = {
+      experience: "3 years TS",
+      level: "intermediate",
+      interests: ["react"],
+      weak_areas: ["async"],
+      mentor_style: "socratic",
+      last_updated: "2026-05-01T00:00:00Z",
+    };
+    await state.update("learnerProfile", newerProfile);
+    await seedProfileRow(env.paths.dbPath, {
+      experience: "old",
+      level: "beginner",
+      interests: [],
+      weak_areas: [],
+      mentor_style: "",
+      last_updated: "2026-04-01T00:00:00Z",
+    });
+
+    const svc = new FileWatcherService(
+      env.dir,
+      ".mentor",
+      () => {},
+      undefined,
+      undefined,
+      state as unknown as import("vscode").Memento,
+      undefined,
+      env.paths.dbPath,
+      WASM,
+    );
+    await svc.refresh();
+
+    const SQL = await loadSqlJs(WASM);
+    const db = new SQL.Database(readFileSync(env.paths.dbPath));
+    try {
+      const rows = db.exec(
+        "SELECT experience, lastUpdated FROM learner_profile ORDER BY id",
+      )[0];
+      expect(rows.values).toHaveLength(2);
+      expect(rows.values[1]).toEqual(["3 years TS", "2026-05-01T00:00:00Z"]);
+    } finally {
+      db.close();
+    }
+
+    svc.dispose();
+  });
+
+  it("updates globalState when DB is newer than globalState", async () => {
+    const state = new MementoStub();
+    await state.update("learnerProfile", {
+      experience: "old",
+      level: "beginner",
+      interests: [],
+      weak_areas: [],
+      mentor_style: "",
+      last_updated: "2026-04-01T00:00:00Z",
+    });
+    await seedProfileRow(env.paths.dbPath, {
+      experience: "newer",
+      level: "advanced",
+      interests: ["go"],
+      weak_areas: ["types"],
+      mentor_style: "direct",
+      last_updated: "2026-05-01T00:00:00Z",
+    });
+
+    const svc = new FileWatcherService(
+      env.dir,
+      ".mentor",
+      () => {},
+      undefined,
+      undefined,
+      state as unknown as import("vscode").Memento,
+      undefined,
+      env.paths.dbPath,
+      WASM,
+    );
+    await svc.refresh();
+
+    const updated = state.get<{ experience: string; last_updated: string }>(
+      "learnerProfile",
+    );
+    expect(updated?.experience).toBe("newer");
+    expect(updated?.last_updated).toBe("2026-05-01T00:00:00Z");
+
+    svc.dispose();
+  });
+
+  it("does nothing when both DB and globalState are empty", async () => {
+    const state = new MementoStub();
+    const svc = new FileWatcherService(
+      env.dir,
+      ".mentor",
+      () => {},
+      undefined,
+      undefined,
+      state as unknown as import("vscode").Memento,
+      undefined,
+      env.paths.dbPath,
+      WASM,
+    );
+    await svc.refresh();
+
+    const SQL = await loadSqlJs(WASM);
+    const db = new SQL.Database(readFileSync(env.paths.dbPath));
+    try {
+      const rows = db.exec("SELECT COUNT(*) FROM learner_profile")[0];
+      expect(Number(rows.values[0][0])).toBe(0);
+    } finally {
+      db.close();
+    }
+    expect(state.get("learnerProfile")).toBeUndefined();
+
+    svc.dispose();
   });
 });

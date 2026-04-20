@@ -16,7 +16,7 @@ export interface MentorSessionOutput {
 
 export function mentorSessionBrief(
   db: Database,
-  progress: Record<string, unknown>,
+  resumeContext: string | null,
 ): MentorSessionOutput {
   const currentTask = selectActiveTask(db);
   const totalRes = db.exec(
@@ -29,10 +29,9 @@ export function mentorSessionBrief(
   const relevantGaps = gapsRes[0]
     ? gapsRes[0].values.map((row) => rowToQuestion(row))
     : [];
-  const resumeContext = progress.resume_context;
   return {
     currentTask,
-    resumeContext: typeof resumeContext === "string" ? resumeContext : null,
+    resumeContext,
     relevantGaps,
     gapCount: { total, filtered: relevantGaps.length },
   };

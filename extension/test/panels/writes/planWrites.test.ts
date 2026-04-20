@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import {
   activatePlan,
+  addPlanToBacklog,
   changeStatus,
   createPlan,
   deactivatePlan,
@@ -9,6 +10,7 @@ import {
   pausePlan,
   removePlan,
   restorePlan,
+  setAsActivePlan,
   updatePlan,
 } from "../../../src/panels/writes/planWrites";
 import {
@@ -535,6 +537,274 @@ describe("planWrites", () => {
       });
       expect(taskStatus).toBe("queued");
       expect((await readPlan(env.paths.dbPath, 6))?.status).toBe("paused");
+    });
+  });
+
+  describe("setAsActivePlan", () => {
+    it("creates new plan and activates when file is new and no active plan exists", async () => {
+      const res = await setAsActivePlan(
+        env.paths.dbPath,
+        { name: "P1", filePath: "p1.md" },
+        WASM,
+      );
+      expect(res.created).toBe(true);
+      expect(res.activated).toBe(true);
+      expect(res.demoted).toBe(false);
+      expect(res.restored).toBe(false);
+      expect((await readPlan(env.paths.dbPath, res.id))?.status).toBe("active");
+    });
+
+    it("demotes prior active to 'paused' (not 'queued') when activating a different file", async () => {
+      await seedPlans(env.paths.dbPath, [
+        {
+          name: "prior",
+          filePath: "prior.md",
+          status: "active",
+          sortOrder: 1,
+          createdAt: "2026-04-01T00:00:00.000Z",
+        },
+      ]);
+
+      const res = await setAsActivePlan(
+        env.paths.dbPath,
+        { name: "new", filePath: "new.md" },
+        WASM,
+      );
+      expect(res.created).toBe(true);
+      expect(res.demoted).toBe(true);
+      expect((await readPlan(env.paths.dbPath, 1))?.status).toBe("paused");
+      expect((await readPlan(env.paths.dbPath, res.id))?.status).toBe("active");
+    });
+
+    it("no-op when the selected file is already the active plan", async () => {
+      await seedPlans(env.paths.dbPath, [
+        {
+          name: "P",
+          filePath: "same.md",
+          status: "active",
+          sortOrder: 1,
+          createdAt: "2026-04-01T00:00:00.000Z",
+        },
+      ]);
+
+      const res = await setAsActivePlan(
+        env.paths.dbPath,
+        { name: "P", filePath: "same.md" },
+        WASM,
+      );
+      expect(res.created).toBe(false);
+      expect(res.activated).toBe(false);
+      expect(res.id).toBe(1);
+      expect(await countPlans(env.paths.dbPath)).toBe(1);
+    });
+
+    it("reuses an existing queued plan instead of creating a duplicate", async () => {
+      await seedPlans(env.paths.dbPath, [
+        {
+          name: "queued",
+          filePath: "q.md",
+          status: "queued",
+          sortOrder: 1,
+          createdAt: "2026-04-01T00:00:00.000Z",
+        },
+      ]);
+
+      const res = await setAsActivePlan(
+        env.paths.dbPath,
+        { name: "queued", filePath: "q.md" },
+        WASM,
+      );
+      expect(res.created).toBe(false);
+      expect(res.activated).toBe(true);
+      expect(res.id).toBe(1);
+      expect(await countPlans(env.paths.dbPath)).toBe(1);
+      expect((await readPlan(env.paths.dbPath, 1))?.status).toBe("active");
+    });
+
+    it("restores a soft-deleted (removed) plan and activates it", async () => {
+      await seedPlans(env.paths.dbPath, [
+        {
+          name: "ghost",
+          filePath: "ghost.md",
+          status: "removed",
+          sortOrder: 1,
+          createdAt: "2026-04-01T00:00:00.000Z",
+        },
+      ]);
+
+      const res = await setAsActivePlan(
+        env.paths.dbPath,
+        { name: "ghost", filePath: "ghost.md" },
+        WASM,
+      );
+      expect(res.created).toBe(false);
+      expect(res.restored).toBe(true);
+      expect(res.activated).toBe(true);
+      expect(res.id).toBe(1);
+      expect(await countPlans(env.paths.dbPath)).toBe(1);
+      expect((await readPlan(env.paths.dbPath, 1))?.status).toBe("active");
+    });
+
+    it("prefers a non-removed row when duplicates exist (picks lowest non-removed id)", async () => {
+      await seedPlans(env.paths.dbPath, [
+        {
+          name: "dup-removed-old",
+          filePath: "dup.md",
+          status: "removed",
+          sortOrder: 1,
+          createdAt: "2026-04-01T00:00:00.000Z",
+        },
+        {
+          name: "dup-backlog",
+          filePath: "dup.md",
+          status: "backlog",
+          sortOrder: 2,
+          createdAt: "2026-04-02T00:00:00.000Z",
+        },
+      ]);
+
+      const res = await setAsActivePlan(
+        env.paths.dbPath,
+        { name: "dup-backlog", filePath: "dup.md" },
+        WASM,
+      );
+      // Non-removed (id=2) is preferred despite the removed row having a lower id.
+      expect(res.id).toBe(2);
+      expect(res.created).toBe(false);
+      expect(res.restored).toBe(false);
+    });
+  });
+
+  describe("addPlanToBacklog", () => {
+    it("creates and auto-activates when no active plan exists", async () => {
+      const res = await addPlanToBacklog(
+        env.paths.dbPath,
+        { name: "first", filePath: "first.md" },
+        WASM,
+      );
+      expect(res.created).toBe(true);
+      expect(res.activated).toBe(true);
+      expect((await readPlan(env.paths.dbPath, res.id))?.status).toBe("active");
+    });
+
+    it("creates as backlog when an active plan already exists (no demotion)", async () => {
+      await seedPlans(env.paths.dbPath, [
+        {
+          name: "prior",
+          filePath: "prior.md",
+          status: "active",
+          sortOrder: 1,
+          createdAt: "2026-04-01T00:00:00.000Z",
+        },
+      ]);
+
+      const res = await addPlanToBacklog(
+        env.paths.dbPath,
+        { name: "added", filePath: "added.md" },
+        WASM,
+      );
+      expect(res.created).toBe(true);
+      expect(res.activated).toBe(false);
+      expect(res.demoted).toBe(false);
+      expect((await readPlan(env.paths.dbPath, 1))?.status).toBe("active");
+      expect((await readPlan(env.paths.dbPath, res.id))?.status).toBe(
+        "backlog",
+      );
+    });
+
+    it("no-op when the file is already the active plan", async () => {
+      await seedPlans(env.paths.dbPath, [
+        {
+          name: "A",
+          filePath: "a.md",
+          status: "active",
+          sortOrder: 1,
+          createdAt: "2026-04-01T00:00:00.000Z",
+        },
+      ]);
+
+      const res = await addPlanToBacklog(
+        env.paths.dbPath,
+        { name: "A", filePath: "a.md" },
+        WASM,
+      );
+      expect(res.created).toBe(false);
+      expect(res.activated).toBe(false);
+      expect(res.id).toBe(1);
+      expect(await countPlans(env.paths.dbPath)).toBe(1);
+    });
+
+    it("restores a removed plan back to backlog without activating if active plan exists", async () => {
+      await seedPlans(env.paths.dbPath, [
+        {
+          name: "prior-active",
+          filePath: "prior.md",
+          status: "active",
+          sortOrder: 1,
+          createdAt: "2026-04-01T00:00:00.000Z",
+        },
+        {
+          name: "ghost",
+          filePath: "ghost.md",
+          status: "removed",
+          sortOrder: 2,
+          createdAt: "2026-04-02T00:00:00.000Z",
+        },
+      ]);
+
+      const res = await addPlanToBacklog(
+        env.paths.dbPath,
+        { name: "ghost", filePath: "ghost.md" },
+        WASM,
+      );
+      expect(res.created).toBe(false);
+      expect(res.restored).toBe(true);
+      expect(res.activated).toBe(false);
+      expect(res.id).toBe(2);
+      expect((await readPlan(env.paths.dbPath, 1))?.status).toBe("active");
+      expect((await readPlan(env.paths.dbPath, 2))?.status).toBe("backlog");
+    });
+
+    it("restores a removed plan AND activates when no active plan exists", async () => {
+      await seedPlans(env.paths.dbPath, [
+        {
+          name: "ghost",
+          filePath: "ghost.md",
+          status: "removed",
+          sortOrder: 1,
+          createdAt: "2026-04-01T00:00:00.000Z",
+        },
+      ]);
+
+      const res = await addPlanToBacklog(
+        env.paths.dbPath,
+        { name: "ghost", filePath: "ghost.md" },
+        WASM,
+      );
+      expect(res.restored).toBe(true);
+      expect(res.activated).toBe(true);
+      expect((await readPlan(env.paths.dbPath, 1))?.status).toBe("active");
+    });
+
+    it("activates an existing queued plan when no active plan exists (no-op otherwise)", async () => {
+      await seedPlans(env.paths.dbPath, [
+        {
+          name: "Q",
+          filePath: "q.md",
+          status: "queued",
+          sortOrder: 1,
+          createdAt: "2026-04-01T00:00:00.000Z",
+        },
+      ]);
+
+      const res = await addPlanToBacklog(
+        env.paths.dbPath,
+        { name: "Q", filePath: "q.md" },
+        WASM,
+      );
+      expect(res.created).toBe(false);
+      expect(res.activated).toBe(true);
+      expect((await readPlan(env.paths.dbPath, 1))?.status).toBe("active");
     });
   });
 });

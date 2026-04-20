@@ -13,7 +13,6 @@ import {
   MENTOR_RULES_MD,
   MENTOR_SESSION_SKILL_MD,
   PLAN_HEALTH_MD,
-  PROGRESS_JSON,
   REVIEW_SKILL_MD,
   SHARED_RULES_MD,
   TEACHING_CYCLE_REFERENCE_MD,
@@ -340,11 +339,6 @@ export async function runSetup(
   }
 
   // Data files — only write if missing
-  await writeDataIfMissing(
-    vscode.Uri.joinPath(mentorDirUri, "progress.json"),
-    PROGRESS_JSON + "\n",
-    "progress.json",
-  );
   await writeDataIfMissing(
     vscode.Uri.joinPath(mentorDirUri, "current-task.md"),
     CURRENT_TASK_MD,

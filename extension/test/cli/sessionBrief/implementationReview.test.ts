@@ -18,7 +18,7 @@ describe("implementationReviewBrief", () => {
 
   it("returns null currentTask and null resumeContext when empty", async () => {
     const out = await withDb(env.paths.dbPath, (db) =>
-      implementationReviewBrief(db, {}),
+      implementationReviewBrief(db, null),
     );
     expect(out).toEqual({ currentTask: null, resumeContext: null });
   });
@@ -37,7 +37,7 @@ describe("implementationReviewBrief", () => {
     ]);
 
     const out = await withDb(env.paths.dbPath, (db) =>
-      implementationReviewBrief(db, { resume_context: "picking up" }),
+      implementationReviewBrief(db, "picking up"),
     );
     expect(out).toEqual({
       currentTask: { id: 1, name: "T1", planId: 1 },
@@ -45,9 +45,9 @@ describe("implementationReviewBrief", () => {
     });
   });
 
-  it("treats non-string resume_context as null", async () => {
+  it("treats null resumeContext as null", async () => {
     const out = await withDb(env.paths.dbPath, (db) =>
-      implementationReviewBrief(db, { resume_context: null }),
+      implementationReviewBrief(db, null),
     );
     expect(out.resumeContext).toBeNull();
   });

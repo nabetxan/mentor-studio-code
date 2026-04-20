@@ -30,10 +30,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
   private onActivatePlan?: (id: number) => Promise<void>;
   private onDeactivatePlan?: (id: number) => Promise<void>;
   private onPauseActivePlan?: (id: number) => Promise<void>;
-  private onChangeActivePlanFile?: (
-    id: number,
-    relPath: string,
-  ) => Promise<void>;
+  private onChangeActivePlanFile?: (relPath: string) => Promise<void>;
   private onCreateAndActivatePlan?: (relPath: string) => Promise<void>;
 
   constructor(private extensionUri: vscode.Uri) {}
@@ -58,7 +55,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     activatePlan: (id: number) => Promise<void>;
     deactivatePlan: (id: number) => Promise<void>;
     pauseActivePlan: (id: number) => Promise<void>;
-    changeActivePlanFile: (id: number, relPath: string) => Promise<void>;
+    changeActivePlanFile: (relPath: string) => Promise<void>;
     createAndActivatePlan: (relPath: string) => Promise<void>;
   }): void {
     this.onActivatePlan = handlers.activatePlan;
@@ -278,7 +275,6 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
           if (!uris || uris.length === 0) {
             this.postMessage({
               type: "changeActivePlanFileResult",
-              id: message.id,
               ok: true,
             });
             return;
@@ -287,23 +283,20 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
           if (relPath === null) {
             this.postMessage({
               type: "changeActivePlanFileResult",
-              id: message.id,
               ok: false,
               error: "outside_workspace",
             });
             return;
           }
           try {
-            await this.onChangeActivePlanFile?.(message.id, relPath);
+            await this.onChangeActivePlanFile?.(relPath);
             this.postMessage({
               type: "changeActivePlanFileResult",
-              id: message.id,
               ok: true,
             });
           } catch (err) {
             this.postMessage({
               type: "changeActivePlanFileResult",
-              id: message.id,
               ok: false,
               error: err instanceof Error ? err.message : String(err),
             });
@@ -388,19 +381,9 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
     const itemsText = items.join(isJa ? "、" : ", ");
     const message = isJa
-      ? `${itemsText}が消去されました。Mentor Studio Code をアンインストールしますか？`
-      : `Deleted: ${itemsText}. Uninstall Mentor Studio Code?`;
-    const uninstallLabel = isJa ? "アンインストール" : "Uninstall";
-    const choice = await vscode.window.showInformationMessage(
-      message,
-      uninstallLabel,
-    );
-    if (choice === uninstallLabel) {
-      await vscode.commands.executeCommand(
-        "workbench.extensions.uninstallExtension",
-        "nabetxan.mentor-studio-code",
-      );
-    }
+      ? `${itemsText}を消去しました。Mentor Studio Code を削除する場合は Extensions ビューからアンインストールしてください。`
+      : `Deleted: ${itemsText}. To remove Mentor Studio Code, uninstall it from the Extensions view.`;
+    await vscode.window.showInformationMessage(message);
   }
 
   private detectLocale(): Locale {
@@ -425,7 +408,10 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
   }
 
   private async updateConfig(
-    mutate: (config: MentorStudioConfig) => void,
+    mutate: (
+      config: MentorStudioConfig,
+      rawObj: Record<string, unknown>,
+    ) => void,
   ): Promise<void> {
     const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
     if (!wsRoot) {
@@ -444,9 +430,11 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         );
         return;
       }
-      // Preserve unknown fields by merging typed changes into raw JSON
+      // Preserve unknown fields by merging typed changes into raw JSON. The
+      // mutate callback can also touch rawObj directly to delete fields that
+      // don't live on MentorStudioConfig (e.g. extensionUninstalled).
       const rawObj = JSON.parse(rawText) as Record<string, unknown>;
-      mutate(parsed);
+      mutate(parsed, rawObj);
       Object.assign(rawObj, parsed);
       await vscode.workspace.fs.writeFile(
         configUri,
@@ -488,8 +476,11 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
     if (status.personal || status.project) {
       // Ref exists — just toggle ON
-      await this.updateConfig((config) => {
+      await this.updateConfig((config, rawObj) => {
         config.enableMentor = true;
+        // Re-enabling after uninstall+reinstall: stale flag would keep
+        // the AI Activation Gate in the post-uninstall state otherwise.
+        delete rawObj.extensionUninstalled;
       });
       return;
     }
@@ -512,8 +503,9 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     }
 
     // Ref added — now toggle ON
-    await this.updateConfig((config) => {
+    await this.updateConfig((config, rawObj) => {
       config.enableMentor = true;
+      delete rawObj.extensionUninstalled;
     });
   }
 

@@ -51,13 +51,13 @@ Order is fixed — never skip, never reorder:
 
 ## CLI Tool
 
-All reads and writes go through the bundled CLI — never edit the database or \`progress.json\` / \`config.json\` directly with the Edit/Write tool:
+All reads and writes go through the bundled CLI — never edit the database or \`config.json\` directly with the Edit/Write tool:
 
 \`\`\`
 node .mentor/tools/mentor-cli.cjs <command> '<json-arg>'
 \`\`\`
 
-Writes: \`record-answer\`, \`add-topic\`, \`add-plan\`, \`add-task\`, \`activate-plan\`, \`activate-task\`, \`update-plan\`, \`update-task\`, \`update-progress\`, \`update-profile\`, \`update-config\`.
+Writes: \`record-answer\`, \`add-topic\`, \`add-plan\`, \`add-task\`, \`activate-plan\`, \`activate-task\`, \`deactivate-plan\`, \`remove-plan\`, \`update-plan\`, \`update-task\`, \`update-progress\`, \`update-profile\`, \`update-config\`.
 
 Reads: \`session-brief '{"flow":"..."}'\` (session start; add \`"topicId":N\` only when the flow is topic-scoped, e.g. \`review\`), \`list-unresolved '{}'\` (mid-session gaps; optional \`"topicId":N\` to scope, \`"limit":N\` to cap results), \`list-topics\` (topic id/label resolution), \`list-plans '{}'\` (plan health).
 
@@ -171,15 +171,34 @@ Run \`node .mentor/tools/mentor-cli.cjs list-plans '{}'\` (each plan includes \`
 
 **Case B — \`active\` plan exists but \`taskCount === 0\`** (tasks not yet registered in DB):
 - Tell the user: "This plan has no tasks yet. I'll generate a task breakdown."
-- If the plan has a \`filePath\` pointing to an existing markdown file → read it. Extract any \`## Task N\` headings as a starting point; otherwise generate a structured task list (≥ 1 task) from the goal.
+- If the plan has a \`filePath\` pointing to an existing markdown file → try to read it:
+  - **If read fails** (file missing, unreadable, or empty) → skip Spec detection and fall through to the no-\`filePath\` branch below (ask the user about the goal).
+  - **On successful read**, then:
+    1. **Spec detection**: if the file has **no** \`## Task N\` heading (where N is a digit) AND contains at least one of \`## Overview\`, \`## Goals\`, \`## Non-Goals\`, \`## Background\`, \`## Requirements\`, \`## Architecture\`, \`## Technical Decisions\`, or \`## Approach\` → treat as a likely Spec document and follow the **Spec handoff** sub-flow below. The heuristic can misfire on plans that happen to use spec-style headings — always offer the user a clean No branch.
+    2. Otherwise, extract any \`## Task N\` headings as a starting point; if none, generate a structured task list (≥ 1 task) from the goal.
 - If the plan has no \`filePath\` (UI-only plan) → ask the user about the goal, then propose creating \`.mentor/plan/YYYY-MM-DD-<slug>.md\` with the task breakdown. Never overwrite an existing file; append a counter or timestamp on collision.
 - On user confirmation:
   - Register each task in order: \`node .mentor/tools/mentor-cli.cjs add-task '{"planId":<id>,"name":"<task name>"}'\` — the first \`add-task\` under an active plan with no active task auto-activates that task (\`{"activated":true}\` in the response); subsequent tasks stay \`queued\`.
   - If a markdown file was newly created, set \`filePath\`: \`node .mentor/tools/mentor-cli.cjs update-plan '{"id":<id>,"filePath":"<rel path>"}'\`
 
-**Case C — \`active\` plan exists with tasks**: no action needed. If \`currentTask\` is still null after re-running \`session-brief\` (e.g. all tasks were queued and none were auto-activated), pick the first queued task and run \`node .mentor/tools/mentor-cli.cjs activate-task '{"id":<id>}'\`. The active-task invariant requires the task's plan to be active, so \`activate-task\` only succeeds within the current active plan.
+#### Spec handoff (sub-flow of Case B)
 
-Also check any \`queued\` plan with \`taskCount === 0\` and apply the same task-generation flow as Case B before activating it.
+Ask the user exactly once per plan per session (if declined, remember and do not re-prompt for the same plan in this session):
+
+> "This file (\`<filePath>\`) looks like a Spec document rather than a Plan. Shall I move this plan to \`removed\` and register the file as the active Spec (\`mentorFiles.spec\`)? Any existing spec setting will be overwritten."
+
+- **Yes**:
+  1. If the plan is \`active\`: \`node .mentor/tools/mentor-cli.cjs deactivate-plan '{"id":<planId>}'\` — demotes the plan to \`queued\` and queues its active task (if any). Skip this step if the plan is already \`queued\`.
+  2. \`node .mentor/tools/mentor-cli.cjs remove-plan '{"id":<planId>}'\` — soft-deletes the plan (status \`removed\`).
+  3. \`node .mentor/tools/mentor-cli.cjs update-config '{"mentorFiles":{"spec":"<filePath>"}}'\` — overwrites \`mentorFiles.spec\` unconditionally.
+  4. Tell the user that the plan has been removed and the file is now registered as the Spec.
+  5. **Re-run plan-health from the top** (go back to the \`list-plans\` call at the start of this skill). The next pass will typically enter Case A (no active plan).
+- **No**:
+  - Treat the file as a Plan despite the structure. Fall through to \`## Task N\` extraction (which will find none) and proceed to "generate a structured task list from the goal".
+
+Also check any \`queued\` plan with \`taskCount === 0\` and apply the same task-generation flow as Case B — including Spec detection — **before activating it**. The Spec handoff sub-flow applies identically except step 1 (\`deactivate-plan\`) is skipped. If Spec handoff is declined, activate the plan (\`node .mentor/tools/mentor-cli.cjs activate-plan '{"id":<planId>}'\`) after task generation completes.
+
+**Case C — \`active\` plan exists with tasks**: no action needed. If \`currentTask\` is still null after re-running \`session-brief\` (e.g. all tasks were queued and none were auto-activated), pick the first queued task and run \`node .mentor/tools/mentor-cli.cjs activate-task '{"id":<id>}'\`. The active-task invariant requires the task's plan to be active, so \`activate-task\` only succeeds within the current active plan.
 
 After the health check completes, re-run \`session-brief\` to pick up the now-populated \`currentTask\`, then return to mentor-session/SKILL.md.
 
@@ -541,38 +560,85 @@ When the AI creates a new spec file, write it to \`.mentor/spec/<slug>.md\` (cre
 - The extension's fileWatcher auto-reloads.
 `;
 
-export const PROGRESS_JSON = JSON.stringify(
-  {
-    resume_context: null,
-    learner_profile: {
-      experience: "",
-      level: "",
-      interests: [],
-      weak_areas: [],
-      mentor_style: "",
-      last_updated: null,
-    },
-  },
-  null,
-  2,
-);
-
 export const INTAKE_SKILL_MD = `---
 name: intake
-description: Use when learner_profile.last_updated is null in progress.json or user requests profile update — collects learner background, level, interests, weak areas, and mentor style through 5 sequential questions.
+description: Use when learner_profile has not been set (learner.lastUpdated is null from session-brief) or user requests profile update — registers a new profile via 5 questions, or updates an existing one via a table + free-text flow.
 ---
 
 # Intake
 
 ## NEVER
 
-- Ask more than 1 question at a time
-- Proceed to session work before writing learner_profile to progress.json
+- Ask more than 1 question at a time during Initial Intake Flow
+- Proceed to session work before writing learner_profile via mentor-cli update-profile
 
-## Intake Flow
+## Entry Branching
+
+Read \`learner.lastUpdated\` from the session-brief output passed in by the caller.
+
+- \`lastUpdated\` is null → run \`## Initial Intake Flow\` below
+- \`lastUpdated\` is set → run \`## Update Flow\` below
+
+If at any point during Update Flow the user writes \`最初から\` (or a clear equivalent like \`最初からやり直したい\`), jump to \`## Initial Intake Flow\`.
+
+## Update Flow
+
+### Step 1: Show current profile
+
+Render the 5 fields from session-brief's \`learner\` as a Markdown table. Keep field keys in English (DB / CLI contract); surrounding prose follows \`locale\`.
+
+| 項目 | 現在の内容 |
+|------|-----------|
+| experience | <learner.experience> |
+| level | <learner.level> |
+| interests | <learner.interests joined by ", "> |
+| weak_areas | <learner.weakAreas joined by ", ", or "なし" if empty> |
+| mentor_style | <learner.mentorStyle> |
+
+Below the table, tell the user:
+
+> 更新したい内容を自由にお書きください（例:「レベルをintermediateに」「interestsにRust追加」）。全部やり直したい場合は「最初から」とお書きください。
+
+### Step 2: Wait for input
+
+Do NOT proceed until the user responds.
+
+- Input is \`最初から\` or a clear equivalent → jump to \`## Initial Intake Flow\`.
+- Otherwise → Step 3.
+
+### Step 3: Interpret and show diff
+
+Interpret the user's free-text instruction and build a partial update object containing only the fields that change. Array fields (\`interests\`, \`weak_areas\`) must be sent as the full replacement array — the CLI replaces whole arrays, not individual elements.
+
+Show a diff table containing ONLY the changed fields:
+
+| 項目 | 変更前 | 変更後 |
+|------|--------|--------|
+| <field> | <before> | <after> |
+
+Then ask:
+
+> この内容で保存しますか？ 修正があればもう一度書いてください。
+
+**Ambiguity guard.** If the instruction is ambiguous (e.g. "もう少し難しめに"), ask exactly one clarifying question pinning down which field changes, then return to Step 3.
+
+**Add vs replace for arrays.** "Rust追加" implies append to the existing array. "興味はRustだけ" implies full replace. If unclear, ask.
+
+### Step 4: Handle confirmation
+
+- User confirms → run, with only the changed fields (arrays as full new arrays):
+  \`\`\`bash
+  node .mentor/tools/mentor-cli.cjs update-profile '{"level":"intermediate","interests":["Python","Web","Rust"]}'
+  \`\`\`
+  Then tell the user the profile was updated, re-render the full table from Step 1 with the new values, and return control to the caller.
+- User requests corrections ("levelはbeginnerのままで") → recompute the diff, re-run Step 3.
+- User cancels ("やっぱり変更しない") → do not call the CLI; tell the user "更新をキャンセルしました"; return control to the caller.
+- User writes \`最初から\` → jump to \`## Initial Intake Flow\`.
+- CLI returns \`{"ok": false, ...}\` → surface the \`detail\` to the user and suggest retrying.
+
+## Initial Intake Flow
 
 Ask each question one at a time. Wait for the user's full answer before proceeding to the next.
-
 
 ### Question 1: Experience
 Ask about their programming experience: how long they've been coding, which languages they've used, and what they've built.

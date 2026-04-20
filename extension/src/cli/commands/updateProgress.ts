@@ -1,16 +1,7 @@
-import { existsSync, readFileSync } from "node:fs";
-
-import { atomicWriteFile } from "../../db";
+import { withWriteTransaction } from "../../db";
 import type { Command } from "./types";
 
 const MUTABLE_KEYS = ["resume_context"] as const;
-
-function defaultProgress(): Record<string, unknown> {
-  return {
-    resume_context: null,
-    learner_profile: {},
-  };
-}
 
 export const updateProgress: Command = async (rawArgs, paths) => {
   const args = (rawArgs ?? {}) as Record<string, unknown>;
@@ -28,41 +19,33 @@ export const updateProgress: Command = async (rawArgs, paths) => {
       }
     }
   }
-
   if (!hasKnownKey) return { ok: true };
 
-  let progress: Record<string, unknown>;
-  if (existsSync(paths.progressPath)) {
-    try {
-      progress = JSON.parse(
-        readFileSync(paths.progressPath, "utf-8"),
-      ) as Record<string, unknown>;
-    } catch (e) {
-      return {
-        ok: false,
-        error: "invalid_json",
-        detail: (e as Error).message,
-      };
-    }
-  } else {
-    progress = defaultProgress();
-  }
-
-  for (const k of MUTABLE_KEYS) {
-    if (k in args) progress[k] = args[k];
-  }
-
   try {
-    await atomicWriteFile(
-      paths.progressPath,
-      Buffer.from(`${JSON.stringify(progress, null, 2)}\n`, "utf-8"),
+    await withWriteTransaction(
+      paths.dbPath,
+      { purpose: "normal" },
+      (db) => {
+        const stmt = db.prepare(
+          `INSERT INTO app_state (key, value) VALUES (?, ?)
+           ON CONFLICT(key) DO UPDATE SET value=excluded.value`,
+        );
+        try {
+          for (const k of MUTABLE_KEYS) {
+            if (!(k in args)) continue;
+            stmt.run([k, args[k] as string | null]);
+          }
+        } finally {
+          stmt.free();
+        }
+      },
     );
   } catch (e) {
     return {
       ok: false,
-      error: "progress_write_failed",
+      error: "db_write_failed",
       recoverable: true,
-      detail: (e as Error).message,
+      detail: e instanceof Error ? e.message : String(e),
     };
   }
 

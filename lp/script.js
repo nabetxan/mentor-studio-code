@@ -13,16 +13,6 @@
     return navigator.language.startsWith("ja") ? "ja" : "en";
   }
 
-  var TITLES = {
-    ja: 'Mentor Studio Code — AIに"教えてもらう"ためのVSCode拡張',
-    en: "Mentor Studio Code — A VSCode Extension to Learn From AI",
-  };
-
-  var DESCRIPTIONS = {
-    ja: "コードが動くだけじゃない。理解できているか、確認しながら学ぼう。VSCode拡張として動くAIメンターツール。",
-    en: "Don't just make it work. Make sure you understand it. An AI mentor tool that runs as a VSCode extension.",
-  };
-
   function setLang(lang) {
     try {
       localStorage.setItem(STORAGE_KEY, lang);
@@ -30,13 +20,16 @@
       /* private browsing */
     }
     document.documentElement.lang = lang;
-    document.title = TITLES[lang];
-    var metaDesc = document.querySelector('meta[name="description"]');
-    if (metaDesc) metaDesc.setAttribute("content", DESCRIPTIONS[lang]);
 
     var elements = document.querySelectorAll("[data-ja][data-en]");
     for (var i = 0; i < elements.length; i++) {
-      elements[i].innerHTML = elements[i].getAttribute("data-" + lang);
+      var el = elements[i];
+      var text = el.getAttribute("data-" + lang);
+      if (el.tagName === "META") {
+        el.setAttribute("content", text);
+      } else {
+        el.innerHTML = text;
+      }
     }
 
     var options = document.querySelectorAll(".lang-option");

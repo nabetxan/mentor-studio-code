@@ -6,7 +6,6 @@ import { DbCorruptError } from "../../src/db";
 const paths: CliPaths = {
   mentorRoot: "/tmp/fake",
   dbPath: "/tmp/fake/data.db",
-  progressPath: "/tmp/fake/progress.json",
   configPath: "/tmp/fake/config.json",
 };
 

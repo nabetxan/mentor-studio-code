@@ -1,11 +1,12 @@
 import { existsSync, readFileSync } from "node:fs";
+import type { Database } from "sql.js";
 
-import { loadSqlJs } from "../../../db";
+import { loadSqlJs, parseJsonStringArray } from "../../../db";
 import { narrowTopicId } from "../narrow";
 import type { Command, CommandResult } from "../types";
 import { comprehensionCheckBrief } from "./comprehensionCheck";
 import { implementationReviewBrief } from "./implementationReview";
-import { mapLearner, type Flow } from "./learner";
+import { mapLearner, type DbProfileInput, type Flow } from "./learner";
 import { mentorSessionBrief } from "./mentorSession";
 import { reviewBrief } from "./review";
 
@@ -16,34 +17,47 @@ const FLOWS: readonly Flow[] = [
   "implementation-review",
 ] as const;
 
-const DEFAULT_PROGRESS: Record<string, unknown> = {
-  learner_profile: {},
-  resume_context: null,
-};
-
 function isFlow(value: unknown): value is Flow {
   return (
     typeof value === "string" && (FLOWS as readonly string[]).includes(value)
   );
 }
 
-type ProgressLoad =
-  | { ok: true; value: Record<string, unknown> }
-  | { ok: false; detail: string };
+function readDbProfile(db: Database): DbProfileInput {
+  const res = db.exec(
+    `SELECT experience, level, interests, weakAreas, mentorStyle, lastUpdated
+     FROM learner_profile
+     ORDER BY lastUpdated DESC, id DESC
+     LIMIT 1`,
+  )[0];
+  if (!res || res.values.length === 0) {
+    return {
+      experience: "",
+      level: "",
+      interests: [],
+      weakAreas: [],
+      mentorStyle: "",
+      lastUpdated: null,
+    };
+  }
+  const [exp, lvl, inter, weak, style, lu] = res.values[0];
+  return {
+    experience: String(exp ?? ""),
+    level: String(lvl ?? ""),
+    interests: parseJsonStringArray(inter),
+    weakAreas: parseJsonStringArray(weak),
+    mentorStyle: String(style ?? ""),
+    lastUpdated: lu === null || lu === undefined ? null : String(lu),
+  };
+}
 
-function loadProgress(progressPath: string): ProgressLoad {
-  if (!existsSync(progressPath)) return { ok: true, value: DEFAULT_PROGRESS };
-  const raw = readFileSync(progressPath, "utf-8");
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch (e) {
-    return { ok: false, detail: (e as Error).message };
-  }
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    return { ok: true, value: {} };
-  }
-  return { ok: true, value: parsed as Record<string, unknown> };
+function readResumeContext(db: Database): string | null {
+  const res = db.exec(
+    "SELECT value FROM app_state WHERE key='resume_context'",
+  )[0];
+  if (!res || res.values.length === 0) return null;
+  const v = res.values[0][0];
+  return v === null || v === undefined ? null : String(v);
 }
 
 export const sessionBrief: Command = async (rawArgs, paths) => {
@@ -58,35 +72,33 @@ export const sessionBrief: Command = async (rawArgs, paths) => {
 
   if (!existsSync(paths.dbPath)) return { ok: false, error: "db_missing" };
 
-  const progress = loadProgress(paths.progressPath);
-  if (!progress.ok) {
-    return { ok: false, error: "invalid_json", detail: progress.detail };
-  }
-  const profile = (progress.value.learner_profile ?? {}) as Record<
-    string,
-    unknown
-  >;
-  const learner = mapLearner(profile, flow);
-
   const SQL = await loadSqlJs();
   const db = new SQL.Database(readFileSync(paths.dbPath));
   try {
-    return runFlow(db, flow, learner, progress.value, topicId.value);
+    const dbProfile = readDbProfile(db);
+    const learner = mapLearner(dbProfile, flow);
+    const resumeContext = readResumeContext(db);
+    return runFlow(db, flow, learner, resumeContext, topicId.value);
   } finally {
     db.close();
   }
 };
 
 function runFlow(
-  db: import("sql.js").Database,
+  db: Database,
   flow: Flow,
   learner: ReturnType<typeof mapLearner>,
-  progress: Record<string, unknown>,
+  resumeContext: string | null,
   topicId: number | undefined,
 ): CommandResult {
   switch (flow) {
     case "mentor-session":
-      return { ok: true, flow, learner, ...mentorSessionBrief(db, progress) };
+      return {
+        ok: true,
+        flow,
+        learner,
+        ...mentorSessionBrief(db, resumeContext),
+      };
     case "review":
       return { ok: true, flow, learner, ...reviewBrief(db, topicId) };
     case "comprehension-check":
@@ -96,7 +108,7 @@ function runFlow(
         ok: true,
         flow,
         learner,
-        ...implementationReviewBrief(db, progress),
+        ...implementationReviewBrief(db, resumeContext),
       };
   }
 }

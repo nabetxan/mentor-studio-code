@@ -102,7 +102,8 @@ a {
   color: var(--text-heading);
 }
 
-.nav-github {
+.nav-github,
+.nav-instagram {
   display: flex;
   align-items: center;
 }
@@ -374,7 +375,7 @@ a {
     font-size: 22px;
   }
 
-  .nav a:not(.nav-github) {
+  .nav a:not(.nav-github):not(.nav-instagram) {
     display: none;
   }
 
@@ -386,5 +387,156 @@ a {
 
   .target-cards {
     grid-template-columns: 1fr;
+  }
+}
+
+/* === Walkthrough Page === */
+
+/* 2カラムレイアウト */
+.walkthrough-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 48px;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+/* 右側 TOC (desktop) */
+.walkthrough-toc {
+  position: sticky;
+  top: 72px;
+  align-self: start;
+  font-size: 0.875rem;
+}
+
+.walkthrough-toc-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-sub);
+  margin-bottom: 8px;
+}
+
+.walkthrough-toc a {
+  display: block;
+  padding: 6px 0;
+  color: var(--text-sub);
+}
+
+.walkthrough-toc a:hover {
+  color: var(--accent);
+}
+
+/* モバイルピルバー（〜850px のみ表示） */
+.walkthrough-pill-nav {
+  display: none;
+  position: sticky;
+  top: 52px;
+  z-index: 10;
+  background: rgba(26, 21, 37, 0.95);
+  backdrop-filter: blur(8px);
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--border);
+  gap: 6px;
+  justify-content: center;
+}
+
+.walkthrough-pill-nav a {
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--text-body);
+  white-space: nowrap;
+}
+
+/* セクション */
+.wt-section {
+  margin-bottom: 64px;
+}
+
+.wt-section h2 {
+  font-size: 1.5rem;
+  margin-bottom: 12px;
+}
+
+.wt-section-lead {
+  color: var(--text-sub);
+  margin-bottom: 24px;
+}
+
+/* ステップカード */
+.step-card {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 16px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.step-card:last-child {
+  border-bottom: none;
+}
+
+.step-number {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1;
+}
+
+.step-body h3 {
+  font-size: 1.125rem;
+  margin-bottom: 8px;
+}
+
+.step-body p {
+  margin-bottom: 12px;
+}
+
+/* スクショ図 */
+.step-screenshot {
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.step-screenshot img,
+.step-screenshot video {
+  width: 100%;
+  display: block;
+}
+
+.step-screenshot figcaption {
+  padding: 8px 12px;
+  font-size: 0.875rem;
+  color: var(--text-sub);
+  background: var(--bg-card);
+}
+
+/* セカンダリ CTA ボタン */
+.btn-secondary {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-heading);
+}
+
+.btn-secondary:hover {
+  border-color: var(--accent);
+}
+
+/* レスポンシブ: 狭い画面では TOC 非表示、ピルバー表示 */
+@media (max-width: 850px) {
+  .walkthrough-layout {
+    grid-template-columns: 1fr;
+    padding: 24px 16px;
+  }
+  .walkthrough-toc {
+    display: none;
+  }
+  .walkthrough-pill-nav {
+    display: flex;
   }
 }

@@ -2,6 +2,27 @@
 
 All notable changes to "Mentor Studio Code" will be documented in this file.
 
+## [0.6.3] - 2026-04-20
+
+### Added
+
+- Right-clicking a markdown file's editor tab now shows **Add to Mentor Plan** and **Add to Mentor Spec**, matching the existing Explorer context menu.
+- Session start (plan-health) detects when the active plan's `filePath` looks like a Spec document (no `## Task N` headings, contains spec-style headings such as `## Overview` / `## Requirements` / `## Non-Goals`) and asks the user whether to convert it: the plan is moved to `removed` and the file is registered as `mentorFiles.spec`.
+- New CLI commands: `deactivate-plan` (moves an active plan back to `queued`, demoting any active task) and `remove-plan` (soft-deletes a non-active plan to `removed`). Used internally by the new Spec-handoff flow; also available for AI/script use.
+
+### Fixed
+
+- Re-adding a file whose plan was soft-deleted now restores the existing row instead of silently failing with "already exists".
+- Uninstall post-hook now reliably locates every workspace that has a `.mentor/config.json`, including those where the `MENTOR_RULES.md` reference was added to project `CLAUDE.md` only (previously such workspaces were skipped).
+- Sidebar now flips to the "Run Setup" (no-config) view when the `.mentor/` folder is removed recursively on macOS, where fsevents can miss the individual `config.json` delete event.
+- Reduced `ENOTEMPTY` errors when releasing the DB write lock by waiting for any in-flight heartbeat rename before removing the lock directory.
+
+### Changed
+
+- **SQLite schema bumped to v2.** `learner_profile` moved into a new append-only history table (one row per update, latest row wins on read) and `resume_context` moved into a new `app_state` key/value table. `.mentor/progress.json` is now obsolete: on first activation of v0.6.3, existing workspaces migrate their profile + resume context into the DB, back up the original to `.mentor/progress.json.bak`, then delete the live file. Fresh setups no longer create `progress.json`. Profile history (`learner_profile` rows) is retained going forward to support future time-series views; there is no automated pruning in this release.
+- Settings "Change" (変更) and Explorer "Add to Mentor Plan" now reuse any existing row for the same file path (restoring `removed` rows to `backlog`). Settings activates the selected plan and demotes the prior active to `paused`. Explorer single-select / Plan Panel add to `backlog` and auto-activate only when no plan is currently active; Explorer bulk select (2+ files) never auto-activates — all added files stay in `backlog`.
+- The "Delete Data" confirmation dialog no longer offers a one-click Uninstall button; it now directs the user to uninstall from the Extensions view. This avoids races between cleanup and the VS Code uninstall hook.
+
 ## [0.6.2] - 2026-04-18
 
 ### Fixed
