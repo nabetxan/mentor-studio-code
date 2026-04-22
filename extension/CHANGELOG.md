@@ -2,6 +2,16 @@
 
 All notable changes to "Mentor Studio Code" will be documented in this file.
 
+## [0.6.4] - 2026-04-22
+
+### Added
+
+- Intake skill now supports an **Update Flow**: when a learner profile already exists and the user asks to update it, the mentor first renders the saved profile as a Markdown table, then accepts free-text edit instructions with a diff-preview confirmation step before calling `update-profile`.
+
+### Fixed
+
+- Re-publish of features that were merged after the 0.6.3 marketplace build was packaged (Spec handoff flow, plan CRUD CLI commands, progress.json → DB migration resilience). Installing 0.6.4 and running Setup now propagates the up-to-date skill templates to existing workspaces.
+
 ## [0.6.3] - 2026-04-20
 
 ### Added
