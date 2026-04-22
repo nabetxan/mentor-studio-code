@@ -5,7 +5,7 @@ Read \`.mentor/config.json\`.
 - NOT FOUND → tell user to click "Run Setup" in sidebar or run \`Mentor Studio Code: Setup Mentor\`. STOP.
 - Parse error → tell user JSON is invalid. Suggest fixing or re-running Setup. STOP.
 - \`extensionUninstalled: true\` → read \`locale\`, then:
-  1. Check both CLAUDE.md for \`@.mentor/rules/MENTOR_RULES.md\`:
+  1. Check both CLAUDE.md files for \`@.mentor/rules/MENTOR_RULES.md\`:
      - Project: \`./CLAUDE.md\`
      - Personal: \`~/.claude/projects/<dir>/CLAUDE.md\` (derive \`<dir>\` from workspace path, replace \`/\`, \`\\\`, \`:\` with \`-\`)
   2. Show each matching file as a clickable link.
