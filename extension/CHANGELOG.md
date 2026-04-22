@@ -2,6 +2,16 @@
 
 All notable changes to "Mentor Studio Code" will be documented in this file.
 
+## [0.6.5] - 2026-04-23
+
+### Added
+
+- New `[flow:intake]` route in `MENTOR_RULES.md`. The Settings → Profile button now copies `[flow:intake] プロフィールを更新してください。` instead of referencing the skill file directly, giving the AI a flow-routed entry point and eliminating the need to reverse-engineer `mentor-cli session-brief` arguments on standalone invocation.
+
+### Changed
+
+- `intake` skill now fetches its own `session-brief` when invoked standalone via `[flow:intake]`. When invoked from `mentor-session`, it still reuses the caller's `session-brief` output as before — no duplicate CLI calls.
+
 ## [0.6.4] - 2026-04-22
 
 ### Added

@@ -25,6 +25,7 @@ Execute before any other response:
    - \`[flow:review]\` → read \`.mentor/skills/review/SKILL.md\` and follow it
    - \`[flow:implementation-review]\` → read \`.mentor/skills/implementation-review/SKILL.md\` and follow it
    - \`[flow:comprehension-check]\` → read \`.mentor/skills/comprehension-check/SKILL.md\` and follow it
+   - \`[flow:intake]\` → read \`.mentor/skills/intake/SKILL.md\` and follow it
    - No flow tag or \`[flow:session-start]\` → read \`.mentor/skills/mentor-session/SKILL.md\` and follow it
 `;
 
@@ -572,57 +573,62 @@ description: Use when learner_profile has not been set (learner.lastUpdated is n
 - Ask more than 1 question at a time during Initial Intake Flow
 - Proceed to session work before writing learner_profile via mentor-cli update-profile
 
-## Entry Branching
+## Entry
 
-Read \`learner.lastUpdated\` from the session-brief output passed in by the caller.
+Obtain \`learner.lastUpdated\`:
+- If the caller (e.g., \`mentor-session\`) already ran \`session-brief\` and passed the result, use \`learner\` from that output.
+- Otherwise (standalone entry via \`[flow:intake]\`), run:
+  \`\`\`bash
+  node .mentor/tools/mentor-cli.cjs session-brief '{"flow":"mentor-session"}'
+  \`\`\`
+  and read \`learner\` from the response.
 
-- \`lastUpdated\` is null → run \`## Initial Intake Flow\` below
-- \`lastUpdated\` is set → run \`## Update Flow\` below
+Branch on \`learner.lastUpdated\`:
+- null → run \`## Initial Intake Flow\` below
+- set → run \`## Update Flow\` below
 
-If at any point during Update Flow the user writes \`最初から\` (or a clear equivalent like \`最初からやり直したい\`), jump to \`## Initial Intake Flow\`.
+If at any point during Update Flow the user asks to start over (e.g. "start over", "最初から", "restart from scratch"), jump to \`## Initial Intake Flow\`.
+
+All user-facing prose in this flow (table headers, prompts, confirmations, cancellation messages) MUST be rendered in the user's \`locale\` per the Language Rule. The English strings below are templates — translate them.
 
 ## Update Flow
 
 ### Step 1: Show current profile
 
-Render the 5 fields from session-brief's \`learner\` as a Markdown table. Keep field keys in English (DB / CLI contract); surrounding prose follows \`locale\`.
+Render the 5 fields from session-brief's \`learner\` as a Markdown table. Keep field keys in English (DB / CLI contract); translate the header row and any surrounding prose to the user's \`locale\`.
 
-| 項目 | 現在の内容 |
-|------|-----------|
+| Field | Current value |
+|-------|---------------|
 | experience | <learner.experience> |
 | level | <learner.level> |
 | interests | <learner.interests joined by ", "> |
-| weak_areas | <learner.weakAreas joined by ", ", or "なし" if empty> |
+| weak_areas | <learner.weakAreas joined by ", ", or "none" if empty> |
 | mentor_style | <learner.mentorStyle> |
 
-Below the table, tell the user:
-
-> 更新したい内容を自由にお書きください（例:「レベルをintermediateに」「interestsにRust追加」）。全部やり直したい場合は「最初から」とお書きください。
+Below the table, ask the user to describe what they want to change (example instructions: "set level to intermediate", "add Rust to interests"). Tell them they can type "start over" to redo the full intake.
 
 ### Step 2: Wait for input
 
 Do NOT proceed until the user responds.
 
-- Input is \`最初から\` or a clear equivalent → jump to \`## Initial Intake Flow\`.
+- Input is "start over" or a clear equivalent (any language) → jump to \`## Initial Intake Flow\`.
 - Otherwise → Step 3.
 
 ### Step 3: Interpret and show diff
 
 Interpret the user's free-text instruction and build a partial update object containing only the fields that change. Array fields (\`interests\`, \`weak_areas\`) must be sent as the full replacement array — the CLI replaces whole arrays, not individual elements.
 
-Show a diff table containing ONLY the changed fields:
+Show a diff table containing ONLY the changed fields (translate the header row to the user's \`locale\`):
 
-| 項目 | 変更前 | 変更後 |
-|------|--------|--------|
+| Field | Before | After |
+|-------|--------|-------|
 | <field> | <before> | <after> |
 
-Then ask:
+Then ask the user to confirm saving, and invite them to rewrite the instruction if they want corrections.
 
-> この内容で保存しますか？ 修正があればもう一度書いてください。
+**Ambiguity guard.** If the instruction is ambiguous (e.g. "make it a bit harder"), ask exactly one clarifying question pinning down which field changes, then return to Step 3.
 
-**Ambiguity guard.** If the instruction is ambiguous (e.g. "もう少し難しめに"), ask exactly one clarifying question pinning down which field changes, then return to Step 3.
-
-**Add vs replace for arrays.** "Rust追加" implies append to the existing array. "興味はRustだけ" implies full replace. If unclear, ask.
+**Add vs replace for arrays.** "add Rust" implies append to the existing array. "only Rust" implies full replace. If unclear, ask.
 
 ### Step 4: Handle confirmation
 
@@ -631,9 +637,9 @@ Then ask:
   node .mentor/tools/mentor-cli.cjs update-profile '{"level":"intermediate","interests":["Python","Web","Rust"]}'
   \`\`\`
   Then tell the user the profile was updated, re-render the full table from Step 1 with the new values, and return control to the caller.
-- User requests corrections ("levelはbeginnerのままで") → recompute the diff, re-run Step 3.
-- User cancels ("やっぱり変更しない") → do not call the CLI; tell the user "更新をキャンセルしました"; return control to the caller.
-- User writes \`最初から\` → jump to \`## Initial Intake Flow\`.
+- User requests corrections (e.g. "keep level as beginner") → recompute the diff, re-run Step 3.
+- User cancels (e.g. "never mind, cancel") → do not call the CLI; tell the user the update was cancelled; return control to the caller.
+- User asks to start over → jump to \`## Initial Intake Flow\`.
 - CLI returns \`{"ok": false, ...}\` → surface the \`detail\` to the user and suggest retrying.
 
 ## Initial Intake Flow

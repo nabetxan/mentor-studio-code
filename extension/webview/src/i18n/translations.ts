@@ -236,8 +236,8 @@ const translations = {
     en: "Click to copy prompt → paste in AI chat to register or update your profile. Answering five questions will provide a personalized learning experience.",
   },
   "settings.prompt.intake": {
-    ja: "@.mentor/skills/intake/SKILL.md プロフィールを更新してください。",
-    en: "@.mentor/skills/intake/SKILL.md Update my profile.",
+    ja: "[flow:intake] プロフィールを更新してください。",
+    en: "[flow:intake] Update my profile.",
   },
   "settings.setup.title": {
     ja: "セットアップ（手動実行）",
