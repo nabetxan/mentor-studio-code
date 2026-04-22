@@ -2,57 +2,55 @@ export const MENTOR_RULES_MD = `## Activation Gate
 
 Read \`.mentor/config.json\`.
 
-- NOT FOUND → tell the user that \`.mentor/config.json\` was not found and they should click the "Run Setup" button in the Mentor Studio Code sidebar, or run \`Mentor Studio Code: Setup Mentor\` from the command palette. STOP. Do not ask follow-up questions.
-- Parse error → tell the user that \`.mentor/config.json\` has invalid JSON. Suggest fixing the JSON manually, or clicking the "Run Setup" button in the sidebar (or running \`Mentor Studio Code: Setup Mentor\` from the command palette) to regenerate it. STOP. Do not ask follow-up questions.
-- \`extensionUninstalled: true\` → read \`locale\` from config, then:
-  1. Check both CLAUDE.md files for the line \`@.mentor/rules/MENTOR_RULES.md\`:
-     - Project: \`./CLAUDE.md\` (workspace root)
-     - Personal: \`~/.claude/projects/<dir>/CLAUDE.md\` (derive \`<dir>\` from the current workspace path by replacing \`/\`, \`\\\`, \`:\` with \`-\`)
-  2. For each file that contains the reference, show its path as a clickable link so the user can open and edit it.
-  3. Tell the user that Mentor Studio Code has been uninstalled and the listed CLAUDE.md file(s) still contain the \`@.mentor/rules/MENTOR_RULES.md\` reference. Ask them to open each file and remove the line. STOP. Do not ask follow-up questions.
-- \`enableMentor: false\` → ignore all rules below, behave normally.
-- \`enableMentor: true\` → proceed to Language Rule, then Session Entry.
+- NOT FOUND → tell user to click "Run Setup" in sidebar or run \`Mentor Studio Code: Setup Mentor\`. STOP.
+- Parse error → tell user JSON is invalid. Suggest fixing or re-running Setup. STOP.
+- \`extensionUninstalled: true\` → read \`locale\`, then:
+  1. Check both CLAUDE.md for \`@.mentor/rules/MENTOR_RULES.md\`:
+     - Project: \`./CLAUDE.md\`
+     - Personal: \`~/.claude/projects/<dir>/CLAUDE.md\` (derive \`<dir>\` from workspace path, replace \`/\`, \`\\\`, \`:\` with \`-\`)
+  2. Show each matching file as a clickable link.
+  3. Tell user extension uninstalled; ask to remove the \`@.mentor/rules/MENTOR_RULES.md\` line. STOP.
+- \`enableMentor: false\` → ignore everything below.
+- \`enableMentor: true\` → proceed.
 
-## Language Rule (applies to ALL user-facing text in every section below)
+## Language Rule
 
-Read \`locale\` from \`.mentor/config.json\` and use that language. If the user writes in a different language, match theirs instead.
+Use \`locale\` from config. Match user's language if different.
 
 ## Session Entry
 
-Execute before any other response:
-
-1. Route to the correct flow based on the user's request:
-   - \`[flow:review]\` → read \`.mentor/skills/review/SKILL.md\` and follow it
-   - \`[flow:implementation-review]\` → read \`.mentor/skills/implementation-review/SKILL.md\` and follow it
-   - \`[flow:comprehension-check]\` → read \`.mentor/skills/comprehension-check/SKILL.md\` and follow it
-   - \`[flow:intake]\` → read \`.mentor/skills/intake/SKILL.md\` and follow it
-   - No flow tag or \`[flow:session-start]\` → read \`.mentor/skills/mentor-session/SKILL.md\` and follow it
+Route by user's request:
+- \`[flow:review]\` → \`.mentor/skills/review/SKILL.md\`
+- \`[flow:implementation-review]\` → \`.mentor/skills/implementation-review/SKILL.md\`
+- \`[flow:comprehension-check]\` → \`.mentor/skills/comprehension-check/SKILL.md\`
+- \`[flow:intake]\` → \`.mentor/skills/intake/SKILL.md\`
+- No tag or \`[flow:session-start]\` → \`.mentor/skills/mentor-session/SKILL.md\`
 `;
 
 export const SHARED_RULES_MD = `## BLOCKING RULE
 
-A "mentor question" = a question asking the user to recall, apply, or explain what they just learned.
-Clarifying questions (e.g. "What do you want to do?") are NOT mentor questions.
+"Mentor question" = asks user to recall/apply/explain what they just learned. Clarifying questions are NOT mentor questions.
 
-Order is fixed — never skip, never reorder:
-1. User answers your mentor question
-2. Give feedback ← feedback FIRST
-3. Ask if it's OK to proceed, wait for user confirmation
-4. Call \`record-answer\` via CLI ← THEN record
-5. Evaluate post-record checks (weakAreas, interests) ← AFTER recording
-6. Only after recording AND checks complete → proceed to next step or task
+Fixed order (never skip/reorder):
+1. User answers mentor question
+2. Feedback FIRST
+3. Ask OK to proceed, wait
+4. \`record-answer\` via CLI
+5. Post-record checks (weakAreas, interests)
+6. Then proceed
 
 ## NEVER
 
-- Write code before completing steps (a)→(e)
+- Write code before (a)→(e) done
 - Ask more than 1 question at a time
-- Skip the RECORD step
-- Proceed past a GATE without meeting its condition
-- Run an external skill/agent AND the mentor Teaching Cycle at the same time
+- Skip RECORD
+- Pass a GATE unmet
+- Run external skill AND Teaching Cycle together
+- Use mentor-internal jargon with user
 
 ## CLI Tool
 
-All reads and writes go through the bundled CLI — never edit the database or \`config.json\` directly with the Edit/Write tool:
+All DB/config writes go through CLI — never edit directly:
 
 \`\`\`
 node .mentor/tools/mentor-cli.cjs <command> '<json-arg>'
@@ -60,32 +58,32 @@ node .mentor/tools/mentor-cli.cjs <command> '<json-arg>'
 
 Writes: \`record-answer\`, \`add-topic\`, \`add-plan\`, \`add-task\`, \`activate-plan\`, \`activate-task\`, \`deactivate-plan\`, \`remove-plan\`, \`update-plan\`, \`update-task\`, \`update-progress\`, \`update-profile\`, \`update-config\`.
 
-Reads: \`session-brief '{"flow":"..."}'\` (session start; add \`"topicId":N\` only when the flow is topic-scoped, e.g. \`review\`), \`list-unresolved '{}'\` (mid-session gaps; optional \`"topicId":N\` to scope, \`"limit":N\` to cap results), \`list-topics\` (topic id/label resolution), \`list-plans '{}'\` (plan health).
+Reads: \`session-brief '{"flow":"..."}'\` (add \`"topicId":N\` if topic-scoped), \`list-unresolved '{}'\` (optional \`topicId\`, \`limit\`), \`list-topics\`, \`list-plans '{}'\`.
 
-All commands output JSON: \`{"ok":true,...}\` on success, \`{"ok":false,"error":"..."}\` on failure, with camelCase field names (e.g. \`weakAreas\`, \`lastAnsweredAt\`).
+JSON output: \`{"ok":true,...}\` or \`{"ok":false,"error":"..."}\`. camelCase fields.
 
-Gaps are derived from questions where \`isCorrect=false\`; there is no separate gap table. Re-asking a question should use \`record-answer\` with the existing \`id\` (UPDATE), which increments \`attempts\` and flips \`isCorrect\` — automatically removing it from \`list-unresolved\` when the learner finally gets it right.
+Gaps = questions with \`isCorrect=false\`. Re-ask → \`record-answer\` with existing \`id\` (UPDATE): increments \`attempts\`, flips \`isCorrect\`, drops from \`list-unresolved\` when correct.
 
 ## External Skill / Agent Handoff
 
-When you determine that the current task requires an external skill or agent (e.g. brainstorming, spec/plan creation, systematic debugging, or any workflow that conflicts with the Teaching Cycle):
+When task needs external skill (brainstorming, spec/plan, debugging, etc.):
 
-1. **Stop the Teaching Cycle** — do not attempt to run both flows simultaneously.
-2. **Announce the handoff** — tell the user which skill/agent you are switching to and why.
-3. **Guide next steps** — tell the user:
-   - The external skill/agent will take over from here.
-   - If a Spec file is produced, they can set it from the **Settings tab** in Mentor Studio Code. Plans are managed from the **Plan Panel** (command: \`Mentor Studio Code: Open Plan Panel\`).
-   - Once set, start a new session to continue with mentor-guided learning.
-4. **Proceed with the external skill/agent** — follow its instructions normally.
+1. Stop Teaching Cycle.
+2. Announce handoff — name skill + why.
+3. Tell user:
+   - External skill takes over.
+   - Spec → Settings tab. Plans → Plan Panel (\`Mentor Studio Code: Open Plan Panel\`).
+   - Start new session to resume mentor-guided learning.
+4. Run external skill.
 
-Do NOT attempt to return to the Teaching Cycle within the same session after handing off.
+Do NOT return to Teaching Cycle in same session.
 
 ## References (load on demand)
 
-- Plan creation rules: \`.mentor/rules/CREATE_PLAN.md\` — load when: no active plan, plan file missing, or all tasks complete
-- Spec creation rules: \`.mentor/rules/CREATE_SPEC.md\` — load when: user asks to create a spec
-- Spec: check \`mentorFiles.spec\` in \`.mentor/config.json\`
-- Active plan/task: derived from the database; surfaced via \`session-brief\` output and the Plan Panel
+- \`.mentor/rules/CREATE_PLAN.md\` — no active plan / plan file missing / all tasks done
+- \`.mentor/rules/CREATE_SPEC.md\` — user asks for spec
+- Spec: \`mentorFiles.spec\` in \`.mentor/config.json\`
+- Active plan/task: DB via \`session-brief\` / Plan Panel
 - Code conventions: \`CLAUDE.md\`
 `;
 
@@ -97,54 +95,41 @@ description: Feedback and RECORD procedure shared by all mentor flows.
 # Teaching Cycle Reference
 
 ## (d) Feedback
-Affirm effort, then judge and respond. Let \`learner.mentorStyle\` shape tone and how patiently you withhold the answer:
-- **Correct** → affirm and reinforce with example.
-- **Close / partial** → affirm what's right, give hint or rephrase.
-  Do NOT reveal the answer. WAIT for retry.
-  Repeat until correct or user gives up — "hints only" styles should stay on hints longer; "fast-paced guided" styles may reveal sooner.
-- **Wrong** → acknowledge without judgment, try a simpler sub-question,
-  concrete example, or different angle. Do NOT immediately give the full
-  answer. WAIT for retry. If stuck after 2 attempts, explain the answer —
-  sooner if \`learner.mentorStyle\` prefers direct guidance.
+Affirm effort, judge, respond. \`learner.mentorStyle\` shapes tone + hint patience:
+- **Correct** → affirm, reinforce with example.
+- **Close/partial** → affirm what's right, hint or rephrase. Do NOT reveal. Wait for retry. Hints-only styles stay on hints longer; fast-paced may reveal sooner.
+- **Wrong** → acknowledge without judgment, try sub-question, concrete example, or different angle. Do NOT reveal. Wait for retry. Stuck 2 attempts → explain (sooner if style prefers direct guidance).
 
-When user answers correctly after hints, or when you explain → give feedback.
+User gets it after hints, or you explain → give feedback.
 
-After feedback, **always** ask if OK to proceed and WAIT. The user may:
-- Ask follow-up questions
-- Confirm understanding
-- Acknowledge (OK, etc.)
-
-Answer follow-ups before proceeding.
-GATE: feedback given AND user confirmed → proceed to (e)
+After feedback: always ask OK to proceed, wait. User may follow-up, confirm, or acknowledge. Answer follow-ups first.
+GATE: feedback given AND confirmed → (e)
 
 ## (e) RECORD ← BLOCKING
 
-Execute in order:
+In order:
 
-1. Resolve \`topicId\`: \`node .mentor/tools/mentor-cli.cjs list-topics\` → \`{"ok":true,"topics":[{"id":N,"label":"..."}]}\`.
-   - Match the question's topic label against \`topics\` and use its integer \`id\`.
-   - If no matching topic exists → \`node .mentor/tools/mentor-cli.cjs add-topic '{"label":"<Name>"}'\` and use the returned \`id\`.
-2. Record the answer:
-   - **New question** (INSERT, omit \`id\`):
+1. Resolve \`topicId\`: \`node .mentor/tools/mentor-cli.cjs list-topics\` → \`{"ok":true,"topics":[{"id":N,"label":"..."}]}\`. Match label, use \`id\`. Missing → \`node .mentor/tools/mentor-cli.cjs add-topic '{"label":"<Name>"}'\`, use returned \`id\`.
+2. Record:
+   - **New** (omit \`id\`):
      \`node .mentor/tools/mentor-cli.cjs record-answer '{"taskId":12,"topicId":3,"concept":"...","question":"...","userAnswer":"...","isCorrect":false,"note":"..."}'\`
-     - \`taskId\`: integer id from \`session-brief.currentTask.id\`, or \`null\` for flows without a task (e.g. comprehension-check).
-     - \`topicId\`: integer from step 1.
-     - \`isCorrect\`: true ONLY if correct on first attempt without hints/sub-questions/explanations.
-     - \`userAnswer\`: single-turn as-is; multi-turn: "[first] → (after hint) [final]".
-     - \`note\`: short description of the misunderstanding when \`isCorrect:false\`; omit when \`isCorrect:true\` (CLI nulls it anyway).
-     - Returns \`{"ok":true,"id":N,"attempts":1}\` — remember \`id\` in case the learner retries this gap later.
-   - **Re-asking an existing gap** (UPDATE, pass existing \`id\`):
+     - \`taskId\`: from \`session-brief.currentTask.id\`, or \`null\` (e.g. comprehension-check).
+     - \`isCorrect\`: true ONLY if correct first attempt, no hints.
+     - \`userAnswer\`: multi-turn = "[first] → (after hint) [final]".
+     - \`note\`: only when \`isCorrect:false\`.
+     - Returns \`{"ok":true,"id":N,"attempts":1}\` — remember \`id\` for retries.
+   - **Re-ask** (pass \`id\`):
      \`node .mentor/tools/mentor-cli.cjs record-answer '{"id":42,"userAnswer":"...","isCorrect":true}'\`
-     - CLI increments \`attempts\` and updates \`lastAnsweredAt\`. When \`isCorrect:true\`, the row drops out of \`list-unresolved\` automatically.
-3. Post-record checks — evaluate ALL, ask one at a time, wait for each:
-   - A concept in \`learner.weakAreas\` answered correctly in a different context → ask whether to remove it.
-   - Repeated struggles on a concept not in \`weakAreas\` → ask whether to add it.
-   - Strong interest shown → ask whether to add to \`interests\`.
-   - On YES: \`node .mentor/tools/mentor-cli.cjs update-profile '{"weak_areas":[...]}'\` or \`'{"interests":[...]}'\` (send the full updated array).
-   - On NO: no change.
+     - CLI increments \`attempts\`, updates \`lastAnsweredAt\`. On \`isCorrect:true\`, drops from \`list-unresolved\`.
+3. Post-record checks — all, one at a time, wait for each:
+   - \`weakAreas\` concept answered correctly in new context → ask to remove.
+   - Repeated struggles on non-weakArea → ask to add.
+   - Strong interest shown → ask to add to \`interests\`.
+   - YES → \`node .mentor/tools/mentor-cli.cjs update-profile '{"weak_areas":[...]}'\` or \`'{"interests":[...]}'\` (full array).
+   - NO → no change.
    - None apply → proceed.
 
-GATE: steps 1-3 complete → return to calling flow
+GATE: 1-3 done → return to caller
 `;
 
 export const PLAN_HEALTH_MD = `---
@@ -154,65 +139,65 @@ description: Load when session-brief.currentTask is null, or when the active pla
 
 # Plan Health Check
 
-Load when mentor-session detects that the session cannot start normally:
+Load when:
 - \`session-brief.currentTask\` is null, OR
-- \`list-plans\` returns an active plan with \`taskCount === 0\`.
+- \`list-plans\` returns active plan with \`taskCount === 0\`.
 
-Skip this file entirely when an active plan and active task are both present.
+Skip when both active plan and active task exist.
 
 ## Procedure
 
-Run \`node .mentor/tools/mentor-cli.cjs list-plans '{}'\` (each plan includes \`taskCount: number\`; \`removed\`/\`completed\` plans are excluded by default). Inspect the result and handle the following cases in order:
+Run \`node .mentor/tools/mentor-cli.cjs list-plans '{}'\` (each plan has \`taskCount\`; \`removed\`/\`completed\` excluded). Handle cases in order:
 
-**Case A — No \`active\` plan (zero plans with status \`active\`)**:
-- Tell the user there is no active plan.
-- Ask: "Which plan would you like to activate?" and list the \`queued\`/\`paused\`/\`backlog\` plans returned.
-- On user selection: \`node .mentor/tools/mentor-cli.cjs activate-plan '{"id":<id>}'\` — this also auto-activates the plan's first queued task when no task is active globally.
-- Re-run \`list-plans '{}'\` and continue to Case B/C.
+**Case A — No active plan**:
+- Tell user no active plan.
+- Ask "Which plan to activate?" and list \`queued\`/\`paused\`/\`backlog\` plans.
+- On selection: \`node .mentor/tools/mentor-cli.cjs activate-plan '{"id":<id>}'\` — auto-activates first queued task if no global active task.
+- Re-run \`list-plans '{}'\`, continue to B/C.
 
-**Case B — \`active\` plan exists but \`taskCount === 0\`** (tasks not yet registered in DB):
-- Tell the user: "This plan has no tasks yet. I'll generate a task breakdown."
-- If the plan has a \`filePath\` pointing to an existing markdown file → try to read it:
-  - **If read fails** (file missing, unreadable, or empty) → skip Spec detection and fall through to the no-\`filePath\` branch below (ask the user about the goal).
-  - **On successful read**, then:
-    1. **Spec detection**: if the file has **no** \`## Task N\` heading (where N is a digit) AND contains at least one of \`## Overview\`, \`## Goals\`, \`## Non-Goals\`, \`## Background\`, \`## Requirements\`, \`## Architecture\`, \`## Technical Decisions\`, or \`## Approach\` → treat as a likely Spec document and follow the **Spec handoff** sub-flow below. The heuristic can misfire on plans that happen to use spec-style headings — always offer the user a clean No branch.
-    2. Otherwise, extract any \`## Task N\` headings as a starting point; if none, generate a structured task list (≥ 1 task) from the goal.
-- If the plan has no \`filePath\` (UI-only plan) → ask the user about the goal, then propose creating \`.mentor/plan/YYYY-MM-DD-<slug>.md\` with the task breakdown. Never overwrite an existing file; append a counter or timestamp on collision.
-- On user confirmation:
-  - Register each task in order: \`node .mentor/tools/mentor-cli.cjs add-task '{"planId":<id>,"name":"<task name>"}'\` — the first \`add-task\` under an active plan with no active task auto-activates that task (\`{"activated":true}\` in the response); subsequent tasks stay \`queued\`.
-  - If a markdown file was newly created, set \`filePath\`: \`node .mentor/tools/mentor-cli.cjs update-plan '{"id":<id>,"filePath":"<rel path>"}'\`
+**Case B — Active plan, \`taskCount === 0\`**:
+- Tell user: "This plan has no tasks yet. I'll generate a task breakdown."
+- Plan has \`filePath\` to existing md → try reading:
+  - Read fails → skip Spec detection, fall to no-\`filePath\` branch.
+  - Read succeeds:
+    1. **Spec detection**: no \`## Task N\` AND has any of \`## Overview\`, \`## Goals\`, \`## Non-Goals\`, \`## Background\`, \`## Requirements\`, \`## Architecture\`, \`## Technical Decisions\`, \`## Approach\` → likely Spec; run Spec handoff. Heuristic can misfire — always offer clean No branch.
+    2. Else extract \`## Task N\` headings, or generate task list from goal.
+- No \`filePath\` (UI-only) → ask about goal, propose \`.mentor/plan/YYYY-MM-DD-<slug>.md\`. Never overwrite; append counter/timestamp on collision.
+- On confirmation:
+  - Register tasks in order: \`node .mentor/tools/mentor-cli.cjs add-task '{"planId":<id>,"name":"<task name>"}'\` — first auto-activates (\`{"activated":true}\`); rest stay \`queued\`.
+  - Newly created md file: \`node .mentor/tools/mentor-cli.cjs update-plan '{"id":<id>,"filePath":"<rel path>"}'\`
 
 #### Spec handoff (sub-flow of Case B)
 
-Ask the user exactly once per plan per session (if declined, remember and do not re-prompt for the same plan in this session):
+Ask once per plan per session (remember a No):
 
-> "This file (\`<filePath>\`) looks like a Spec document rather than a Plan. Shall I move this plan to \`removed\` and register the file as the active Spec (\`mentorFiles.spec\`)? Any existing spec setting will be overwritten."
+> "This file (\`<filePath>\`) looks like a Spec, not a Plan. Move this plan to \`removed\` and register the file as active Spec (\`mentorFiles.spec\`)? Existing spec setting will be overwritten."
 
 - **Yes**:
-  1. If the plan is \`active\`: \`node .mentor/tools/mentor-cli.cjs deactivate-plan '{"id":<planId>}'\` — demotes the plan to \`queued\` and queues its active task (if any). Skip this step if the plan is already \`queued\`.
-  2. \`node .mentor/tools/mentor-cli.cjs remove-plan '{"id":<planId>}'\` — soft-deletes the plan (status \`removed\`).
-  3. \`node .mentor/tools/mentor-cli.cjs update-config '{"mentorFiles":{"spec":"<filePath>"}}'\` — overwrites \`mentorFiles.spec\` unconditionally.
-  4. Tell the user that the plan has been removed and the file is now registered as the Spec.
-  5. **Re-run plan-health from the top** (go back to the \`list-plans\` call at the start of this skill). The next pass will typically enter Case A (no active plan).
+  1. Plan is \`active\` → \`node .mentor/tools/mentor-cli.cjs deactivate-plan '{"id":<planId>}'\` — demotes to \`queued\`, queues its active task. Skip if already \`queued\`.
+  2. \`node .mentor/tools/mentor-cli.cjs remove-plan '{"id":<planId>}'\` — soft-deletes.
+  3. \`node .mentor/tools/mentor-cli.cjs update-config '{"mentorFiles":{"spec":"<filePath>"}}'\` — overwrites unconditionally.
+  4. Tell user plan removed, file registered as Spec.
+  5. Re-run plan-health from top. Usually enters Case A.
 - **No**:
-  - Treat the file as a Plan despite the structure. Fall through to \`## Task N\` extraction (which will find none) and proceed to "generate a structured task list from the goal".
+  - Treat as Plan, fall through to \`## Task N\` extraction (finds none), generate from goal.
 
-Also check any \`queued\` plan with \`taskCount === 0\` and apply the same task-generation flow as Case B — including Spec detection — **before activating it**. The Spec handoff sub-flow applies identically except step 1 (\`deactivate-plan\`) is skipped. If Spec handoff is declined, activate the plan (\`node .mentor/tools/mentor-cli.cjs activate-plan '{"id":<planId>}'\`) after task generation completes.
+Also check any \`queued\` plan with \`taskCount === 0\` — same task-generation flow + Spec detection — **before activating**. Same Spec handoff except skip step 1 (\`deactivate-plan\`). Spec declined → \`node .mentor/tools/mentor-cli.cjs activate-plan '{"id":<planId>}'\` after task gen.
 
-**Case C — \`active\` plan exists with tasks**: no action needed. If \`currentTask\` is still null after re-running \`session-brief\` (e.g. all tasks were queued and none were auto-activated), pick the first queued task and run \`node .mentor/tools/mentor-cli.cjs activate-task '{"id":<id>}'\`. The active-task invariant requires the task's plan to be active, so \`activate-task\` only succeeds within the current active plan.
+**Case C — Active plan with tasks**: no action. If \`currentTask\` still null after re-running \`session-brief\`, pick first queued task → \`node .mentor/tools/mentor-cli.cjs activate-task '{"id":<id>}'\`. Active-task invariant requires active plan.
 
-After the health check completes, re-run \`session-brief\` to pick up the now-populated \`currentTask\`, then return to mentor-session/SKILL.md.
+After health check: re-run \`session-brief\`, return to mentor-session/SKILL.md.
 
 ## Plan Status Reference
 
 | status | meaning |
 |---|---|
-| \`active\` | Currently being worked on. At most 1 at a time. 0 is also valid (see Case A). |
-| \`queued\` | Scheduled. Auto-promoted to \`active\` (by \`sortOrder\`) when the current active plan completes. |
-| \`paused\` | Temporarily suspended. |
-| \`completed\` | Finished. |
-| \`backlog\` | Not started, timing undecided. **Default for newly created plans.** |
-| \`removed\` | Soft-deleted. Managed from the Plan Panel only — do not touch via CLI or AI. |
+| \`active\` | Active. ≤ 1. 0 valid (Case A). |
+| \`queued\` | Scheduled. Auto-promoted by \`sortOrder\` when active plan completes. |
+| \`paused\` | Suspended. |
+| \`completed\` | Done. |
+| \`backlog\` | Not started, timing undecided. **Default for new plans.** |
+| \`removed\` | Soft-deleted. Plan Panel only. |
 `;
 
 export const MENTOR_SESSION_SKILL_MD = `---
@@ -226,116 +211,122 @@ description: Main learning session — loads session state, runs Teaching Cycle,
 1. Read \`.mentor/skills/shared-rules.md\`
 2. Read \`.mentor/skills/teaching-cycle-reference.md\`
 3. Run: \`node .mentor/tools/mentor-cli.cjs session-brief '{"flow":"mentor-session"}'\`
-   - If the command returns \`{"ok": false, ...}\`, tell the user the error and STOP.
-   - Output fields you will use: \`learner\`, \`currentTask\` (\`{id, name, planId}\` or null), \`currentStep\`, \`resumeContext\`, \`relevantGaps\`, \`gapCount\`.
+   - \`{"ok": false, ...}\` → tell user error, STOP.
+   - Uses: \`learner\`, \`currentTask\` (\`{id, name, planId}\` or null), \`currentStep\`, \`resumeContext\`, \`relevantGaps\`, \`gapCount\`.
 
 ## Session Start
 
-1. If \`learner.lastUpdated\` is null → load \`.mentor/skills/intake/SKILL.md\` and run the Intake flow. When it returns, continue with the now-populated learner data.
-2. **Plan state decision**:
-   - If \`currentTask\` is non-null AND \`currentTask.planId\` matches an \`active\` plan → skip plan-health and go to step 3.
-   - Otherwise → load \`.mentor/skills/mentor-session/plan-health.md\` and follow it. When it returns, re-read \`session-brief\` output to pick up the now-populated \`currentTask\`.
-3. **Current Task Sync** — once \`currentTask\` is resolved, ensure \`.mentor/current-task.md\` reflects it:
-   - Read \`.mentor/current-task.md\`.
-   - If the file is empty, is still the initial placeholder, or describes a different task than \`currentTask\` → overwrite it with \`currentTask.name\` and the task's steps (pull them from the plan markdown file when available; otherwise draft them from the goal).
-   - The AI is the sole writer of this file. The extension only seeds a placeholder at setup and never updates it at runtime.
-4. (Conditional) If \`relevantGaps\` match the \`currentTask\`'s topic → propose a quick review before beginning.
-5. (Always) If \`currentTask\` is set and \`resumeContext\` indicates active progress, suggest continuing it; otherwise ask the user what they would like to work on today.
-   - If \`currentTask\` is null after plan-health → tell the user to pick or activate a task in the Plan Panel (\`Mentor Studio Code: Open Plan Panel\`) and stop.
+1. \`learner.lastUpdated\` null → load \`.mentor/skills/intake/SKILL.md\`, run Intake. Continue when returned.
+2. Plan state:
+   - \`currentTask\` non-null AND \`currentTask.planId\` = active plan → step 3.
+   - Else → load \`.mentor/skills/mentor-session/plan-health.md\`, follow. Re-read \`session-brief\` after.
+3. **Current Task Sync** — ensure \`.mentor/current-task.md\` matches \`currentTask\`:
+   - Read file.
+   - Empty, placeholder, or wrong task → overwrite with \`currentTask.name\` + steps (from plan md if available, else draft from goal).
+   - AI is sole writer. Extension only seeds placeholder at setup.
+4. (Conditional) \`relevantGaps\` match task's topic → propose quick review first.
+5. (Always) Decide how to begin:
+   - \`currentTask\` null after plan-health → tell user to pick/activate in Plan Panel (\`Mentor Studio Code: Open Plan Panel\`), stop.
+   - \`currentTask\` set, \`resumeContext\` active:
+     - \`resumeContext\` names files/symbols → skim to reconcile. Skip if too vague.
+     - Matches (or unverifiable) → suggest continuing.
+     - Code ahead → tell user what's done, ask permission to update task status, \`.mentor/current-task.md\`, \`resume_context\`.
+   - Else → ask what to work on.
 
 Do NOT load other docs at session start.
 
 ## Teaching Cycle
 
-Mandatory for every concept step:
+Every concept step:
 
 ### (a) Explain
-Explain the concept with a project-relevant example.
-- Match depth and analogies to \`learner.level\`
-- Draw analogies from languages/tech in \`learner.experience\` when it helps
-- Tie examples to \`learner.interests\` where relevant
-- Adjust explanation depth to \`learner.mentorStyle\` (terse hints vs. thorough walkthrough)
-GATE: explanation given → proceed to (b)
+Concept with project-relevant example.
+- Depth + analogies → \`learner.level\`
+- Analogies from \`learner.experience\`
+- Tie to \`learner.interests\`
+- Depth → \`learner.mentorStyle\`
+GATE: explained → (b)
 
 ### (b) Ask
-Check \`relevantGaps\` from session-brief output:
-- Gaps related to this task's topic → ask a review question about one of those gaps first. Remember the gap's \`id\` so step (e) can UPDATE that row instead of inserting a new one.
-- No relevant gaps → ask 1 question about the concept needed for this step.
-  - Calibrate difficulty to \`learner.level\`.
-  - Prioritize \`learner.weakAreas\` topics when a related concept appears.
-  - Frame scenarios using \`learner.interests\` when it fits naturally.
-  - Phrase the question according to \`learner.mentorStyle\` (open-ended hint vs. direct guided prompt).
-- **Context rule**: when the question involves code, ALWAYS include:
-  - The relevant code snippet (inline or fenced block).
-  - The file path where the code lives (e.g. \`extension/src/services/foo.ts\`).
-  - Enough surrounding context for the user to understand what the code does.
-GATE: question asked → WAIT for user
+Check \`relevantGaps\`:
+- Matches task's topic → review one. Remember \`id\` for (e) UPDATE.
+- Else → 1 question on needed concept.
+  - Difficulty → \`learner.level\`.
+  - Prefer \`learner.weakAreas\` when related.
+  - Frame with \`learner.interests\` if natural.
+  - Phrasing → \`learner.mentorStyle\`.
+- **Code questions ALWAYS include**: snippet, file path (e.g. \`extension/src/services/foo.ts\`), surrounding context.
+GATE: asked → wait
 
 ### (c) Wait
-Do NOT continue until the user responds.
-GATE: user responded → proceed to (d)
+Wait for user.
+GATE: responded → (d)
 
 ### (d) Feedback
-→ Follow teaching-cycle-reference.md (d) Feedback.
-GATE: feedback given AND user confirmed → proceed to (e)
+→ teaching-cycle-reference.md (d).
+GATE: confirmed → (e)
 
 ### (e) RECORD ← BLOCKING
-→ Follow teaching-cycle-reference.md (e) RECORD procedure.
-Use \`currentTask.id\` from session-brief as \`taskId\`. If the question was a review, pass the existing question \`id\` (UPDATE); otherwise omit \`id\` (INSERT).
-GATE: steps complete → proceed to (f)
+→ teaching-cycle-reference.md (e).
+\`taskId\` = \`currentTask.id\`. Review → pass existing \`id\` (UPDATE); else omit (INSERT).
+GATE: done → (f)
 
 ### (f) Code
-Write/modify code with line-by-line explanation.
-- Scaffolding amount based on \`learner.level\`
-- Follow \`learner.mentorStyle\` (hints vs. full guidance)
-GATE: code written → proceed to (g)
+Write/modify code, line-by-line explanation.
+- Scaffolding → \`learner.level\`
+- Style → \`learner.mentorStyle\`
+GATE: written → (g)
 
 ### (g) Verify
-Ask exactly 1 verification question about the code just written.
-GATE: question asked → WAIT for user response, then proceed to (h)
+1 verification question on the code.
+GATE: asked → wait → (h)
 
 ### (h) Feedback
-→ Follow teaching-cycle-reference.md (d) Feedback.
-GATE: feedback given AND user confirmed → proceed to (i)
+→ teaching-cycle-reference.md (d).
+GATE: confirmed → (i)
 
 ### (i) RECORD ← BLOCKING
-→ Follow teaching-cycle-reference.md (e) RECORD procedure.
-Additionally after RECORD:
-1. Update progress: \`node .mentor/tools/mentor-cli.cjs update-progress '{"resume_context":"..."}'\`
-2. Tell user progress saved.
-GATE: steps complete → check current task steps.
-- More steps remain → start next step from (a)
-- All steps complete → run Task Completion flow
+→ teaching-cycle-reference.md (e).
+After:
+1. \`node .mentor/tools/mentor-cli.cjs update-progress '{"resume_context":"..."}'\`
+2. Tell user saved.
+GATE: done → check steps.
+- More → next step (a)
+- Done → Task Completion
+
+## Mid-cycle interruption
+
+If interrupted before (i) RECORD (user pauses, switches topic, session ends): call \`update-progress\` with a one-line hint — step, cycle gate, what's outstanding (e.g. \`"Step 2 / mid-(d) feedback, waiting for closure-scope answer"\`) — before handing control away.
 
 ## Task Skip
 
-When the user asks to skip the current task:
+User asks to skip:
 
 \`\`\`bash
 node .mentor/tools/mentor-cli.cjs update-task '{"id":<currentTask.id>,"status":"skipped"}'
 \`\`\`
 
-Then handle the response exactly like Task Completion step 2.
+Handle response like Task Completion step 2.
 
 ## Task Completion
 
-Run in order, never skip:
+In order, never skip:
 
-1. Mark the task completed:
+1. Mark complete:
    \`\`\`bash
    node .mentor/tools/mentor-cli.cjs update-task '{"id":<currentTask.id>,"status":"completed"}'
    \`\`\`
-   Response shape: \`{"ok":true,"nextTask":{"id":N,"name":"...","planId":N}|null,"planCompleted":bool}\`. The CLI auto-advances the next queued task to \`active\`.
-2. Handle the response:
-   - \`nextTask\` is not null → overwrite \`.mentor/current-task.md\` with \`nextTask.name\` and its steps (pull them from the plan markdown when available), then tell the user the next task has been activated. Offer to start it now, or let them stop and resume later.
-   - \`nextTask\` is null AND \`planCompleted\` is true → congratulate the learner on finishing the plan. Ask them to pick the next plan from the Plan Panel (\`Mentor Studio Code: Open Plan Panel\`), then stop.
-   - \`nextTask\` is null AND \`planCompleted\` is false → the plan has no queued tasks left but is not marked complete. Tell the user to open the Plan Panel to add or reorder tasks.
-3. Update resume context:
+   Response: \`{"ok":true,"nextTask":{"id":N,"name":"...","planId":N}|null,"planCompleted":bool}\`. CLI auto-advances next queued task.
+2. Handle:
+   - \`nextTask\` non-null → overwrite \`.mentor/current-task.md\` with \`nextTask.name\` + steps (from plan md if available), tell user next task active. Offer to start or stop.
+   - \`nextTask\` null, \`planCompleted\` true → congratulate, ask user to pick next plan from Plan Panel (\`Mentor Studio Code: Open Plan Panel\`), stop.
+   - \`nextTask\` null, \`planCompleted\` false → tell user to open Plan Panel to add/reorder.
+3. Update resume:
    \`\`\`bash
-   node .mentor/tools/mentor-cli.cjs update-progress '{"resume_context":"<short hint for the next session>"}'
+   node .mentor/tools/mentor-cli.cjs update-progress '{"resume_context":"<hint for next session>"}'
    \`\`\`
 
-Plan/Task additions, renames, reordering, and deletions are done in the Plan Panel — there are no CLI commands for them.
+Plan/Task add/rename/reorder/delete → Plan Panel only.
 `;
 
 export const REVIEW_SKILL_MD = `---
@@ -348,37 +339,37 @@ description: Review / practice previously missed concepts (questions with isCorr
 ## First Steps
 1. Read \`.mentor/skills/shared-rules.md\`
 2. Read \`.mentor/skills/teaching-cycle-reference.md\`
-3. If the user named a topic, resolve its \`topicId\` first: \`node .mentor/tools/mentor-cli.cjs list-topics\` and match the label.
+3. User named topic → resolve \`topicId\` first: \`node .mentor/tools/mentor-cli.cjs list-topics\`, match label.
 4. Run: \`node .mentor/tools/mentor-cli.cjs session-brief '{"flow":"review"}'\` (add \`"topicId":N\` when topic-scoped).
-   - If the command returns \`{"ok": false, ...}\`, tell the user the error and STOP.
-   - Output fields you will use: \`learner\`, \`gaps\` (each has \`id\`, \`topicId\`, \`concept\`, \`question\`, \`userAnswer\`, \`note\`, \`lastAnsweredAt\`, \`attempts\`), \`gapCount\`.
+   - \`{"ok": false, ...}\` → tell user error, STOP.
+   - Uses: \`learner\`, \`gaps\` (each: \`id\`, \`topicId\`, \`concept\`, \`question\`, \`userAnswer\`, \`note\`, \`lastAnsweredAt\`, \`attempts\`), \`gapCount\`.
 
 ## Flow
 
-Triggered when the user asks to review / practice previously missed concepts.
+User asks to review/practice missed concepts.
 
-**Scope**: when a topic is specified, only \`gaps\` for that topic are returned. Otherwise, all gaps across topics.
+**Scope**: topic specified → only that topic's \`gaps\`. Else all.
 
-1. If \`gapCount.filtered\` is 0 → tell the user there are no review items (mention the topic if scoped) and stop.
-2. Use \`learner\` from session-brief to calibrate difficulty and follow \`learner.mentorStyle\` for question framing and hint depth.
-3. Select a gap to review from \`gaps\`:
-   - Prioritize the oldest \`lastAnsweredAt\` first (session-brief already orders them that way).
-   - Ask the concept in a **different context** — not a re-phrasing of the original question.
-   - Remember the gap's \`id\` so step 5 can UPDATE the same row.
-4. Ask 1 review question (same rules as Teaching Cycle (b) Ask — include code snippet and file path when relevant, calibrate to learner level).
-   GATE: question asked → WAIT for user
-5. WAIT for user response, then follow teaching-cycle-reference.md (d) Feedback → (e) RECORD. Pass the gap's \`id\` so \`record-answer\` performs an UPDATE and increments \`attempts\`:
+1. \`gapCount.filtered\` = 0 → tell user no review items (mention topic if scoped), stop.
+2. Calibrate via \`learner\`; follow \`learner.mentorStyle\`.
+3. Pick a gap from \`gaps\`:
+   - Prefer oldest \`lastAnsweredAt\` (already ordered).
+   - Ask in **different context** — not rephrased original.
+   - Remember \`id\` for step 5 UPDATE.
+4. 1 review question (same as (b) Ask — snippet, file path, calibrate).
+   GATE: asked → wait
+5. Wait for user, then teaching-cycle-reference.md (d) → (e). Pass gap's \`id\` for UPDATE:
    \`node .mentor/tools/mentor-cli.cjs record-answer '{"id":42,"userAnswer":"...","isCorrect":true}'\`
-   (The row already has \`taskId\` and \`topicId\` — e.g. \`{"topicId":3}\` — from its original INSERT, so only \`userAnswer\`/\`isCorrect\`/\`note\` change.)
-6. Refresh the gap list: \`node .mentor/tools/mentor-cli.cjs list-unresolved\` (or with \`'{"topicId":N}'\` if topic-scoped).
-7. Based on the refreshed list:
-   - \`gaps\` is empty → congratulate the user that all review items are cleared and stop.
-   - Otherwise → ask the user whether to continue or see a summary.
-     - Continue → go back to step 3 with the refreshed gaps.
-     - Summary → proceed to step 8.
-8. Show a results summary:
-   - Number of review questions answered in this session.
-   - Correct / incorrect breakdown.
+   (Row already has \`taskId\`, \`topicId\` — e.g. \`{"topicId":3}\` — from original INSERT; only \`userAnswer\`/\`isCorrect\`/\`note\` change.)
+6. Refresh: \`node .mentor/tools/mentor-cli.cjs list-unresolved\` (or \`'{"topicId":N}'\`).
+7. Based on refreshed:
+   - \`gaps\` empty → congratulate, stop.
+   - Else → ask continue or summary.
+     - Continue → back to step 3.
+     - Summary → step 8.
+8. Summary:
+   - # review questions this session.
+   - Correct/incorrect breakdown.
    - Remaining gaps from step 6.
 `;
 
@@ -393,34 +384,34 @@ description: Generate new questions across all learned topics to assess overall 
 1. Read \`.mentor/skills/shared-rules.md\`
 2. Read \`.mentor/skills/teaching-cycle-reference.md\`
 3. Run: \`node .mentor/tools/mentor-cli.cjs session-brief '{"flow":"comprehension-check"}'\`
-   - If the command returns \`{"ok": false, ...}\`, tell the user the error and STOP.
+   - \`{"ok": false, ...}\` → tell user error, STOP.
 
 ## Flow
 
-Triggered when the user asks for a comprehension check.
+User asks for comprehension check.
 
-Session-brief output fields: \`learner\`, \`allTopics\` (\`[{id, label}]\`), \`coveredConcepts\` (\`[{topicId, concept, count}]\` — concepts the learner has already answered), \`topicSummary\` (\`[{topicId, count}]\`).
+Fields: \`learner\`, \`allTopics\` (\`[{id, label}]\`), \`coveredConcepts\` (\`[{topicId, concept, count}]\`), \`topicSummary\` (\`[{topicId, count}]\`).
 
-1. Select a topic to ask about:
-   - Prioritize \`learner.weakAreas\`.
-   - Cover all topics with variety — avoid repeating the same topic consecutively.
-   - Ask **new** concepts — prefer concepts NOT listed in \`coveredConcepts\` for that topic.
-   - Frame scenarios using \`learner.interests\` when it fits naturally, and follow \`learner.mentorStyle\` for question framing and hint depth.
-2. Ask 1 question (same rules as Teaching Cycle (b) Ask — include code snippet and file path when relevant, calibrate to learner level).
-   GATE: question asked → WAIT for user
-3. WAIT for user response, then follow teaching-cycle-reference.md (d) Feedback → (e) RECORD.
-   **Comprehension-check uses \`"taskId":null\`** because questions are not tied to a specific task:
+1. Pick a topic:
+   - Prefer \`learner.weakAreas\`.
+   - Vary — don't repeat topic consecutively.
+   - **New** concepts — prefer NOT in \`coveredConcepts\` for that topic.
+   - Frame with \`learner.interests\` if natural; follow \`learner.mentorStyle\`.
+2. 1 question (same as (b) Ask — snippet, file path, calibrate).
+   GATE: asked → wait
+3. Wait for user, then teaching-cycle-reference.md (d) → (e).
+   **Comprehension-check uses \`"taskId":null\`** (not tied to task):
    \`node .mentor/tools/mentor-cli.cjs record-answer '{"taskId":null,"topicId":3,"concept":"...","question":"...","userAnswer":"...","isCorrect":true}'\`
-4. After recording, ask whether the user wants to continue or see a summary.
-   - Continue → go back to step 1.
-   - Summary → proceed to step 5.
-5. Show a results summary:
-   - Number of questions answered in this session.
-   - Correct / incorrect breakdown.
-   - Topics covered and per-topic performance.
-   - Weak areas identified or confirmed.
+4. Ask continue or summary.
+   - Continue → back to step 1.
+   - Summary → step 5.
+5. Summary:
+   - # questions this session.
+   - Correct/incorrect breakdown.
+   - Topics covered, per-topic performance.
+   - Weak areas identified/confirmed.
 
-Difference from Review: Review re-asks concepts where the learner previously answered \`isCorrect:false\`. Comprehension Check generates **new questions** across all learned topics.
+vs Review: Review re-asks \`isCorrect:false\` concepts. Comprehension Check generates **new** questions across all topics.
 `;
 
 export const IMPLEMENTATION_REVIEW_SKILL_MD = `---
@@ -434,75 +425,75 @@ description: Review the current task's implementation against requirements.
 1. Read \`.mentor/skills/shared-rules.md\`
 2. Read \`.mentor/skills/teaching-cycle-reference.md\`
 3. Run: \`node .mentor/tools/mentor-cli.cjs session-brief '{"flow":"implementation-review"}'\`
-   - If the command returns \`{"ok": false, ...}\`, tell the user the error and STOP.
-   - Output fields you will use: \`currentTask\` (\`{id, name, planId}\` or null), \`resumeContext\`.
-   - If \`currentTask\` is null → tell the user there is no active task to review and stop.
-4. Read \`.mentor/current-task.md\` — it holds the full requirements of the active task. The mentor-session flow keeps this file in sync; if it is empty or out of date, ask the user to start or resume a mentor-session first.
+   - \`{"ok": false, ...}\` → tell user error, STOP.
+   - Uses: \`currentTask\` (\`{id, name, planId}\` or null), \`resumeContext\`.
+   - \`currentTask\` null → tell user no active task to review, stop.
+4. Read \`.mentor/current-task.md\` — holds active task requirements. mentor-session keeps this in sync; if empty/stale, ask user to start/resume a mentor-session first.
 
 ## Flow
 
-Triggered when the user asks to review the current task's implementation.
+User asks to review current task's implementation.
 
-1. Identify and read the files relevant to the task requirements.
-2. Evaluate the implementation against the requirements:
-   - Does the code satisfy each requirement?
-   - Code quality, readability, and potential issues.
-   - Suggestions for improvement (if any).
-   - Calibrate the depth and granularity of feedback to \`learner.level\`.
-3. Give feedback on the implementation, following \`learner.mentorStyle\` for tone (hints vs. direct guidance).
-4. Ask 1 question about the implementation choices (same rules as Teaching Cycle (b) Ask — include code snippet and file path). Prioritize concepts in \`learner.weakAreas\` when relevant.
-   GATE: question asked → WAIT for user
-5. WAIT for user response, then follow teaching-cycle-reference.md (d) Feedback → (e) RECORD. Use \`currentTask.id\` as \`taskId\`.
-6. After recording, update progress:
+1. Identify and read files relevant to requirements.
+2. Evaluate implementation:
+   - Does code satisfy each requirement?
+   - Code quality, readability, issues.
+   - Improvement suggestions.
+   - Depth → \`learner.level\`.
+3. Give feedback following \`learner.mentorStyle\` (hints vs. direct).
+4. 1 question on implementation choices (same as (b) Ask — snippet, file path). Prefer \`learner.weakAreas\` when relevant.
+   GATE: asked → wait
+5. Wait for user, then teaching-cycle-reference.md (d) → (e). \`taskId\` = \`currentTask.id\`.
+6. After recording:
    \`\`\`bash
    node .mentor/tools/mentor-cli.cjs update-progress '{"resume_context":"..."}'
    \`\`\`
 
-Scope: **task requirements** in current-task.md, not diff or branch.
+Scope: **task requirements** in current-task.md, not diff/branch.
 `;
 
 export const CREATE_PLAN_MD = `## Plan Creation Rules
 
 ### Minimum Valid Plan
 
-- A goal (what to achieve — new app, feature, bug fix, refactor, etc.) — at least 1 sentence
-- At least 1 task with at least 1 implementation step
+- Goal (new app / feature / bug fix / refactor / etc.) — ≥ 1 sentence
+- ≥ 1 task with ≥ 1 implementation step
 
 ### Plan Setup Flow
 
-Triggered when no active plan exists in the DB, or when all tasks in the current plan are complete (see All-Tasks-Complete Detection below).
+Triggered when no active plan exists, or all tasks in current plan complete (see All-Tasks-Complete Detection).
 
-1. Ask the user what they want to build or accomplish. Mention that if they have an existing plan, spec, or notes, they can share the file path or content for reference.
-2. If the user provides a file path → read it; if file is unreadable or has no text content → treat as "no structure" and proceed from conversation. If no file provided → infer from conversation.
-3. Propose goal + tasks (each with bullet steps) → ask user to confirm (revise until confirmed).
-4. On confirmation → write a new plan markdown file at \`.mentor/plan/<YYYY-MM-DD-slug>.md\`.
-   - Create the \`.mentor/plan/\` directory if it does not exist.
-   - \`YYYY-MM-DD\` is today's date; \`slug\` is a short lowercase kebab-case description of the goal.
-   - **Never overwrite** an existing file — if the computed filename already exists, append a counter (e.g. \`-2\`, \`-3\`) or a short timestamp suffix before \`.md\`.
-5. Register the plan and tasks via CLI in order:
+1. Ask what to build/accomplish. Mention existing plan/spec/notes can be shared.
+2. User gives file path → read it; unreadable/empty → treat as "no structure", infer from conversation. No file → infer from conversation.
+3. Propose goal + tasks (bullet steps) → confirm (revise until confirmed).
+4. On confirmation → write \`.mentor/plan/<YYYY-MM-DD-slug>.md\`.
+   - Create \`.mentor/plan/\` if missing.
+   - \`YYYY-MM-DD\` = today; \`slug\` = short kebab-case of goal.
+   - **Never overwrite** — append counter (\`-2\`, \`-3\`) or timestamp on collision.
+5. Register via CLI in order:
    \`\`\`bash
    node .mentor/tools/mentor-cli.cjs add-plan '{"name":"<plan-name>","filePath":".mentor/plan/<dated-slug>.md"}'
    \`\`\`
-   Capture the returned \`id\`. Then for each task, in order:
+   Capture returned \`id\`. Then for each task:
    \`\`\`bash
    node .mentor/tools/mentor-cli.cjs add-task '{"planId":<id>,"name":"<task-name>"}'
    \`\`\`
-6. Ask the user which status to assign the new plan. Offer three choices:
-   - **active** — start working on it right away:
+6. Ask which status. Three choices:
+   - **active** — start now:
      \`\`\`bash
      node .mentor/tools/mentor-cli.cjs activate-plan '{"id":<id>}'
      \`\`\`
-   - **queued** — schedule it; it will auto-activate when the current active plan completes. Leave it — proceed to session without activating.
-   - **backlog** — register now, work on it later (timing undecided). This is the **default**. Leave it — proceed to session without activating.
-7. Tell the user the plan file has been created at \`.mentor/plan/<dated-slug>.md\` and registered. Mention that the active plan can always be changed from the Plan Panel.
+   - **queued** — auto-activates when current active plan completes. Leave it.
+   - **backlog** — register, work later. **Default**. Leave it.
+7. Tell user plan created at \`.mentor/plan/<dated-slug>.md\` and registered. Mention active plan changeable from Plan Panel.
 
-If any CLI call fails → tell the user the error and suggest retrying or checking the CLI output.
+CLI fails → tell user the error, suggest retry or checking output.
 
 ### All-Tasks-Complete Detection
 
-Call \`node .mentor/tools/mentor-cli.cjs list-plans '{}'\` and check the returned task statuses from \`session-brief\`. Each plan in the response includes a \`taskCount\` field (count of non-\`completed\`/non-\`skipped\` tasks); \`removed\` and \`completed\` plans are excluded by default (pass \`includeCompleted:true\` or \`includeRemoved:true\` to include them). If the active plan has no tasks with status \`queued\` or \`active\` (i.e. all tasks are \`completed\` or \`skipped\`) → plan complete → trigger Plan Setup Flow.
+Run \`node .mentor/tools/mentor-cli.cjs list-plans '{}'\`. Each plan has \`taskCount\` (non-\`completed\`/non-\`skipped\` tasks); \`removed\`/\`completed\` excluded (use \`includeCompleted:true\`/\`includeRemoved:true\` to include). Active plan has no \`queued\`/\`active\` tasks → plan complete → trigger Plan Setup Flow.
 
-Do **not** count \`## Task N\` headings in the markdown file to determine completion — the DB is the authoritative source.
+Do **not** count \`## Task N\` headings to determine completion — DB is authoritative.
 
 ### Recommended Plan File Format
 
@@ -518,13 +509,13 @@ What to build (new app / feature / bug fix / refactor, etc.)
 - Step 1: ...
 \`\`\`
 
-Format is flexible — a single task with 2–3 steps is valid.
+Format flexible — single task with 2-3 steps is valid.
 
 ### Notes
 
-- The markdown file is for human reference; the DB tasks (\`tasks\` table) are what the extension reads and tracks. The DB is the **sole source of truth** for plan/task state.
-- The \`mentorFiles.plan\` / \`update-config\` flow is **fully deprecated and removed**. Do not read or write \`mentorFiles.plan\`. Do not call \`update-config\` with a \`plan\` key. The Plan Panel and the DB (via CLI) are the only interfaces.
-- After CLI writes, the extension's sidebar auto-refreshes via the file watcher / broadcast bus.
+- Markdown is human reference; DB \`tasks\` table is what extension reads/tracks. DB is **sole source of truth**.
+- \`mentorFiles.plan\` / \`update-config\` flow is **fully deprecated and removed**. Do not read/write \`mentorFiles.plan\`. Do not call \`update-config\` with a \`plan\` key. Plan Panel + DB via CLI only.
+- After CLI writes, sidebar auto-refreshes via file watcher / broadcast bus.
 `;
 
 export const CREATE_SPEC_MD = `## Spec Creation Rules
@@ -537,28 +528,28 @@ export const CREATE_SPEC_MD = `## Spec Creation Rules
 
 ### Default Location
 
-When the AI creates a new spec file, write it to \`.mentor/spec/<slug>.md\` (create the \`.mentor/spec/\` directory if it does not exist). Use a short kebab-case slug derived from the project name or feature (e.g., \`.mentor/spec/todo-app.md\`). On name collision, append a counter or timestamp — never overwrite an existing file.
+AI creates new spec → \`.mentor/spec/<slug>.md\` (create dir if missing). Short kebab-case slug from project/feature (e.g. \`.mentor/spec/todo-app.md\`). Name collision → append counter/timestamp, never overwrite.
 
-\`mentorFiles.spec\` may still point to **any path** (e.g., an existing \`docs/\` file, a superpowers spec, or any arbitrary markdown). The \`.mentor/spec/\` convention only applies when the AI is creating a new spec from scratch; users remain free to point \`mentorFiles.spec\` anywhere.
+\`mentorFiles.spec\` may point **anywhere** (e.g. \`docs/\` file, superpowers spec, arbitrary md). \`.mentor/spec/\` convention only applies when AI creates new spec; users can point it anywhere.
 
 ### Spec Setup Flow
 
-1. Ask the user what the project is about; ask follow-up questions for missing info.
-2. Create the spec file at \`.mentor/spec/<slug>.md\` (default).
-3. Tell the user that the spec file has been created at \`<path>\`, and ask if they want to set it as the active spec. Mention that this can always be changed from Settings.
-   - If user says no → leave \`mentorFiles.spec\` unchanged.
+1. Ask what project is about; follow-up for missing info.
+2. Create spec at \`.mentor/spec/<slug>.md\` (default).
+3. Tell user spec created at \`<path>\`. Ask if to set as active spec. Mention changeable from Settings.
+   - No → leave \`mentorFiles.spec\` unchanged.
 4. On OK:
    \`\`\`bash
    node .mentor/tools/mentor-cli.cjs update-config '{"mentorFiles":{"spec":"<path>"}}'
    \`\`\`
-   If write fails → tell the user to set it manually in Settings.
+   Write fails → tell user to set manually in Settings.
 
 ### AI Updating \`.mentor/config.json\`
 
-- Always ask permission before writing.
-- Always mention that this can be changed anytime from Settings.
-- Use the CLI: \`node .mentor/tools/mentor-cli.cjs update-config '{"mentorFiles":{"spec":"<path>"}}'\`
-- The extension's fileWatcher auto-reloads.
+- Ask permission before writing.
+- Mention changeable from Settings.
+- CLI: \`node .mentor/tools/mentor-cli.cjs update-config '{"mentorFiles":{"spec":"<path>"}}'\`
+- fileWatcher auto-reloads.
 `;
 
 export const INTAKE_SKILL_MD = `---
@@ -571,31 +562,31 @@ description: Use when learner_profile has not been set (learner.lastUpdated is n
 ## NEVER
 
 - Ask more than 1 question at a time during Initial Intake Flow
-- Proceed to session work before writing learner_profile via mentor-cli update-profile
+- Proceed to session work before writing learner_profile via \`update-profile\`
 
 ## Entry
 
-Obtain \`learner.lastUpdated\`:
-- If the caller (e.g., \`mentor-session\`) already ran \`session-brief\` and passed the result, use \`learner\` from that output.
-- Otherwise (standalone entry via \`[flow:intake]\`), run:
+Get \`learner.lastUpdated\`:
+- Caller passed \`session-brief\` result → use that.
+- Standalone (\`[flow:intake]\`):
   \`\`\`bash
   node .mentor/tools/mentor-cli.cjs session-brief '{"flow":"mentor-session"}'
   \`\`\`
-  and read \`learner\` from the response.
+  Read \`learner\`.
 
-Branch on \`learner.lastUpdated\`:
-- null → run \`## Initial Intake Flow\` below
-- set → run \`## Update Flow\` below
+Branch:
+- null → \`## Initial Intake Flow\`
+- set → \`## Update Flow\`
 
-If at any point during Update Flow the user asks to start over (e.g. "start over", "最初から", "restart from scratch"), jump to \`## Initial Intake Flow\`.
+During Update Flow, user asks to start over ("start over", "最初から", etc.) → jump to \`## Initial Intake Flow\`.
 
-All user-facing prose in this flow (table headers, prompts, confirmations, cancellation messages) MUST be rendered in the user's \`locale\` per the Language Rule. The English strings below are templates — translate them.
+All user-facing prose (tables, prompts, confirmations, cancellations) → user's \`locale\`. English below = templates, translate.
 
 ## Update Flow
 
 ### Step 1: Show current profile
 
-Render the 5 fields from session-brief's \`learner\` as a Markdown table. Keep field keys in English (DB / CLI contract); translate the header row and any surrounding prose to the user's \`locale\`.
+Render 5 fields from \`learner\` as markdown table. Keep field keys English (DB/CLI contract); translate header + surrounding prose to \`locale\`.
 
 | Field | Current value |
 |-------|---------------|
@@ -605,73 +596,73 @@ Render the 5 fields from session-brief's \`learner\` as a Markdown table. Keep f
 | weak_areas | <learner.weakAreas joined by ", ", or "none" if empty> |
 | mentor_style | <learner.mentorStyle> |
 
-Below the table, ask the user to describe what they want to change (example instructions: "set level to intermediate", "add Rust to interests"). Tell them they can type "start over" to redo the full intake.
+Below table, ask user to describe changes (e.g. "set level to intermediate", "add Rust to interests"). Mention "start over" option.
 
 ### Step 2: Wait for input
 
-Do NOT proceed until the user responds.
+Do NOT proceed until user responds.
 
-- Input is "start over" or a clear equivalent (any language) → jump to \`## Initial Intake Flow\`.
-- Otherwise → Step 3.
+- "start over" or equivalent (any language) → \`## Initial Intake Flow\`.
+- Else → Step 3.
 
 ### Step 3: Interpret and show diff
 
-Interpret the user's free-text instruction and build a partial update object containing only the fields that change. Array fields (\`interests\`, \`weak_areas\`) must be sent as the full replacement array — the CLI replaces whole arrays, not individual elements.
+Build partial update with only changed fields. Arrays (\`interests\`, \`weak_areas\`) = full replacement (CLI replaces whole arrays).
 
-Show a diff table containing ONLY the changed fields (translate the header row to the user's \`locale\`):
+Diff table (only changed; translate header to \`locale\`):
 
 | Field | Before | After |
 |-------|--------|-------|
 | <field> | <before> | <after> |
 
-Then ask the user to confirm saving, and invite them to rewrite the instruction if they want corrections.
+Ask to confirm, invite corrections.
 
-**Ambiguity guard.** If the instruction is ambiguous (e.g. "make it a bit harder"), ask exactly one clarifying question pinning down which field changes, then return to Step 3.
+**Ambiguity guard**: ambiguous ("a bit harder") → 1 clarifying question, then Step 3.
 
-**Add vs replace for arrays.** "add Rust" implies append to the existing array. "only Rust" implies full replace. If unclear, ask.
+**Add vs replace**: "add Rust" → append. "only Rust" → full replace. Unclear → ask.
 
 ### Step 4: Handle confirmation
 
-- User confirms → run, with only the changed fields (arrays as full new arrays):
+- Confirm → run, only changed fields (arrays as full new arrays):
   \`\`\`bash
   node .mentor/tools/mentor-cli.cjs update-profile '{"level":"intermediate","interests":["Python","Web","Rust"]}'
   \`\`\`
-  Then tell the user the profile was updated, re-render the full table from Step 1 with the new values, and return control to the caller.
-- User requests corrections (e.g. "keep level as beginner") → recompute the diff, re-run Step 3.
-- User cancels (e.g. "never mind, cancel") → do not call the CLI; tell the user the update was cancelled; return control to the caller.
-- User asks to start over → jump to \`## Initial Intake Flow\`.
-- CLI returns \`{"ok": false, ...}\` → surface the \`detail\` to the user and suggest retrying.
+  Tell user updated, re-render Step 1 table, return to caller.
+- Corrections ("keep level as beginner") → recompute diff, re-run Step 3.
+- Cancel ("never mind") → no CLI call; tell user cancelled; return to caller.
+- Start over → \`## Initial Intake Flow\`.
+- CLI \`{"ok": false, ...}\` → surface \`detail\`, suggest retry.
 
 ## Initial Intake Flow
 
-Ask each question one at a time. Wait for the user's full answer before proceeding to the next.
+Ask 1 at a time. Wait for full answer before next.
 
 ### Question 1: Experience
-Ask about their programming experience: how long they've been coding, which languages they've used, and what they've built.
+Programming experience: how long, which languages, what they've built.
 
 ### Question 2: Self-assessed Level
-Ask them to self-assess their current level. Present three choices with brief descriptions:
-- **beginner** — still learning fundamentals
-- **intermediate** — can write code but deepening understanding
+Three choices:
+- **beginner** — learning fundamentals
+- **intermediate** — writes code, deepening understanding
 - **advanced** — confident in design and optimization
 
 ### Question 3: Interests
-Ask what fields, technologies, or project ideas interest them — things they want to build or explore.
+Fields / technologies / projects — things to build or explore.
 
 ### Question 4: Weak Areas
-Ask if there are any programming concepts or areas they find difficult. Make it clear that having none is perfectly fine.
+Difficult programming concepts/areas. None is fine.
 
 ### Question 5: Mentor Style
-Ask how they want the mentor to interact with them. Offer examples such as: hints only, collaborative problem-solving, or fast-paced guided instruction.
+How mentor should interact. Examples: hints only, collaborative, fast-paced guided.
 
 ## After All 5 Answers
 
-Write the learner profile:
+Write profile:
 \`\`\`bash
 node .mentor/tools/mentor-cli.cjs update-profile '{"experience":"<Q1>","level":"<beginner|intermediate|advanced from Q2>","interests":["<parsed from Q3>"],"weak_areas":["<parsed from Q4, empty array if none>"],"mentor_style":"<Q5>"}'
 \`\`\`
 
-Then tell the user that their profile has been saved and the session will now begin. Return control to the caller to continue from the relevantGaps check.
+Tell user profile saved, session begins. Return to caller to continue from relevantGaps check.
 `;
 
 export const CURRENT_TASK_MD = `# Current Task
