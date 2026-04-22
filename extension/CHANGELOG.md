@@ -2,6 +2,19 @@
 
 All notable changes to "Mentor Studio Code" will be documented in this file.
 
+## [0.6.5] - 2026-04-23
+
+### Added
+
+- New `[flow:intake]` route in `MENTOR_RULES.md`. The Settings → Profile button now copies `[flow:intake] プロフィールを更新してください。` instead of referencing the skill file directly, giving the AI a flow-routed entry point and eliminating the need to reverse-engineer `mentor-cli session-brief` arguments on standalone invocation.
+- Mid-cycle interruption handling in `mentor-session`: when a Teaching Cycle is interrupted before `(i) RECORD` (user pauses, switches topic, or ends the session), the AI now calls `update-progress` with a one-line hint — step number, cycle gate, and what is outstanding — before handing control away, so the next session can resume accurately.
+- Session Start now reconciles `resume_context` against the workspace: when `resume_context` names specific files/symbols, the AI skims them to verify state; if code is already ahead of the recorded task state, it summarizes what is done and asks permission to update task status, `.mentor/current-task.md`, and `resume_context` before proceeding.
+
+### Changed
+
+- `intake` skill now fetches its own `session-brief` when invoked standalone via `[flow:intake]`. When invoked from `mentor-session`, it still reuses the caller's `session-brief` output as before — no duplicate CLI calls.
+- Skill templates (`MENTOR_RULES.md`, `shared-rules.md`, `teaching-cycle-reference.md`, all `SKILL.md` files, `plan-health.md`, `CREATE_PLAN.md`, `CREATE_SPEC.md`) significantly compressed for token efficiency while preserving semantics. All existing gates, blocking rules, and CLI contracts are unchanged.
+
 ## [0.6.4] - 2026-04-22
 
 ### Added

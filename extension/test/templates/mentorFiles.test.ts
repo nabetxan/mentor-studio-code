@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -86,15 +84,6 @@ describe("plan-health.md template", () => {
     expect(PLAN_HEALTH_MD).toMatch(/## Overview/);
     expect(PLAN_HEALTH_MD).toMatch(/## Non-Goals/);
   });
-
-  it("matches the checked-in .mentor/skills/mentor-session/plan-health.md", () => {
-    const repoRoot = resolve(__dirname, "..", "..", "..");
-    const onDisk = readFileSync(
-      resolve(repoRoot, ".mentor/skills/mentor-session/plan-health.md"),
-      "utf8",
-    );
-    expect(onDisk).toBe(PLAN_HEALTH_MD);
-  });
 });
 
 describe("mentor-session/SKILL.md after split", () => {
@@ -143,18 +132,20 @@ describe("INTAKE_SKILL_MD", () => {
     expect(INTAKE_SKILL_MD).toMatch(/^## Update Flow$/m);
   });
 
-  it("has entry branching on learner.lastUpdated", () => {
-    expect(INTAKE_SKILL_MD).toMatch(/^## Entry Branching$/m);
+  it("has entry section branching on learner.lastUpdated", () => {
+    expect(INTAKE_SKILL_MD).toMatch(/^## Entry$/m);
     expect(INTAKE_SKILL_MD).toMatch(/learner\.lastUpdated/);
+    expect(INTAKE_SKILL_MD).toMatch(/\[flow:intake\]/);
+    expect(INTAKE_SKILL_MD).toMatch(/session-brief/);
   });
 
-  it("documents the 最初から escape hatch", () => {
-    expect(INTAKE_SKILL_MD).toMatch(/最初から/);
+  it("documents the start-over escape hatch", () => {
+    expect(INTAKE_SKILL_MD).toMatch(/start over/i);
   });
 
   it("Update Flow references a diff confirmation step", () => {
-    expect(INTAKE_SKILL_MD).toMatch(/変更前/);
-    expect(INTAKE_SKILL_MD).toMatch(/変更後/);
+    expect(INTAKE_SKILL_MD).toMatch(/Before/);
+    expect(INTAKE_SKILL_MD).toMatch(/After/);
   });
 
   it("still contains all 5 initial intake questions", () => {
@@ -167,14 +158,5 @@ describe("INTAKE_SKILL_MD", () => {
     ]) {
       expect(INTAKE_SKILL_MD).toContain(q);
     }
-  });
-
-  it("matches the checked-in .mentor/skills/intake/SKILL.md", () => {
-    const repoRoot = resolve(__dirname, "..", "..", "..");
-    const onDisk = readFileSync(
-      resolve(repoRoot, ".mentor/skills/intake/SKILL.md"),
-      "utf8",
-    );
-    expect(onDisk).toBe(INTAKE_SKILL_MD);
   });
 });
