@@ -689,6 +689,7 @@ body {
   color: var(--vscode-button-secondaryForeground);
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
   border: 1px solid var(--vscode-button-secondaryForeground, #ccc);
 }
@@ -703,6 +704,12 @@ body {
   cursor: pointer;
   font-family: inherit;
   white-space: nowrap;
+}
+
+.data-location-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
 }
 
 .file-path-link {
@@ -1171,13 +1178,32 @@ body {
 .uninstall-details {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 16px;
   margin-top: 4px;
+}
+
+.uninstall-step {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.uninstall-step-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.uninstall-step-description {
+  font-size: 0.8rem;
+  color: var(--vscode-descriptionForeground);
+  margin: 0 0 4px 0;
+  line-height: 1.4;
 }
 
 .uninstall-check {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
   font-size: 0.85rem;
   cursor: pointer;
@@ -1186,6 +1212,15 @@ body {
 .uninstall-check input[type="checkbox"] {
   accent-color: var(--vscode-focusBorder, #007fd4);
   cursor: pointer;
+}
+
+.uninstall-check-path {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.75rem;
+  font-family: var(--vscode-editor-font-family, monospace);
+  color: var(--vscode-descriptionForeground, #999);
+  word-break: break-all;
 }
 
 .uninstall-warning {

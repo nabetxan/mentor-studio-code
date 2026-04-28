@@ -1,9 +1,56 @@
 import type { CleanupOptions } from "@mentor-studio/shared";
-import { promises as fsp } from "node:fs";
-import { join } from "node:path";
+import { existsSync, promises as fsp } from "node:fs";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import * as vscode from "vscode";
 import { findMentorRef, removeMentorRef } from "../services/claudeMd";
 import { parseConfig } from "../services/dataParser";
+import {
+  getExternalDataDir,
+  getExternalDataDirForWorkspace,
+  InvalidWorkspaceIdError,
+} from "../utils/dataPath";
+import { resolveLocale } from "../utils/locale";
+import { isValidWorkspaceId } from "../utils/workspaceId";
+
+function isWithinRoot(target: string, root: string): boolean {
+  const rel = relative(resolve(root), resolve(target));
+  return rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel);
+}
+
+/**
+ * Recursively delete the given directory if it exists.
+ * Returns true if the directory existed and was removed, false if it was already absent.
+ *
+ * Pure helper — accepts a path, performs no platform branching. Tests can supply
+ * a tmpdir-rooted path so they don't pollute the user's real data dir.
+ */
+export async function wipeExternalDataDirAt(
+  dir: string,
+  allowedRoot: string,
+): Promise<boolean> {
+  if (!isWithinRoot(dir, allowedRoot)) {
+    throw new Error(`Refusing to delete outside managed data root: ${dir}`);
+  }
+  if (!existsSync(dir)) return false;
+  await fsp.rm(dir, { recursive: true, force: true });
+  return true;
+}
+
+/**
+ * Compute the external data directory for the given workspaceId and recursively
+ * delete it. Wrapper around `wipeExternalDataDirAt` that resolves the platform-
+ * specific path.
+ */
+export async function wipeExternalDataDirForWorkspace(
+  workspaceId: string,
+): Promise<boolean> {
+  if (!isValidWorkspaceId(workspaceId)) {
+    throw new InvalidWorkspaceIdError(workspaceId);
+  }
+  const root = getExternalDataDir();
+  const dir = getExternalDataDirForWorkspace(workspaceId);
+  return wipeExternalDataDirAt(dir, root);
+}
 
 export async function cleanupRuntimeArtifacts(
   mentorDirPath: string,
@@ -31,27 +78,13 @@ export async function cleanupRuntimeArtifacts(
   }
 }
 
-async function readIsJaFromConfig(wsRoot: vscode.Uri): Promise<boolean> {
-  try {
-    const configUri = vscode.Uri.joinPath(wsRoot, ".mentor", "config.json");
-    const raw = await vscode.workspace.fs.readFile(configUri);
-    const parsed = parseConfig(Buffer.from(raw).toString());
-    if (parsed?.locale) {
-      return parsed.locale !== "en";
-    }
-  } catch {
-    // config not readable — use system locale
-  }
-  return vscode.env.language.startsWith("ja");
-}
-
 export async function runRemoveMentor(
   outputChannel: vscode.OutputChannel,
 ): Promise<void> {
   const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
 
   const isJa = wsRoot
-    ? await readIsJaFromConfig(wsRoot)
+    ? (await resolveLocale(wsRoot.fsPath)) === "ja"
     : vscode.env.language.startsWith("ja");
 
   if (!wsRoot) {
@@ -151,31 +184,67 @@ export async function runCleanupMentor(
     return;
   }
 
-  const isJa = await readIsJaFromConfig(wsRoot);
+  const isJa = (await resolveLocale(wsRoot.fsPath)) === "ja";
 
-  // Confirm before destructive .mentor folder deletion
-  if (options.mentorFolder) {
+  // Confirm before destructive deletion. The DB now lives outside .mentor, so
+  // only the external-DB checkbox actually wipes learning history.
+  if (options.mentorFolder || options.wipeExternalDb) {
     const confirmLabel = isJa ? "削除する" : "Delete";
+    let promptMessage: string;
+    if (options.wipeExternalDb) {
+      promptMessage = isJa
+        ? "削除すると復元できません。学習データが失われます。よろしいですか？"
+        : "This cannot be undone. Your learning history will be lost. Continue?";
+    } else {
+      promptMessage = isJa
+        ? "削除すると復元できません。よろしいですか？"
+        : "This cannot be undone. Continue?";
+    }
     const choice = await vscode.window.showWarningMessage(
-      isJa
-        ? ".mentor フォルダを削除すると学習履歴を含むすべてのデータが消去されます。よろしいですか？"
-        : "Deleting the .mentor folder will erase all data including learning history. Continue?",
+      promptMessage,
       { modal: true },
       confirmLabel,
     );
     if (choice !== confirmLabel) {
       postResult(
-        { mentorFolder: false, profile: false, claudeMdRef: false },
+        {
+          mentorFolder: false,
+          profile: false,
+          claudeMdRef: false,
+          wipeExternalDb: false,
+        },
         isJa,
       );
       return;
     }
   }
 
+  // Read workspaceId from config.json BEFORE the .mentor folder is potentially
+  // deleted — needed later to locate the external data dir.
+  let cachedWorkspaceId: string | null = null;
+  try {
+    const configUri = vscode.Uri.joinPath(wsRoot, ".mentor", "config.json");
+    const raw = await vscode.workspace.fs.readFile(configUri);
+    const obj = JSON.parse(Buffer.from(raw).toString()) as Record<
+      string,
+      unknown
+    >;
+    if (
+      typeof obj.workspaceId === "string" &&
+      obj.workspaceId.length > 0 &&
+      isValidWorkspaceId(obj.workspaceId)
+    ) {
+      cachedWorkspaceId = obj.workspaceId;
+    }
+  } catch {
+    // config not readable — leave cachedWorkspaceId null
+  }
+
   const deleted: CleanupOptions = {
     mentorFolder: false,
     profile: false,
     claudeMdRef: false,
+    wipeExternalDb: false,
   };
 
   outputChannel.appendLine("=== Cleanup Mentor ===");
@@ -223,6 +292,32 @@ export async function runCleanupMentor(
       hadRef
         ? "Removed mentor reference from CLAUDE.md"
         : "No mentor reference found in CLAUDE.md",
+    );
+  }
+
+  // 4. Wipe external workspace data dir (DB lives outside the workspace)
+  if (options.wipeExternalDb && cachedWorkspaceId) {
+    try {
+      const removed =
+        await wipeExternalDataDirForWorkspace(cachedWorkspaceId);
+      if (removed) {
+        deleted.wipeExternalDb = true;
+        outputChannel.appendLine(
+          `Removed external DB dir for workspaceId: ${cachedWorkspaceId}`,
+        );
+      } else {
+        outputChannel.appendLine(
+          `External DB dir not found for workspaceId: ${cachedWorkspaceId}`,
+        );
+      }
+    } catch (err) {
+      outputChannel.appendLine(
+        `Failed to remove external DB dir: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  } else if (options.wipeExternalDb) {
+    outputChannel.appendLine(
+      "Skipped external DB deletion: config.json has no valid workspaceId",
     );
   }
 

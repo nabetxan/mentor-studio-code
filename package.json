@@ -12,6 +12,10 @@
   },
   "scripts": {
     "build": "npm run build --workspaces",
+    "package:extension": "npm run build && npm --prefix extension run package:vsix",
     "test": "npm run test --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^3.9.1"
   }
 }

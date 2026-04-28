@@ -1,19 +1,54 @@
-import { mkdirSync, mkdtempSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
-import { resolvePaths } from "../../src/cli/context";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+  resolvePaths,
+  WorkspaceNotInitializedError,
+} from "../../src/cli/context";
 
 describe("resolvePaths", () => {
-  it("derives .mentor paths from tools dir", () => {
-    const mentorRoot = mkdtempSync(join(tmpdir(), "msc-ctx-"));
-    const toolsDir = join(mentorRoot, "tools");
-    mkdirSync(toolsDir);
-    const p = resolvePaths(toolsDir);
-    expect(p.mentorRoot).toBe(mentorRoot);
-    expect(p.dbPath).toBe(join(mentorRoot, "data.db"));
-    expect(p.configPath).toBe(join(mentorRoot, "config.json"));
-    expect(p).not.toHaveProperty("wasmPath");
-    expect(p).not.toHaveProperty("progressPath");
+  let workspaceRoot: string;
+  let mentorRoot: string;
+  let toolsDir: string;
+
+  beforeEach(() => {
+    workspaceRoot = mkdtempSync(join(tmpdir(), "ctx-"));
+    mentorRoot = join(workspaceRoot, ".mentor");
+    toolsDir = join(mentorRoot, "tools");
+    mkdirSync(toolsDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    rmSync(workspaceRoot, { recursive: true, force: true });
+  });
+
+  it("resolves dbPath to external location when workspaceId is in config.json", () => {
+    writeFileSync(
+      join(mentorRoot, "config.json"),
+      JSON.stringify({ workspaceId: "uuid-test", locale: "ja" }, null, 2),
+    );
+    const paths = resolvePaths(toolsDir);
+    expect(paths.mentorRoot).toBe(mentorRoot);
+    expect(paths.configPath).toBe(join(mentorRoot, "config.json"));
+    expect(paths.dbPath).toContain("uuid-test");
+    expect(paths.dbPath.endsWith("data.db")).toBe(true);
+  });
+
+  it("throws WorkspaceNotInitializedError when config.json is missing", () => {
+    expect(() => resolvePaths(toolsDir)).toThrow(WorkspaceNotInitializedError);
+  });
+
+  it("throws WorkspaceNotInitializedError when config.json has no workspaceId", () => {
+    writeFileSync(
+      join(mentorRoot, "config.json"),
+      JSON.stringify({ locale: "ja" }, null, 2),
+    );
+    expect(() => resolvePaths(toolsDir)).toThrow(WorkspaceNotInitializedError);
+  });
+
+  it("throws WorkspaceNotInitializedError when config.json is malformed JSON", () => {
+    writeFileSync(join(mentorRoot, "config.json"), "{ not valid json");
+    expect(() => resolvePaths(toolsDir)).toThrow(WorkspaceNotInitializedError);
   });
 });

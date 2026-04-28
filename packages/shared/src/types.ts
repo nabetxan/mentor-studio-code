@@ -118,12 +118,22 @@ export interface CleanupOptions {
   mentorFolder: boolean;
   profile: boolean;
   claudeMdRef: boolean;
+  wipeExternalDb: boolean;
 }
 
 export type ExtensionMessage =
   | { type: "update"; data: DashboardData }
-  | { type: "config"; data: MentorStudioConfig }
+  | {
+      type: "config";
+      data: MentorStudioConfig;
+      /** Runtime DB location info — populated once Setup has run (workspaceId known). */
+      dataLocation?: {
+        dbPath: string; // /Users/.../MentorStudioCode/<uuid>/data.db
+        dirPath: string; // parent directory (what we open in Finder)
+      };
+    }
   | { type: "noConfig"; locale?: Locale }
+  | { type: "needsMigration"; locale?: Locale }
   | { type: "addTopicResult"; ok: boolean; key?: string; error?: string }
   | { type: "deleteTopicsResult"; results: DeleteTopicResultEntry[] }
   | { type: "activatePlanResult"; id: number; ok: boolean; error?: string }
@@ -157,4 +167,7 @@ export type WebviewMessage =
   | { type: "deactivatePlan"; id: number }
   | { type: "openPlanPanel" }
   | { type: "pauseActivePlan"; id: number }
-  | { type: "changeActivePlanFile" };
+  | { type: "changeActivePlanFile" }
+  | { type: "openDataLocation"; path: string }
+  | { type: "exportData" }
+  | { type: "openExtensionsView" };

@@ -9,7 +9,10 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { cleanupRuntimeArtifacts } from "../src/commands/removeMentor";
+import {
+  cleanupRuntimeArtifacts,
+  wipeExternalDataDirAt,
+} from "../src/commands/removeMentor";
 
 function makeMentor(): string {
   const root = mkdtempSync(join(tmpdir(), "msc-cleanup-"));
@@ -76,5 +79,56 @@ describe("cleanupRuntimeArtifacts", () => {
     const mentor = makeMentor();
     await expect(cleanupRuntimeArtifacts(mentor)).resolves.toBeUndefined();
     await expect(cleanupRuntimeArtifacts(mentor)).resolves.toBeUndefined();
+  });
+});
+
+describe("wipeExternalDataDirAt", () => {
+  it("returns true and removes the directory when it exists", async () => {
+    const root = mkdtempSync(join(tmpdir(), "msc-wipe-"));
+    const dir = join(root, "ws-uuid");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "data.db"), "db");
+
+    const result = await wipeExternalDataDirAt(dir, root);
+
+    expect(result).toBe(true);
+    expect(existsSync(dir)).toBe(false);
+  });
+
+  it("returns false and is a no-op when the directory doesn't exist", async () => {
+    const root = mkdtempSync(join(tmpdir(), "msc-wipe-"));
+    const dir = join(root, "missing-ws-uuid");
+
+    const result = await wipeExternalDataDirAt(dir, root);
+
+    expect(result).toBe(false);
+    expect(existsSync(dir)).toBe(false);
+  });
+
+  it("recursively deletes nested files and subdirectories", async () => {
+    const root = mkdtempSync(join(tmpdir(), "msc-wipe-"));
+    const dir = join(root, "ws-uuid");
+    const sub = join(dir, "nested", "deeper");
+    mkdirSync(sub, { recursive: true });
+    writeFileSync(join(dir, "data.db"), "db");
+    writeFileSync(join(dir, "nested", "owner.json"), "{}");
+    writeFileSync(join(sub, "leaf.txt"), "leaf");
+
+    const result = await wipeExternalDataDirAt(dir, root);
+
+    expect(result).toBe(true);
+    expect(existsSync(dir)).toBe(false);
+    expect(existsSync(join(dir, "data.db"))).toBe(false);
+    expect(existsSync(sub)).toBe(false);
+  });
+
+  it("refuses to delete a directory outside the allowed root", async () => {
+    const root = mkdtempSync(join(tmpdir(), "msc-wipe-root-"));
+    const outside = mkdtempSync(join(tmpdir(), "msc-wipe-outside-"));
+
+    await expect(wipeExternalDataDirAt(outside, root)).rejects.toThrow(
+      "Refusing to delete outside managed data root",
+    );
+    expect(existsSync(outside)).toBe(true);
   });
 });

@@ -1,4 +1,6 @@
 import { existsSync } from "node:fs";
+import { mkdir } from "node:fs/promises";
+import { dirname } from "node:path";
 import { atomicWriteFile } from "./atomicWrite";
 import { acquireLock, releaseLock } from "./lock";
 import { SCHEMA_DDL, SCHEMA_VERSION } from "./schema";
@@ -49,6 +51,8 @@ export async function bootstrapDb(
         throw workErr;
       }
       const bytes = Buffer.from(db.export());
+      // External path may have a not-yet-created `<workspaceId>/` parent.
+      await mkdir(dirname(dbPath), { recursive: true });
       await atomicWriteFile(dbPath, bytes);
     } finally {
       db.close();

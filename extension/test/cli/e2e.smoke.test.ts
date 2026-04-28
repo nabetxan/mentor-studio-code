@@ -1,19 +1,23 @@
 import { execFileSync } from "node:child_process";
-import { cpSync, mkdirSync, mkdtempSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 import { beforeAll, describe, expect, it } from "vitest";
 
 import { bootstrapDb } from "../../src/db";
+import { getExternalDbPathFor } from "../../src/utils/dataPath";
 import { seedPlans, seedTasks } from "./helpers";
 
 const DIST = join(__dirname, "..", "..", "dist");
 const CLI = join(DIST, "mentor-cli.cjs");
+const WORKSPACE_ID = "uuid-smoke-test";
 
 describe("mentor-cli end-to-end (bundled)", () => {
   let mentorRoot: string;
   let toolsDir: string;
+  let fakeHome: string;
+  let subprocessEnv: NodeJS.ProcessEnv;
   let topicId: number;
   let taskId: number;
 
@@ -22,18 +26,52 @@ describe("mentor-cli end-to-end (bundled)", () => {
       argJson !== undefined
         ? [join(toolsDir, "mentor-cli.cjs"), cmd, argJson]
         : [join(toolsDir, "mentor-cli.cjs"), cmd];
-    const out = execFileSync("node", args, { encoding: "utf-8" });
+    const out = execFileSync("node", args, {
+      encoding: "utf-8",
+      env: subprocessEnv,
+    });
     return JSON.parse(out.trim()) as Record<string, unknown>;
   }
 
   beforeAll(async () => {
-    mentorRoot = mkdtempSync(join(tmpdir(), "msc-e2e-"));
+    const workspaceRoot = mkdtempSync(join(tmpdir(), "msc-e2e-"));
+    mentorRoot = join(workspaceRoot, ".mentor");
     toolsDir = join(mentorRoot, "tools");
     mkdirSync(toolsDir, { recursive: true });
     cpSync(CLI, join(toolsDir, "mentor-cli.cjs"));
     // Intentionally do NOT copy sql-wasm.wasm into toolsDir:
     // the CLI bundle inlines the wasm, so it must run without a sibling file.
-    const dbPath = join(mentorRoot, "data.db");
+
+    // Fake HOME so the subprocess computes a sandboxed external data dir.
+    fakeHome = mkdtempSync(join(tmpdir(), "msc-e2e-home-"));
+    subprocessEnv = {
+      ...process.env,
+      HOME: fakeHome,
+      XDG_DATA_HOME: join(fakeHome, ".local", "share"),
+      // APPDATA matters for win32; harmless on other platforms.
+      APPDATA: join(fakeHome, "AppData", "Roaming"),
+    };
+
+    // Write config.json so resolvePaths() finds workspaceId.
+    writeFileSync(
+      join(mentorRoot, "config.json"),
+      JSON.stringify(
+        { workspaceId: WORKSPACE_ID, locale: "ja", workspacePath: workspaceRoot },
+        null,
+        2,
+      ),
+    );
+
+    // Compute the SAME external dbPath the subprocess will compute.
+    const dbPath = getExternalDbPathFor(
+      process.platform,
+      subprocessEnv,
+      fakeHome,
+      WORKSPACE_ID,
+    );
+    // Ensure parent dir exists before bootstrapDb (its lock acquisition needs it).
+    mkdirSync(dirname(dbPath), { recursive: true });
+
     await bootstrapDb(dbPath, {
       wasmPath: join(DIST, "sql-wasm.wasm"),
       topics: [{ label: "JS" }],
@@ -140,7 +178,7 @@ describe("mentor-cli end-to-end (bundled)", () => {
       execFileSync(
         "node",
         [join(toolsDir, "mentor-cli.cjs"), "no-such-command"],
-        { encoding: "utf-8" },
+        { encoding: "utf-8", env: subprocessEnv },
       );
     } catch (e) {
       stdout = (e as { stdout: string }).stdout;
