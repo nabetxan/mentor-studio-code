@@ -1,5 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+// SCHEMA_VERSION is the target schema version; comparing user_version < SCHEMA_VERSION
+// gates v2 migration. See db/schema.ts for why this MUST NOT be bumped for file-relocation releases.
 import { loadSqlJs, SCHEMA_VERSION } from "../db";
 
 export function shouldMigrate(mentorDir: string): boolean {

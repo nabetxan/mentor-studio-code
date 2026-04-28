@@ -30,4 +30,18 @@ describe("mentor-cli runtime", () => {
       detail: "not-a-command",
     });
   });
+
+  it("returns workspace_not_initialized when no config.json exists for a known command", () => {
+    // The CLI lives at <repo>/extension/dist/mentor-cli.cjs, so resolvePaths
+    // computes mentorRoot=<repo>/extension and configPath=<repo>/extension/config.json,
+    // which does not exist — triggering WorkspaceNotInitializedError.
+    const { code, stdout } = runCli(["list-topics"]);
+    expect(code).toBe(1);
+    const out = JSON.parse(stdout.trim()) as Record<string, unknown>;
+    expect(out).toMatchObject({
+      ok: false,
+      error: "workspace_not_initialized",
+    });
+    expect(typeof out.configPath).toBe("string");
+  });
 });

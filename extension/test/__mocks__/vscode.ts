@@ -74,6 +74,8 @@ export const window = {
     Promise.resolve(undefined),
   showOpenDialog: (..._args: unknown[]): Promise<unknown> =>
     Promise.resolve(undefined),
+  showSaveDialog: (..._args: unknown[]): Promise<unknown> =>
+    Promise.resolve(undefined),
   showTextDocument: (..._args: unknown[]): Promise<unknown> =>
     Promise.resolve(undefined),
 };

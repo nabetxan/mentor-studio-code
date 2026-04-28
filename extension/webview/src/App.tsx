@@ -18,7 +18,11 @@ export function App() {
   const [tab, setTab] = useState<Tab>("actions");
   const [data, setData] = useState<DashboardData | null>(null);
   const [config, setConfig] = useState<MentorStudioConfig | null>(null);
+  const [dataLocation, setDataLocation] = useState<
+    { dbPath: string; dirPath: string } | undefined
+  >(undefined);
   const [hasConfig, setHasConfig] = useState(true);
+  const [needsMigration, setNeedsMigration] = useState(false);
   const [locale, setLocale] = useState<Locale>("ja");
   const [enableMentor, setEnableMentor] = useState<boolean>(true);
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
@@ -58,7 +62,9 @@ export function App() {
           break;
         case "config":
           setConfig(message.data);
+          setDataLocation(message.dataLocation);
           setHasConfig(true);
+          setNeedsMigration(false);
           if (message.data.locale) {
             setLocale(message.data.locale);
           }
@@ -66,6 +72,12 @@ export function App() {
           break;
         case "noConfig":
           setHasConfig(false);
+          setNeedsMigration(false);
+          setLocale(message.locale ?? localeRef.current);
+          break;
+        case "needsMigration":
+          setHasConfig(false);
+          setNeedsMigration(true);
           setLocale(message.locale ?? localeRef.current);
           break;
         case "addTopicResult":
@@ -151,17 +163,38 @@ export function App() {
   if (!hasConfig) {
     return (
       <div className="no-config">
-        <p>
-          <code>.mentor/config.json</code> {t("app.noConfig.notFound", locale)}
-        </p>
-        <p>{t("app.noConfig.instruction", locale)}</p>
-        <button
-          className="btn-primary"
-          onClick={() => postMessage({ type: "runSetup" })}
-        >
-          {t("app.noConfig.button", locale)}
-        </button>
-        <p className="no-config-hint">{t("app.noConfig.hint", locale)}</p>
+        {needsMigration ? (
+          <>
+            <p>
+              <strong>{t("app.needsMigration.title", locale)}</strong>
+            </p>
+            <p>{t("app.needsMigration.instruction", locale)}</p>
+            <button
+              className="btn-primary"
+              onClick={() => postMessage({ type: "runSetup" })}
+            >
+              {t("app.needsMigration.button", locale)}
+            </button>
+            <p className="no-config-hint">
+              {t("app.needsMigration.hint", locale)}
+            </p>
+          </>
+        ) : (
+          <>
+            <p>
+              <code>.mentor/config.json</code>{" "}
+              {t("app.noConfig.notFound", locale)}
+            </p>
+            <p>{t("app.noConfig.instruction", locale)}</p>
+            <button
+              className="btn-primary"
+              onClick={() => postMessage({ type: "runSetup" })}
+            >
+              {t("app.noConfig.button", locale)}
+            </button>
+            <p className="no-config-hint">{t("app.noConfig.hint", locale)}</p>
+          </>
+        )}
       </div>
     );
   }
@@ -316,6 +349,7 @@ export function App() {
             activePlan={data?.activePlan ?? null}
             nextPlan={data?.nextPlan ?? null}
             planActionError={planActionError}
+            dataLocation={dataLocation}
           />
         )}
       </main>

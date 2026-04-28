@@ -11,6 +11,7 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 import { findMentorRef, promptAndAddMentorRef } from "../services/claudeMd";
 import { parseConfig } from "../services/dataParser";
+import { derivePaths } from "../utils/derivePaths";
 import { getNonce } from "../utils/nonce";
 import { toWorkspaceRelative } from "../utils/workspacePath";
 
@@ -19,6 +20,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
   private latestData: DashboardData | null = null;
   private latestConfig: MentorStudioConfig | null = null;
   private hasConfig = true;
+  private needsMigration = false;
   private onMergeTopic?: (fromKey: string, toKey: string) => Promise<void>;
   private onUpdateTopicLabel?: (key: string, newLabel: string) => Promise<void>;
   private onAddTopic?: (
@@ -77,13 +79,13 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.html = this.getHtml(
       webviewView.webview,
-      this.latestConfig?.locale ?? "ja",
+      this.latestConfig?.locale ?? this.detectLocale(),
     );
 
     const messageDisposable = webviewView.webview.onDidReceiveMessage(
       async (message: WebviewMessage) => {
         if (message.type === "ready") {
-          this.flushState();
+          await this.flushState();
         } else if (message.type === "copy") {
           try {
             await vscode.env.clipboard.writeText(message.text);
@@ -311,7 +313,8 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             opts === null ||
             typeof opts.mentorFolder !== "boolean" ||
             typeof opts.profile !== "boolean" ||
-            typeof opts.claudeMdRef !== "boolean"
+            typeof opts.claudeMdRef !== "boolean" ||
+            typeof opts.wipeExternalDb !== "boolean"
           ) {
             return;
           }
@@ -319,6 +322,13 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             "mentor-studio.cleanupMentor",
             opts,
           );
+        } else if (message.type === "openDataLocation") {
+          await vscode.commands.executeCommand(
+            "revealFileInOS",
+            vscode.Uri.file(message.path),
+          );
+        } else if (message.type === "openExtensionsView") {
+          await vscode.commands.executeCommand("workbench.view.extensions");
         }
       },
     );
@@ -341,15 +351,59 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     };
   }
 
-  sendConfig(config: MentorStudioConfig): void {
+  async sendConfig(config: MentorStudioConfig): Promise<void> {
     this.latestConfig = config;
     this.hasConfig = true;
-    this.postMessage({ type: "config", data: config });
+    this.needsMigration = false;
+    const dataLocation = await this.buildDataLocation();
+    this.postMessage({ type: "config", data: config, dataLocation });
+  }
+
+  private async readWorkspaceIdFromConfig(): Promise<string | null> {
+    try {
+      const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
+      if (!wsRoot) return null;
+      const configUri = vscode.Uri.joinPath(wsRoot, ".mentor", "config.json");
+      const bytes = await vscode.workspace.fs.readFile(configUri);
+      const obj = JSON.parse(Buffer.from(bytes).toString()) as Record<
+        string,
+        unknown
+      >;
+      return typeof obj.workspaceId === "string" && obj.workspaceId.length > 0
+        ? obj.workspaceId
+        : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private async buildDataLocation(): Promise<
+    { dbPath: string; dirPath: string } | undefined
+  > {
+    const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (!wsRoot) return undefined;
+    const workspaceId = await this.readWorkspaceIdFromConfig();
+    if (!workspaceId) return undefined;
+    const paths = derivePaths({ workspaceRoot: wsRoot, workspaceId });
+    return {
+      dbPath: paths.dbPath,
+      dirPath: paths.externalDataDirForWorkspace ?? paths.mentorRoot,
+    };
   }
 
   sendNoConfig(): void {
     this.hasConfig = false;
+    this.needsMigration = false;
     this.postMessage({ type: "noConfig", locale: this.detectLocale() });
+  }
+
+  sendNeedsMigration(): void {
+    this.hasConfig = false;
+    this.needsMigration = true;
+    this.postMessage({
+      type: "needsMigration",
+      locale: this.detectLocale(),
+    });
   }
 
   async showCleanupResultDialog(
@@ -374,6 +428,13 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
           : "Mentor reference in CLAUDE.md",
       );
     }
+    if (deleted.wipeExternalDb) {
+      items.push(
+        isJa
+          ? "学習履歴 DB（外部ストレージ）"
+          : "Learning history DB (external storage)",
+      );
+    }
 
     if (items.length === 0) {
       return;
@@ -381,7 +442,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
     const itemsText = items.join(isJa ? "、" : ", ");
     const message = isJa
-      ? `${itemsText}を消去しました。Mentor Studio Code を削除する場合は Extensions ビューからアンインストールしてください。`
+      ? `${itemsText}を消去しました。Mentor Studio Code を削除する場合は拡張機能ビューからアンインストールしてください。`
       : `Deleted: ${itemsText}. To remove Mentor Studio Code, uninstall it from the Extensions view.`;
     await vscode.window.showInformationMessage(message);
   }
@@ -394,13 +455,25 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     return (this.latestConfig?.locale ?? this.detectLocale()) !== "en";
   }
 
-  private flushState(): void {
+  private async flushState(): Promise<void> {
+    if (this.needsMigration) {
+      this.postMessage({
+        type: "needsMigration",
+        locale: this.detectLocale(),
+      });
+      return;
+    }
     if (!this.hasConfig) {
       this.postMessage({ type: "noConfig", locale: this.detectLocale() });
       return;
     }
     if (this.latestConfig) {
-      this.postMessage({ type: "config", data: this.latestConfig });
+      const dataLocation = await this.buildDataLocation();
+      this.postMessage({
+        type: "config",
+        data: this.latestConfig,
+        dataLocation,
+      });
     }
     if (this.latestData) {
       this.postMessage({ type: "update", data: this.latestData });
@@ -441,7 +514,8 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         Buffer.from(JSON.stringify(rawObj, null, 2) + "\n"),
       );
       this.latestConfig = parsed;
-      this.postMessage({ type: "config", data: parsed });
+      const dataLocation = await this.buildDataLocation();
+      this.postMessage({ type: "config", data: parsed, dataLocation });
     } catch {
       vscode.window.showErrorMessage(
         this.isJa
@@ -497,7 +571,12 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
       );
       // Re-send config to reset the toggle in the webview
       if (this.latestConfig) {
-        this.postMessage({ type: "config", data: this.latestConfig });
+        const dataLocation = await this.buildDataLocation();
+        this.postMessage({
+          type: "config",
+          data: this.latestConfig,
+          dataLocation,
+        });
       }
       return;
     }
@@ -527,7 +606,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     this.view?.webview.postMessage(message);
   }
 
-  private getHtml(webview: vscode.Webview, locale: Locale = "ja"): string {
+  private getHtml(webview: vscode.Webview, locale: Locale): string {
     const scriptUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this.extensionUri, "webview", "dist", "webview.js"),
     );

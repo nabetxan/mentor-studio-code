@@ -98,6 +98,20 @@ export function CloseIcon() {
   );
 }
 
+export function FolderIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      xmlns="http://www.w3.org/2000/svg"
+      fill="currentColor"
+    >
+      <path d="M14.5 3H7.71l-.85-.85L6.51 2h-5l-.5.5v11l.5.5h13l.5-.5v-10L14.5 3zM14 13H2V3h4l1 1h7v9z" />
+    </svg>
+  );
+}
+
 export function OpenPanelIcon() {
   return (
     <svg

@@ -2,7 +2,7 @@
   "name": "mentor-studio-code",
   "displayName": "Mentor Studio Code",
   "description": "Learn to code inside your own projects. Adds lesson structure, progress tracking, and weak-topic detection on top of Claude Code. Independent, unofficial project — not affiliated with Anthropic.",
-  "version": "0.6.5",
+  "version": "0.6.6",
   "icon": "images/icon.png",
   "license": "MIT",
   "publisher": "nabetxan",
@@ -105,6 +105,7 @@
   },
   "scripts": {
     "build": "node esbuild.config.mjs",
+    "package:vsix": "vsce package --no-dependencies",
     "watch": "node esbuild.config.mjs --watch",
     "test": "vitest run",
     "test:watch": "vitest",
