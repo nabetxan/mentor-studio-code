@@ -1,30 +1,21 @@
 import type { CleanupOptions } from "@mentor-studio/shared";
-import { relative } from "node:path";
 import * as vscode from "vscode";
 import { runCleanupMentor, runRemoveMentor } from "./commands/removeMentor";
 import { runSetup } from "./commands/setup";
-import { migrate } from "./migration/migrate";
-import { shouldMigrate, shouldMigrateV2 } from "./migration/shouldMigrate";
-import {
-  cleanupOrphanProgressJson,
-  migrateToV2,
-} from "./migration/v2ProfileAppState";
+import { runMigrationsForActivation } from "./migration/runAll";
+import { cleanupOrphanProgressJson } from "./migration/v2ProfileAppState";
 import { PlanPanel } from "./panels/planPanel";
 import { BroadcastBus } from "./services/broadcastBus";
 import { FileWatcherService } from "./services/fileWatcher";
+import { resolveLocale } from "./utils/locale";
 import { SidebarProvider } from "./views/sidebarProvider";
 
-let outputChannel: vscode.OutputChannel | undefined;
-
-function getOutputChannel(): vscode.OutputChannel {
-  if (!outputChannel) {
-    outputChannel = vscode.window.createOutputChannel("Mentor Studio Code");
-  }
-  return outputChannel;
-}
-
-export function activate(context: vscode.ExtensionContext): void {
+export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
+
+  const outputChannel = vscode.window.createOutputChannel("Mentor Studio Code");
+  context.subscriptions.push(outputChannel);
+  const getOutputChannel = (): vscode.OutputChannel => outputChannel;
 
   // Setup command — always available
   const setupCommand = vscode.commands.registerCommand(
@@ -68,17 +59,89 @@ export function activate(context: vscode.ExtensionContext): void {
   }
 
   const mentorPath = ".mentor";
-  const mentorDir = vscode.Uri.joinPath(workspaceRoot, mentorPath).fsPath;
-  const dbPath = vscode.Uri.joinPath(
-    workspaceRoot,
-    mentorPath,
-    "data.db",
-  ).fsPath;
   const wasmPath = vscode.Uri.joinPath(
     context.extensionUri,
     "dist",
     "sql-wasm.wasm",
   ).fsPath;
+
+  // Run migrations BEFORE computing dbPath / constructing the watcher / wiring
+  // the openPlanPanel command — v3 relocates the DB file from the legacy
+  // in-workspace path to an external per-workspaceId path, and downstream
+  // closures must capture the post-migration dbPath.
+  let migrationResult: Awaited<ReturnType<typeof runMigrationsForActivation>>;
+  try {
+    migrationResult = await runMigrationsForActivation({
+      workspaceRoot: workspaceRoot.fsPath,
+      wasmPath,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    await context.globalState.update("mentor.migrationError", {
+      timestamp: new Date().toISOString(),
+      message,
+    });
+    // Locale isn't reliably known at this point (config.json may exist but
+    // the watcher hasn't loaded it yet). Best-effort detect via vscode.env.language.
+    const isJa = vscode.env.language.startsWith("ja");
+    void vscode.window.showErrorMessage(
+      isJa
+        ? `Mentor: データ移行に失敗しました。詳細: ${message}`
+        : `Mentor: data migration failed. Detail: ${message}`,
+    );
+    return; // Do not proceed to feature activation — DB state is unknown.
+  }
+
+  if (migrationResult.status === "noConfig") {
+    // Setup has not run yet; sidebar shows the "Run Setup" prompt.
+    sidebarProvider.sendNoConfig();
+    return;
+  }
+
+  if (migrationResult.status === "needsMigration") {
+    // v0.6.6 moved the DB outside the workspace, but the actual relocation
+    // happens inside Setup so the user explicitly opts in. Skip feature wiring
+    // (commands / file watcher) and surface a Setup prompt — both via the
+    // sidebar and a toast — without registering anything that would touch the
+    // legacy DB path.
+    sidebarProvider.sendNeedsMigration();
+    const locale = await resolveLocale(workspaceRoot.fsPath);
+    const isJa = locale === "ja";
+    const button = isJa ? "Setup を実行" : "Run Setup";
+    void vscode.window
+      .showInformationMessage(
+        isJa
+          ? "Mentor Studio Code v0.6.6 への移行のため Setup を実行してください。"
+          : "Mentor Studio Code needs Setup to migrate to v0.6.6.",
+        button,
+      )
+      .then((choice) => {
+        if (choice === button) {
+          void vscode.commands.executeCommand("mentor-studio.setup");
+        }
+      });
+    return;
+  }
+
+  // Best-effort orphan-JSON cleanup (separate from migrations — covers the
+  // crash window between DB write and progress.json unlink).
+  try {
+    const orphan = await cleanupOrphanProgressJson(
+      migrationResult.paths.mentorRoot,
+      wasmPath,
+    );
+    if (!orphan.ok) {
+      getOutputChannel().appendLine(
+        `orphan progress.json cleanup failed: ${orphan.error} ${orphan.detail ?? ""}`,
+      );
+    }
+  } catch (err) {
+    getOutputChannel().appendLine(
+      `orphan progress.json cleanup threw: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+
+  const dbPath = migrationResult.paths.dbPath; // external from now on
 
   const bus = new BroadcastBus();
   const unregisterSidebar = bus.register(sidebarProvider.getSubscriber());
@@ -131,7 +194,7 @@ export function activate(context: vscode.ExtensionContext): void {
     (data) => sidebarProvider.sendUpdate(data),
     (config) => {
       if (config !== null) {
-        sidebarProvider.sendConfig(config);
+        void sidebarProvider.sendConfig(config);
       } else {
         sidebarProvider.sendNoConfig();
       }
@@ -181,7 +244,7 @@ export function activate(context: vscode.ExtensionContext): void {
       .then(() => {
         const config = watcher.getConfig();
         if (config) {
-          sidebarProvider.sendConfig(config);
+          void sidebarProvider.sendConfig(config);
 
           if (isVersionUpdated) {
             const isJa = config.locale !== "en";
@@ -209,69 +272,7 @@ export function activate(context: vscode.ExtensionContext): void {
       });
   };
 
-  const runV2IfNeeded = async (): Promise<void> => {
-    try {
-      if (await shouldMigrateV2(mentorDir, wasmPath)) {
-        const res = await migrateToV2(mentorDir, wasmPath);
-        if (!res.ok) {
-          getOutputChannel().appendLine(
-            `v2 migration failed: ${res.error} ${res.detail ?? ""}`,
-          );
-          void vscode.window.showWarningMessage(
-            `Mentor v2 migration failed: ${res.detail ?? res.error}. Profile / resume context may be missing.`,
-          );
-          return;
-        }
-      }
-      // Covers the crash-between-DB-write-and-JSON-unlink window: if DB is
-      // already v2 but progress.json lingers, back it up and remove it.
-      const orphan = await cleanupOrphanProgressJson(mentorDir, wasmPath);
-      if (!orphan.ok) {
-        getOutputChannel().appendLine(
-          `orphan progress.json cleanup failed: ${orphan.error} ${orphan.detail ?? ""}`,
-        );
-      }
-    } catch (err) {
-      getOutputChannel().appendLine(
-        `v2 migration threw: ${err instanceof Error ? err.message : String(err)}`,
-      );
-    }
-  };
-
-  if (shouldMigrate(mentorDir)) {
-    void (async () => {
-      try {
-        const result = await migrate(mentorDir, wasmPath);
-        if (result.ok) {
-          const rel = (p: string): string => relative(mentorDir, p) || p;
-          void vscode.window.showInformationMessage(
-            `Mentor data migrated to SQLite (${result.stats.questions} questions, ${result.stats.plans} plans). ` +
-              `Backups kept at: ${result.bakPaths.map(rel).join(", ")}.`,
-          );
-        } else if (result.error === "migration_partial") {
-          void vscode.window.showWarningMessage(
-            `Mentor migration completed in DB but JSON rewrite failed: ${result.detail ?? ""}`,
-          );
-        } else {
-          void vscode.window.showErrorMessage(
-            `Mentor migration failed: ${result.detail ?? ""}. Rerun after checking logs.`,
-          );
-        }
-      } catch (err) {
-        getOutputChannel().appendLine(
-          `Migration threw: ${err instanceof Error ? err.message : String(err)}`,
-        );
-      } finally {
-        await runV2IfNeeded();
-        startWatcher();
-      }
-    })();
-  } else {
-    void (async () => {
-      await runV2IfNeeded();
-      startWatcher();
-    })();
-  }
+  startWatcher();
 
   context.subscriptions.push(watcher);
 }

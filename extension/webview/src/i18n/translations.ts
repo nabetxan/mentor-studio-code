@@ -256,8 +256,8 @@ const translations = {
     en: "Uninstall Guide",
   },
   "settings.uninstall.description": {
-    ja: "アンインストール前に以下を実行してデータを消去してください。",
-    en: "Run the following cleanup before uninstalling.",
+    ja: "以下の手順でアンインストールしてください。",
+    en: "Follow the steps below to uninstall.",
   },
   "settings.uninstall.showDetails": {
     ja: "詳しく見る",
@@ -266,6 +266,26 @@ const translations = {
   "settings.uninstall.hideDetails": {
     ja: "閉じる",
     en: "Hide details",
+  },
+  "settings.uninstall.step1.title": {
+    ja: "Step 1. データを消去する",
+    en: "Step 1. Delete data",
+  },
+  "settings.uninstall.step1.description": {
+    ja: "消去する項目を選んで「データ消去」を実行してください。",
+    en: 'Select what to delete, then click "Delete Data".',
+  },
+  "settings.uninstall.step2.title": {
+    ja: "Step 2. 拡張機能をアンインストールする",
+    en: "Step 2. Uninstall the extension",
+  },
+  "settings.uninstall.step2.description": {
+    ja: "拡張機能ビューから Mentor Studio Code をアンインストールし、ウィンドウをリロードしてください。",
+    en: "Uninstall Mentor Studio Code from the Extensions view, then reload the window.",
+  },
+  "settings.uninstall.step2.button": {
+    ja: "拡張機能ビューを開く",
+    en: "Open Extensions view",
   },
   "settings.uninstall.check.mentorFolder": {
     ja: ".mentor フォルダ",
@@ -279,16 +299,52 @@ const translations = {
     ja: "CLAUDE.md 内のメンター参照コード",
     en: "Mentor reference in CLAUDE.md",
   },
-  "settings.uninstall.warning": {
-    ja: "⚠ .mentor フォルダを削除すると学習履歴を含むすべてのデータが消去されます。フォルダを残しておけばいつでも再開できます。",
-    en: "⚠ Deleting the .mentor folder will erase all data including learning history. Keep the folder to resume anytime.",
+  "settings.uninstall.check.externalDb": {
+    ja: "学習履歴 DB（外部ストレージ）",
+    en: "Learning history DB (external storage)",
+  },
+  "settings.uninstall.warning.basic": {
+    ja: "⚠ 削除すると復元できません。",
+    en: "⚠ This cannot be undone.",
+  },
+  "settings.uninstall.warning.dataLoss": {
+    ja: "⚠ 削除すると復元できません。学習データが失われます。",
+    en: "⚠ This cannot be undone. Your learning history will be lost.",
   },
   "settings.uninstall.cleanup": {
     ja: "データ消去",
     en: "Delete Data",
   },
+  "settings.dataLocation.title": {
+    ja: "データの場所",
+    en: "Data Location",
+  },
+  "settings.dataLocation.description": {
+    ja: "学習履歴 DB はワークスペース外に保存されています。",
+    en: "Your learning history DB is stored outside the workspace.",
+  },
+  "settings.dataLocation.open": {
+    ja: "フォルダを開く",
+    en: "Open folder",
+  },
 
   // No-config screen
+  "app.needsMigration.title": {
+    ja: "v0.6.6 への移行が必要です",
+    en: "Migration to v0.6.6 required",
+  },
+  "app.needsMigration.instruction": {
+    ja: "Mentor Studio Code v0.6.6 では学習履歴 DB の保存場所がワークスペース外に変わりました。Setup を実行してデータを新しい保存場所へ移行してください。",
+    en: "Mentor Studio Code v0.6.6 moved the learning-history DB outside the workspace. Run Setup to migrate your data to the new location.",
+  },
+  "app.needsMigration.button": {
+    ja: "Setup を実行",
+    en: "Run Setup",
+  },
+  "app.needsMigration.hint": {
+    ja: "* Setup を実行すると `.mentor/data.db` が外部ディレクトリへコピーされ、ワークスペースには `.mentor/data.db.migrated-YYYY-MM-DD` という名前のバックアップが残ります。",
+    en: "* Running Setup copies `.mentor/data.db` to the external directory and leaves a backup at `.mentor/data.db.migrated-YYYY-MM-DD` in your workspace.",
+  },
   "app.noConfig.notFound": {
     ja: "が見つかりません。",
     en: "not found.",

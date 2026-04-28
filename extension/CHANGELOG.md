@@ -2,6 +2,45 @@
 
 All notable changes to "Mentor Studio Code" will be documented in this file.
 
+## [0.6.6] - 2026-04-28
+
+### Breaking
+
+- **CLI:** when `workspaceId` is not present in `config.json`, the CLI now returns `workspace_not_initialized` instead of silently falling back to `.mentor/data.db`. Invoking the CLI in a workspace where Setup has not been run is now an explicit error.
+- **Canonical DB path moved:** `.mentor/data.db` is **no longer the canonical DB path**. External tools and backup scripts that read `.mentor/data.db` directly must read the absolute path shown in the sidebar's **Data Location** section (or copy the file directly from the OS user-data directory).
+- **`.mentor/.gitignore` is now distributed:** Setup writes a `.mentor/.gitignore`. If you previously committed files inside `.mentor/` (custom scripts, notes, etc.), they will be ignored after running Setup; add explicit `!<path>` exceptions to `.mentor/.gitignore` to keep tracking them.
+
+### Changed
+
+- **DB location moved:** `data.db` now lives in the OS user-data directory (outside the workspace). This eliminates the long-standing problem of `git pull` / `checkout` / `rebase` aborting mid-mentor-session because of changes to `.mentor/data.db`. New locations (`<workspaceId>` is `<sanitized-repositoryName>-<UUID>` so the directory is identifiable in your file manager):
+  - macOS: `~/Library/Application Support/MentorStudioCode/<workspaceId>/data.db`
+  - Linux: `$XDG_DATA_HOME/mentor-studio-code/<workspaceId>/data.db` (default: `~/.local/share/...`)
+  - Windows: `%APPDATA%\MentorStudioCode\<workspaceId>\data.db`
+- Migration runs **inside Setup**, not at activation. After upgrading, the sidebar shows a "Run Setup to migrate to v0.6.6" prompt (and a toast appears) when a legacy `.mentor/data.db` is detected. Running Setup copies it to the new location and renames the in-workspace file to `.mentor/data.db.migrated-YYYY-MM-DD` (kept as a safety copy — you can delete it manually after verifying the new history works). Mentor features (plan panel, file watcher, etc.) stay disabled until Setup completes the migration.
+- Sidebar wording was tightened to match the current webview: Actions now use `Start task` / `Review implementation` / `Start review` / `Start Comprehension check`, and the Mentor ON/OFF toggle remains in the top navigation bar while Settings focuses on plan/spec/setup/data management.
+
+### Added
+
+- Setup writes `.mentor/.gitignore`, so newly-created data files are ignored by default.
+- New sidebar section: **Data Location** shows the DB's absolute path with an "Open folder" button that reveals the directory in your OS file manager.
+- New checkbox in the uninstall section: **Learning history DB (external storage)** (unchecked by default). Checking it and pressing "Delete Data" also removes the external DB.
+- After Setup completes the v3 migration, if the legacy `.mentor/data.db` (or `.migrated-*`) is still tracked by git, a notification offers a one-click `git rm --cached` (the new `.mentor/.gitignore` is auto-staged so a single follow-up `git commit` finalizes the cleanup).
+
+### Migration notes
+
+- **Run Setup after upgrading to v0.6.6.** The sidebar will display a migration prompt and a toast notification will appear with a "Run Setup" button — click it (or invoke `Mentor Studio Code: Setup Mentor` from the command palette) to perform the v3 relocation. Mentor features stay inactive until Setup runs. This keeps the breaking move opt-in and avoids surprise file rewrites.
+- For users who committed `.mentor/data.db`: an untrack notification appears immediately after Setup completes. Click "Untrack" → finalize with `git commit -m "Untrack legacy mentor DB"`. (The new `.mentor/.gitignore` is auto-staged, so a single commit completes the cleanup.)
+- Setup performs the v3 migration **regardless of the `enableMentor` value** — disabling the mentor does not skip data preservation, since Setup is the path that owns the move. No internet connection is required (local file operations only).
+- The renamed `.mentor/data.db.migrated-YYYY-MM-DD` file is **not deleted automatically**. After verifying the new DB works, you can delete it manually. (A future release may add automatic cleanup after a grace period.)
+- **Skip-version upgrades supported:** upgrading directly from v0.5 to v0.6.6 works — v1 / v2 (schema-only) migrations still run automatically at activation, then the v3 prompt appears for the file relocation step. Note: the one-shot "v1 → SQLite migrated" info toast that v0.5 displayed has been removed in v0.6.6, so skip-version users won't see it (no functional impact).
+- **Manual backup/restore in v0.6.6.** To back up, copy `data.db` from the path shown in the sidebar's Data Location section (or use the "Open folder" button to reveal it in your OS file manager). To restore, overwrite the same `data.db` and restart VSCode. Built-in Export/Import commands are planned for v0.7+.
+
+### Known limitations (v0.6.6)
+
+- **Workspace duplication / move is unsupported.** Cloning a workspace via `git worktree add` / `cp -r` / folder move shares the `workspaceId` inside `.mentor/config.json`. Using Mentor in multiple copies makes them write to the same external DB and mix state. **One workspace = one learning history** is the assumption. To use a separate history in a copy, delete the `workspaceId` field from the copy's `.mentor/config.json` and restart Mentor; a new id will be generated (the old external DB stays as an orphan — see below).
+- **Deleting `.mentor/config.json` and re-running Setup orphans the old external DB.** Without `config.json`, re-running Setup generates a new `workspaceId`, and the external DB under the old id becomes an orphan (no detection or auto-recovery). If history disappears unexpectedly, look under `~/Library/Application Support/MentorStudioCode/` (macOS) etc. for the old `<repositoryName>-<UUID>` directory. A v0.7+ release is planned to enumerate existing external directories during Setup and offer recovery options.
+- **Migration failure behavior:** on I/O errors (permissions, disk full, etc.) the migration fails, Mentor features are not activated, and an error message is shown. Resolving the underlying cause and restarting VSCode retries the migration (the design avoids infinite loops).
+
 ## [0.6.5] - 2026-04-23
 
 ### Added

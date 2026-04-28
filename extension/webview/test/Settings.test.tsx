@@ -147,13 +147,35 @@ describe("Settings", () => {
     // Expand details
     fireEvent.click(screen.getByText("詳しく見る"));
 
+    // Step 1 and Step 2 headings should be visible
+    expect(screen.getByText("Step 1. データを消去する")).toBeTruthy();
+    expect(screen.getByText("Step 2. 拡張機能をアンインストールする")).toBeTruthy();
+
     // Click cleanup button (profile and claudeMdRef are checked by default)
     fireEvent.click(screen.getByText("データ消去"));
 
     expect(postMessage).toHaveBeenCalledWith({
       type: "cleanupMentor",
-      options: { mentorFolder: false, profile: true, claudeMdRef: true },
+      options: {
+        mentorFolder: false,
+        profile: true,
+        claudeMdRef: true,
+        wipeExternalDb: false,
+      },
     });
+  });
+
+  it("sends openExtensionsView message when Step 2 button is clicked", async () => {
+    const { postMessage } = await import("../src/vscodeApi");
+    (postMessage as ReturnType<typeof vi.fn>).mockClear();
+    render(<Settings {...defaultProps} />);
+
+    fireEvent.click(screen.getByText("詳しく見る"));
+    fireEvent.click(
+      screen.getByRole("button", { name: "拡張機能ビューを開く" }),
+    );
+
+    expect(postMessage).toHaveBeenCalledWith({ type: "openExtensionsView" });
   });
 
   it("renders Uninstall Guide in English", () => {

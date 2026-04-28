@@ -10,7 +10,13 @@ import { useCopyFeedback } from "../hooks/useCopyFeedback";
 import type { TranslationKey } from "../i18n";
 import { t } from "../i18n";
 import { postMessage } from "../vscodeApi";
-import { CheckIcon, CopyIcon, OpenPanelIcon, SparkleIcon } from "./icons";
+import {
+  CheckIcon,
+  CopyIcon,
+  FolderIcon,
+  OpenPanelIcon,
+  SparkleIcon,
+} from "./icons";
 
 interface SettingsProps {
   config: MentorStudioConfig | null;
@@ -20,6 +26,7 @@ interface SettingsProps {
   activePlan: PlanDto | null;
   nextPlan: PlanDto | null;
   planActionError: string | null;
+  dataLocation?: { dbPath: string; dirPath: string };
 }
 
 interface ActivePlanRowProps {
@@ -410,19 +417,63 @@ function ProfileSection({ profileLastUpdated, locale }: ProfileSectionProps) {
   );
 }
 
-function UninstallSection({ locale }: { locale: Locale }) {
+function DataLocationSection({
+  locale,
+  dbPath,
+  dirPath,
+}: {
+  locale: Locale;
+  dbPath: string;
+  dirPath: string;
+}) {
+  return (
+    <section className="setting-item data-location">
+      <div className="setting-label data-location-title">
+        {t("settings.dataLocation.title", locale)}
+      </div>
+      <p className="setting-remove-description data-location-description">
+        {t("settings.dataLocation.description", locale)}
+      </p>
+      <code className="data-location-path">{dbPath}</code>
+      <div className="data-location-actions">
+        <button
+          type="button"
+          className="btn-outlined btn-with-icon"
+          onClick={() =>
+            postMessage({ type: "openDataLocation", path: dirPath })
+          }
+        >
+          {t("settings.dataLocation.open", locale)}
+          <FolderIcon />
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function UninstallSection({
+  locale,
+  dataLocation,
+}: {
+  locale: Locale;
+  dataLocation?: { dirPath: string };
+}) {
   const [expanded, setExpanded] = useState(false);
   const [checks, setChecks] = useState<CleanupOptions>({
     mentorFolder: false,
     profile: true,
     claudeMdRef: true,
+    wipeExternalDb: false,
   });
 
   const toggle = (key: keyof CleanupOptions) =>
     setChecks((prev) => ({ ...prev, [key]: !prev[key] }));
 
   const hasSelection =
-    checks.mentorFolder || checks.profile || checks.claudeMdRef;
+    checks.mentorFolder ||
+    checks.profile ||
+    checks.claudeMdRef ||
+    checks.wipeExternalDb;
 
   const handleCleanup = () => {
     postMessage({ type: "cleanupMentor", options: checks });
@@ -447,42 +498,84 @@ function UninstallSection({ locale }: { locale: Locale }) {
       </button>
       {expanded && (
         <div className="uninstall-details">
-          <label className="uninstall-check">
-            <input
-              type="checkbox"
-              checked={checks.mentorFolder}
-              onChange={() => toggle("mentorFolder")}
-            />
-            {t("settings.uninstall.check.mentorFolder", locale)}
-          </label>
-          <label className="uninstall-check">
-            <input
-              type="checkbox"
-              checked={checks.profile}
-              onChange={() => toggle("profile")}
-            />
-            {t("settings.uninstall.check.profile", locale)}
-          </label>
-          <label className="uninstall-check">
-            <input
-              type="checkbox"
-              checked={checks.claudeMdRef}
-              onChange={() => toggle("claudeMdRef")}
-            />
-            {t("settings.uninstall.check.claudeMdRef", locale)}
-          </label>
-          {checks.mentorFolder && (
-            <p className="uninstall-warning">
-              {t("settings.uninstall.warning", locale)}
+          <div className="uninstall-step">
+            <div className="uninstall-step-title">
+              {t("settings.uninstall.step1.title", locale)}
+            </div>
+            <p className="uninstall-step-description">
+              {t("settings.uninstall.step1.description", locale)}
             </p>
-          )}
-          <button
-            className="btn-remove"
-            disabled={!hasSelection}
-            onClick={handleCleanup}
-          >
-            {t("settings.uninstall.cleanup", locale)}
-          </button>
+            <label className="uninstall-check">
+              <input
+                type="checkbox"
+                checked={checks.profile}
+                onChange={() => toggle("profile")}
+              />
+              {t("settings.uninstall.check.profile", locale)}
+            </label>
+            <label className="uninstall-check">
+              <input
+                type="checkbox"
+                checked={checks.claudeMdRef}
+                onChange={() => toggle("claudeMdRef")}
+              />
+              {t("settings.uninstall.check.claudeMdRef", locale)}
+            </label>
+            <label className="uninstall-check">
+              <input
+                type="checkbox"
+                checked={checks.mentorFolder}
+                onChange={() => toggle("mentorFolder")}
+              />
+              {t("settings.uninstall.check.mentorFolder", locale)}
+            </label>
+            {dataLocation && (
+              <label className="uninstall-check">
+                <input
+                  type="checkbox"
+                  checked={checks.wipeExternalDb}
+                  onChange={() => toggle("wipeExternalDb")}
+                />
+                <span>
+                  {t("settings.uninstall.check.externalDb", locale)}
+                  <code className="uninstall-check-path">
+                    {dataLocation.dirPath}
+                  </code>
+                </span>
+              </label>
+            )}
+            {(checks.mentorFolder || checks.wipeExternalDb) && (
+              <p className="uninstall-warning">
+                {t(
+                  checks.wipeExternalDb
+                    ? "settings.uninstall.warning.dataLoss"
+                    : "settings.uninstall.warning.basic",
+                  locale,
+                )}
+              </p>
+            )}
+            <button
+              className="btn-remove"
+              disabled={!hasSelection}
+              onClick={handleCleanup}
+            >
+              {t("settings.uninstall.cleanup", locale)}
+            </button>
+          </div>
+          <div className="uninstall-step">
+            <div className="uninstall-step-title">
+              {t("settings.uninstall.step2.title", locale)}
+            </div>
+            <p className="uninstall-step-description">
+              {t("settings.uninstall.step2.description", locale)}
+            </p>
+            <button
+              className="btn-secondary"
+              onClick={() => postMessage({ type: "openExtensionsView" })}
+            >
+              {t("settings.uninstall.step2.button", locale)}
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -497,6 +590,7 @@ export function Settings({
   activePlan,
   nextPlan,
   planActionError,
+  dataLocation,
 }: SettingsProps) {
   const mentorFiles = config?.mentorFiles ?? {
     spec: null,
@@ -564,7 +658,14 @@ export function Settings({
         </button>
       </div>
       <div className="setting-separator" />
-      <UninstallSection locale={locale} />
+      {dataLocation && (
+        <DataLocationSection
+          locale={locale}
+          dbPath={dataLocation.dbPath}
+          dirPath={dataLocation.dirPath}
+        />
+      )}
+      <UninstallSection locale={locale} dataLocation={dataLocation} />
     </div>
   );
 }

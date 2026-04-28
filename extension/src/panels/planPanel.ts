@@ -2,9 +2,9 @@ import type { Locale, PlanStatus } from "@mentor-studio/shared";
 import * as path from "node:path";
 import * as vscode from "vscode";
 import { BroadcastBus } from "../services/broadcastBus";
+import { resolveLocale } from "../utils/locale";
 import { toWorkspaceRelative } from "../utils/workspacePath";
 import type { PanelRequest } from "./protocol";
-import { readConfigLocale } from "./readConfigLocale";
 import { readSnapshot } from "./snapshot";
 import * as planWrites from "./writes/planWrites";
 
@@ -220,7 +220,7 @@ export class PlanPanel {
 
   private async sendInitData(): Promise<void> {
     const snapshot = await readSnapshot(this.dbPath, this.wasmPath);
-    this.cachedLocale = await readConfigLocale(this.workspaceRoot);
+    this.cachedLocale = await resolveLocale(this.workspaceRoot);
     void this.panel.webview.postMessage({
       type: "initData",
       ...snapshot,
@@ -308,6 +308,7 @@ export class PlanPanel {
       d.dispose();
     }
     this.disposables.length = 0;
+    this.inFlight.clear();
   }
 
   private buildHtml(webview: vscode.Webview, extensionUri: vscode.Uri): string {

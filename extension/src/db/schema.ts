@@ -1,3 +1,17 @@
+/**
+ * SCHEMA_VERSION = the target user_version for the SQLite schema.
+ * `shouldMigrateV2` returns true while the on-disk schema is *less than* this.
+ *
+ * DO NOT bump this for releases that only relocate files (e.g. v3 external
+ * storage). v3 is schema-less by design — detection happens via file
+ * existence in `migration/v3ExternalDb.ts`. Bumping SCHEMA_VERSION re-fires
+ * the v2 profile/app_state migration on every activation, which can corrupt
+ * already-migrated profile data.
+ *
+ * Bump this ONLY when adding actual schema changes (new tables, columns,
+ * constraints) — and add a corresponding migration step following the
+ * `migrate.ts` / `v2ProfileAppState.ts` pattern.
+ */
 export const SCHEMA_VERSION = 2;
 
 export const SCHEMA_DDL = `

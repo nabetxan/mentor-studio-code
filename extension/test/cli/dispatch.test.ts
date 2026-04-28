@@ -73,4 +73,25 @@ describe("dispatch", () => {
       detail: "boom",
     });
   });
+
+  it("maps WorkspaceNotInitializedError to { ok: false, error: 'workspace_not_initialized' }", async () => {
+    const commands = {
+      failingCommand: async () => {
+        const { WorkspaceNotInitializedError } = await import(
+          "../../src/cli/context.js"
+        );
+        throw new WorkspaceNotInitializedError("/fake/.mentor/config.json");
+      },
+    };
+    const result = await dispatch({
+      command: "failingCommand",
+      argJson: undefined,
+      paths: { mentorRoot: "/x", dbPath: "/x/d", configPath: "/x/c" },
+      commands,
+    });
+    expect(result).toMatchObject({
+      ok: false,
+      error: "workspace_not_initialized",
+    });
+  });
 });

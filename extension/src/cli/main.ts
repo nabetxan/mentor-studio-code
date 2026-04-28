@@ -7,7 +7,11 @@ import {
   type CommandMap,
   type CommandResult,
 } from "./commands/registry";
-import { resolvePaths, type CliPaths } from "./context";
+import {
+  resolvePaths,
+  WorkspaceNotInitializedError,
+  type CliPaths,
+} from "./context";
 
 export interface DispatchInput {
   command: string;
@@ -32,6 +36,14 @@ export async function dispatch(input: DispatchInput): Promise<CommandResult> {
   try {
     return await handler(args, input.paths);
   } catch (e) {
+    if (e instanceof WorkspaceNotInitializedError) {
+      return {
+        ok: false,
+        error: "workspace_not_initialized",
+        detail: e.message,
+        configPath: e.configPath,
+      };
+    }
     if (e instanceof DbCorruptError) {
       return {
         ok: false,
@@ -57,7 +69,37 @@ export async function main(argv: string[]): Promise<void> {
     process.exitCode = 1;
     return;
   }
-  const paths = resolvePaths(__dirname);
+  // Verify command existence BEFORE resolving paths so unknown_command
+  // short-circuits without requiring an initialized workspace.
+  if (!(command in COMMANDS)) {
+    process.stdout.write(
+      JSON.stringify({
+        ok: false,
+        error: "unknown_command",
+        detail: command,
+      }) + "\n",
+    );
+    process.exitCode = 1;
+    return;
+  }
+  let paths: CliPaths;
+  try {
+    paths = resolvePaths(__dirname);
+  } catch (e) {
+    if (e instanceof WorkspaceNotInitializedError) {
+      process.stdout.write(
+        JSON.stringify({
+          ok: false,
+          error: "workspace_not_initialized",
+          detail: e.message,
+          configPath: e.configPath,
+        }) + "\n",
+      );
+      process.exitCode = 1;
+      return;
+    }
+    throw e;
+  }
   const result = await dispatch({
     command,
     argJson,

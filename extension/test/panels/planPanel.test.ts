@@ -33,8 +33,8 @@ vi.mock("../../src/panels/writes/planWrites", () => ({
   }),
 }));
 
-vi.mock("../../src/panels/readConfigLocale", () => ({
-  readConfigLocale: vi.fn().mockResolvedValue("en"),
+vi.mock("../../src/utils/locale", () => ({
+  resolveLocale: vi.fn().mockResolvedValue("en"),
 }));
 
 vi.mock("../../src/panels/writes/taskWrites", () => ({
@@ -860,10 +860,10 @@ describe("PlanPanel", () => {
   });
 
   it("conflict dialog message uses Japanese when locale is ja", async () => {
-    // Force the cached locale by seeding the readConfigLocale mock before the
+    // Force the cached locale by seeding the resolveLocale mock before the
     // panel reads it via 'ready'.
-    const localeMod = await import("../../src/panels/readConfigLocale.js");
-    vi.mocked(localeMod.readConfigLocale).mockResolvedValue("ja");
+    const localeMod = await import("../../src/utils/locale.js");
+    vi.mocked(localeMod.resolveLocale).mockResolvedValue("ja");
 
     const { panel } = createPanel();
     // 'ready' populates the cached locale used by the conflict dialog.
@@ -908,7 +908,7 @@ describe("PlanPanel", () => {
     expect(message).toContain("Plan B");
 
     // Reset for sibling tests.
-    vi.mocked(localeMod.readConfigLocale).mockResolvedValue("en");
+    vi.mocked(localeMod.resolveLocale).mockResolvedValue("en");
   });
 
   it("onAfterWrite fires after a successful write request", async () => {
