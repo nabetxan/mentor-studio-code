@@ -1,4 +1,4 @@
-![version](https://img.shields.io/badge/version-0.6.6-blue)
+![version](https://img.shields.io/badge/version-0.6.7-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 [![website](https://img.shields.io/badge/%F0%9F%8C%90_Website-Landing_Page-7ec8e3)](https://nabetxan.github.io/mentor-studio-code/)
 
@@ -35,7 +35,7 @@ The exact path is shown in the sidebar's **Data Location** section. Use the "Ope
 
 ## Upgrading from earlier versions
 
-If you used Mentor Studio Code v0.6.5 or earlier, **run Setup once after upgrading to v0.6.6**. The extension detects the legacy `.mentor/data.db` and surfaces a prompt in the sidebar (and a toast) inviting you to run Setup. Setup performs the v3 migration — it copies your DB to the OS user-data directory, leaves a `.mentor/data.db.migrated-YYYY-MM-DD` backup in the workspace, and then re-enables the dashboard. New installations skip this step and proceed straight through Setup as usual.
+If you used Mentor Studio Code v0.6.5 or earlier, **run Setup once after upgrading to v0.6.6 or later**. The extension detects the legacy `.mentor/data.db` and surfaces a prompt in the sidebar (and a toast) inviting you to run Setup. Setup performs the v3 migration — it copies your DB to the OS user-data directory, leaves a `.mentor/data.db.migrated-YYYY-MM-DD` backup in the workspace, and then re-enables the dashboard. New installations skip this step and proceed straight through Setup as usual.
 
 If you previously committed `.mentor/data.db` to git, Setup also offers a one-click untrack and stages `.mentor/.gitignore` so a single `git commit` finalizes the cleanup.
 

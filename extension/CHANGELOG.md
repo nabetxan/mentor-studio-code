@@ -2,6 +2,12 @@
 
 All notable changes to "Mentor Studio Code" will be documented in this file.
 
+## [0.6.7] - 2026-04-29
+
+### Fixed
+
+- Overview refresh regression introduced in v0.6.6: question history and current-task changes written to the DB now appear in the Overview tab again immediately after the write completes.
+
 ## [0.6.6] - 2026-04-28
 
 ### Breaking

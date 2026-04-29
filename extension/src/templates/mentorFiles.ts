@@ -515,7 +515,7 @@ Format flexible — single task with 2-3 steps is valid.
 
 - Markdown is human reference; DB \`tasks\` table is what extension reads/tracks. DB is **sole source of truth**.
 - \`mentorFiles.plan\` / \`update-config\` flow is **fully deprecated and removed**. Do not read/write \`mentorFiles.plan\`. Do not call \`update-config\` with a \`plan\` key. Plan Panel + DB via CLI only.
-- After CLI writes, sidebar auto-refreshes via file watcher / broadcast bus.
+- After CLI writes, sidebar auto-refreshes via file watcher / broadcast bus. The watcher follows the resolved \`dbPath\`, so this also works when the DB lives in external storage outside the workspace.
 `;
 
 export const CREATE_SPEC_MD = `## Spec Creation Rules
