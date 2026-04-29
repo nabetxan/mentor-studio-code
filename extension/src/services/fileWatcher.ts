@@ -5,7 +5,7 @@ import type {
 } from "@mentor-studio/shared";
 import { readFile, writeFile } from "fs/promises";
 import { existsSync, readFileSync } from "node:fs";
-import { basename, join } from "path";
+import { basename, dirname, join } from "path";
 import * as vscode from "vscode";
 import { loadSqlJs, parseJsonStringArray } from "../db";
 import {
@@ -56,9 +56,10 @@ export class FileWatcherService implements vscode.Disposable {
   async start(): Promise<void> {
     await this.loadConfig();
 
+    const watchedDbPath = this.dbPath ?? join(this.workspaceRoot, this.mentorPath, "data.db");
     const dbPattern = new vscode.RelativePattern(
-      this.workspaceRoot,
-      `${this.mentorPath}/data.db`,
+      dirname(watchedDbPath),
+      basename(watchedDbPath),
     );
     const dbWatcher = vscode.workspace.createFileSystemWatcher(dbPattern);
     const fireDbChanged = (): void => {

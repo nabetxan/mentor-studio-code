@@ -1,6 +1,6 @@
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import type { Database } from "sql.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadSqlJs, withWriteTransaction } from "../../src/db";
@@ -77,6 +77,30 @@ describe("FileWatcherService: data.db watcher", () => {
 
     const patterns = __watchers.map((w) => w.pattern.pattern);
     expect(patterns.some((p) => p.includes("question-history"))).toBe(false);
+
+    svc.dispose();
+  });
+
+  it("watches the resolved dbPath when the DB lives outside the workspace", async () => {
+    const externalDbPath = join(tmpdir(), "mentor-external", "workspace-1", "data.db");
+    const svc = new FileWatcherService(
+      dir,
+      ".mentor",
+      () => {},
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      externalDbPath,
+    );
+
+    await svc.start();
+
+    const dbWatcher = __watchers.find(
+      (w) => w.pattern.pattern === basename(externalDbPath),
+    );
+    expect(dbWatcher).toBeDefined();
+    expect(dbWatcher?.pattern.base).toBe(dirname(externalDbPath));
 
     svc.dispose();
   });
