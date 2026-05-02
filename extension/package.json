@@ -11,7 +11,8 @@
     "url": "https://github.com/nabetxan/mentor-studio-code"
   },
   "engines": {
-    "vscode": "^1.85.0"
+    "vscode": "^1.85.0",
+    "node": "^20.19.0 || >=22.12.0"
   },
   "keywords": [
     "mentor",

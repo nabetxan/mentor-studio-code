@@ -361,12 +361,22 @@ describe("planWrites", () => {
       expect((await readPlan(env.paths.dbPath, 1))?.status).toBe("removed");
     });
 
-    it("active plan throws cannot remove active plan", async () => {
-      await expect(
-        removePlan(env.paths.dbPath, { id: 2 }, WASM),
-      ).rejects.toThrow("cannot remove active plan");
-      // Plan unchanged.
-      expect((await readPlan(env.paths.dbPath, 2))?.status).toBe("active");
+    it("active plan becomes removed", async () => {
+      await removePlan(env.paths.dbPath, { id: 2 }, WASM);
+      expect((await readPlan(env.paths.dbPath, 2))?.status).toBe("removed");
+    });
+
+    it("active plan with active task: plan removed, task demoted to queued", async () => {
+      await mutateDb(env.paths.dbPath, (db) => {
+        db.exec("UPDATE tasks SET status = 'active' WHERE planId = 2");
+      });
+      await removePlan(env.paths.dbPath, { id: 2 }, WASM);
+      expect((await readPlan(env.paths.dbPath, 2))?.status).toBe("removed");
+      const taskStatus = await withDb(env.paths.dbPath, (db) => {
+        const r = db.exec("SELECT status FROM tasks WHERE planId = 2");
+        return String(r[0].values[0][0]);
+      });
+      expect(taskStatus).toBe("queued");
     });
   });
 

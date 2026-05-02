@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  CREATE_PLAN_MD,
   INTAKE_SKILL_MD,
   MENTOR_SESSION_SKILL_MD,
   MENTOR_SKILLS,
@@ -46,6 +47,20 @@ describe("SKILL.md templates", () => {
     expect(cc).toMatch(/"taskId"\s*:\s*null/);
   });
 
+  it("comprehension-check includes level-based question policy", () => {
+    const cc = MENTOR_SKILLS["comprehension-check/SKILL.md"];
+    expect(cc).toMatch(/beginner/);
+    expect(cc).toMatch(/Junior-dev interview level/);
+    expect(cc).toMatch(/Senior-dev interview level/);
+  });
+
+  it("review includes level-based question policy", () => {
+    const review = MENTOR_SKILLS["review/SKILL.md"];
+    expect(review).toMatch(/beginner/);
+    expect(review).toMatch(/Junior-dev interview level/);
+    expect(review).toMatch(/Senior-dev interview level/);
+  });
+
   it("all four flow SKILL.md templates are present", () => {
     expect(Object.keys(MENTOR_SKILLS).sort()).toEqual([
       "comprehension-check/SKILL.md",
@@ -63,12 +78,6 @@ describe("plan-health.md template", () => {
     expect(PLAN_HEALTH_MD).toMatch(/Case C/);
   });
 
-  it("contains the Plan Status Reference table", () => {
-    expect(PLAN_HEALTH_MD).toMatch(/Plan Status Reference/);
-    expect(PLAN_HEALTH_MD).toMatch(/\|\s*`backlog`\s*\|/);
-    expect(PLAN_HEALTH_MD).toMatch(/\|\s*`removed`\s*\|/);
-  });
-
   it("has no legacy refs", () => {
     expect(PLAN_HEALTH_MD).not.toMatch(/question-history\.json/);
     expect(PLAN_HEALTH_MD).not.toMatch(/unresolved_gaps/);
@@ -76,13 +85,20 @@ describe("plan-health.md template", () => {
     expect(PLAN_HEALTH_MD).not.toMatch(/mentorFiles\.plan/);
   });
 
-  it("contains Spec handoff sub-flow", () => {
-    expect(PLAN_HEALTH_MD).toMatch(/Spec handoff/);
-    expect(PLAN_HEALTH_MD).toMatch(/deactivate-plan/);
+  it("contains Spec detection and handoff flow", () => {
+    expect(PLAN_HEALTH_MD).toMatch(/Spec detection/);
+    expect(PLAN_HEALTH_MD).toMatch(/Ask once per plan per session/);
     expect(PLAN_HEALTH_MD).toMatch(/remove-plan/);
     expect(PLAN_HEALTH_MD).toMatch(/update-config.*mentorFiles.*spec/s);
     expect(PLAN_HEALTH_MD).toMatch(/## Overview/);
     expect(PLAN_HEALTH_MD).toMatch(/## Non-Goals/);
+  });
+
+  it("preserves original Task N labels when importing plan tasks", () => {
+    expect(PLAN_HEALTH_MD).toMatch(
+      /Keep the original numbered heading text in the DB task name/,
+    );
+    expect(PLAN_HEALTH_MD).toMatch(/Task 1: Set up auth/);
   });
 });
 
@@ -132,9 +148,10 @@ describe("INTAKE_SKILL_MD", () => {
     expect(INTAKE_SKILL_MD).toMatch(/^## Update Flow$/m);
   });
 
-  it("has entry section branching on learner.lastUpdated", () => {
+  it("has entry section covering initial and standalone update cases", () => {
     expect(INTAKE_SKILL_MD).toMatch(/^## Entry$/m);
     expect(INTAKE_SKILL_MD).toMatch(/learner\.lastUpdated/);
+    expect(INTAKE_SKILL_MD).toMatch(/update profile/);
     expect(INTAKE_SKILL_MD).toMatch(/\[flow:intake\]/);
     expect(INTAKE_SKILL_MD).toMatch(/session-brief/);
   });
@@ -158,5 +175,14 @@ describe("INTAKE_SKILL_MD", () => {
     ]) {
       expect(INTAKE_SKILL_MD).toContain(q);
     }
+  });
+});
+
+describe("CREATE_PLAN_MD", () => {
+  it("tells the AI to keep numbered task headings in task names", () => {
+    expect(CREATE_PLAN_MD).toMatch(
+      /pass the full heading text as `?<task-name>`?/,
+    );
+    expect(CREATE_PLAN_MD).toMatch(/Task 2: Build API/);
   });
 });

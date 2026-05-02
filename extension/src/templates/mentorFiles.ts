@@ -37,7 +37,7 @@ Fixed order (never skip/reorder):
 3. Ask OK to proceed, wait
 4. \`record-answer\` via CLI
 5. Post-record checks (weakAreas, interests)
-6. Then proceed
+6. Then proceed to next step
 
 ## NEVER
 
@@ -122,9 +122,9 @@ In order:
      \`node .mentor/tools/mentor-cli.cjs record-answer '{"id":42,"userAnswer":"...","isCorrect":true}'\`
      - CLI increments \`attempts\`, updates \`lastAnsweredAt\`. On \`isCorrect:true\`, drops from \`list-unresolved\`.
 3. Post-record checks — all, one at a time, wait for each:
-   - \`weakAreas\` concept answered correctly in new context → ask to remove.
-   - Repeated struggles on non-weakArea → ask to add.
-   - Strong interest shown → ask to add to \`interests\`.
+     - \`weakAreas\` concept answered correctly in new context → ask to remove.
+     - Repeated struggles on non-weakArea → ask to add.
+     - Strong interest shown → ask to add to \`interests\`.
    - YES → \`node .mentor/tools/mentor-cli.cjs update-profile '{"weak_areas":[...]}'\` or \`'{"interests":[...]}'\` (full array).
    - NO → no change.
    - None apply → proceed.
@@ -139,65 +139,37 @@ description: Load when session-brief.currentTask is null, or when the active pla
 
 # Plan Health Check
 
-Load when:
-- \`session-brief.currentTask\` is null, OR
-- \`list-plans\` returns active plan with \`taskCount === 0\`.
-
-Skip when both active plan and active task exist.
-
 ## Procedure
 
 Run \`node .mentor/tools/mentor-cli.cjs list-plans '{}'\` (each plan has \`taskCount\`; \`removed\`/\`completed\` excluded). Handle cases in order:
 
 **Case A — No active plan**:
 - Tell user no active plan.
-- Ask "Which plan to activate?" and list \`queued\`/\`paused\`/\`backlog\` plans.
-- On selection: \`node .mentor/tools/mentor-cli.cjs activate-plan '{"id":<id>}'\` — auto-activates first queued task if no global active task.
-- Re-run \`list-plans '{}'\`, continue to B/C.
+- Ask "Which plan to activate, or create a new one?" — list \`queued\`/\`paused\`/\`backlog\` plans plus a "create new" option. If list is empty, offer create-new only.
+- Existing plan selected → \`node .mentor/tools/mentor-cli.cjs activate-plan '{"id":<planId>}'\` — auto-activates first queued task if no global active task. Re-run \`list-plans '{}'\`, continue to B/C.
+- Create new → load \`.mentor/rules/CREATE_PLAN.md\`, follow Plan Setup Flow. Then re-run plan-health from top.
 
 **Case B — Active plan, \`taskCount === 0\`**:
-- Tell user: "This plan has no tasks yet. I'll generate a task breakdown."
-- Plan has \`filePath\` to existing md → try reading:
-  - Read fails → skip Spec detection, fall to no-\`filePath\` branch.
-  - Read succeeds:
-    1. **Spec detection**: no \`## Task N\` AND has any of \`## Overview\`, \`## Goals\`, \`## Non-Goals\`, \`## Background\`, \`## Requirements\`, \`## Architecture\`, \`## Technical Decisions\`, \`## Approach\` → likely Spec; run Spec handoff. Heuristic can misfire — always offer clean No branch.
-    2. Else extract \`## Task N\` headings, or generate task list from goal.
-- No \`filePath\` (UI-only) → ask about goal, propose \`.mentor/plan/YYYY-MM-DD-<slug>.md\`. Never overwrite; append counter/timestamp on collision.
-- On confirmation:
-  - Register tasks in order: \`node .mentor/tools/mentor-cli.cjs add-task '{"planId":<id>,"name":"<task name>"}'\` — first auto-activates (\`{"activated":true}\`); rest stay \`queued\`.
-  - Newly created md file: \`node .mentor/tools/mentor-cli.cjs update-plan '{"id":<id>,"filePath":"<rel path>"}'\`
+- Plan has \`filePath\` and file is readable:
+  1. If the file has a \`## Tasks\` section with nested \`### Task N\` headings, treat it as a Plan and extract those task headings before running Spec detection. Keep the original numbered heading text in the DB task name (for example, \`Task 1: Set up auth\`).
+  2. **Spec detection**: no \`## Task N\` AND has any of \`## Overview\`, \`## Goals\`, \`## Non-Goals\`, \`## Background\`, \`## Requirements\`, \`## Architecture\`, \`## Technical Decisions\`, \`## Approach\` → likely Spec. Heuristic can misfire — always offer clean No branch. Ask once per plan per session (remember a No):
+     > "This file (\`<filePath>\`) looks like a Spec, not a Plan. Move this plan to \`removed\` and register the file as active Spec (\`mentorFiles.spec\`)? Existing spec setting will be overwritten."
+     - **Yes**:
+       1. \`node .mentor/tools/mentor-cli.cjs remove-plan '{"id":<planId>}'\` — soft-deletes (also handles active plans by demoting tasks internally).
+       2. \`node .mentor/tools/mentor-cli.cjs update-config '{"mentorFiles":{"spec":"<filePath>"}}'\` — overwrites unconditionally.
+       3. Tell user plan removed, file registered as Spec.
+       4. Re-run plan-health from top. Usually enters Case A.
+     - **No**: Treat as Plan and continue.
+  3. Else extract \`## Task N\` headings and keep the original numbered heading text in each DB task name, or generate task list from goal.
+  - Register tasks silently in order: \`node .mentor/tools/mentor-cli.cjs add-task '{"planId":<planId>,"name":"<task name>"}'\` — first auto-activates (\`{"activated":true}\`); rest stay \`queued\`. No announcement.
+- File unreadable/missing:
+  - Tell user the plan's file (\`<filePath>\`) is missing or unreadable. Ask: remove this plan, or fix manually?
+  - Remove → \`node .mentor/tools/mentor-cli.cjs remove-plan '{"id":<planId>}'\` → re-run plan-health from top (→ Case A).
+  - Fix manually → tell user to restore the file or update filePath via Plan Panel; stop.
 
-#### Spec handoff (sub-flow of Case B)
-
-Ask once per plan per session (remember a No):
-
-> "This file (\`<filePath>\`) looks like a Spec, not a Plan. Move this plan to \`removed\` and register the file as active Spec (\`mentorFiles.spec\`)? Existing spec setting will be overwritten."
-
-- **Yes**:
-  1. Plan is \`active\` → \`node .mentor/tools/mentor-cli.cjs deactivate-plan '{"id":<planId>}'\` — demotes to \`queued\`, queues its active task. Skip if already \`queued\`.
-  2. \`node .mentor/tools/mentor-cli.cjs remove-plan '{"id":<planId>}'\` — soft-deletes.
-  3. \`node .mentor/tools/mentor-cli.cjs update-config '{"mentorFiles":{"spec":"<filePath>"}}'\` — overwrites unconditionally.
-  4. Tell user plan removed, file registered as Spec.
-  5. Re-run plan-health from top. Usually enters Case A.
-- **No**:
-  - Treat as Plan, fall through to \`## Task N\` extraction (finds none), generate from goal.
-
-Also check any \`queued\` plan with \`taskCount === 0\` — same task-generation flow + Spec detection — **before activating**. Same Spec handoff except skip step 1 (\`deactivate-plan\`). Spec declined → \`node .mentor/tools/mentor-cli.cjs activate-plan '{"id":<planId>}'\` after task gen.
-
-**Case C — Active plan with tasks**: no action. If \`currentTask\` still null after re-running \`session-brief\`, pick first queued task → \`node .mentor/tools/mentor-cli.cjs activate-task '{"id":<id>}'\`. Active-task invariant requires active plan.
+**Case C — Active plan with tasks**: no action. If \`currentTask\` still null after re-running \`session-brief\`, pick first queued task → \`node .mentor/tools/mentor-cli.cjs activate-task '{"id":<taskId>}'\`. Active-task invariant requires active plan.
 
 After health check: re-run \`session-brief\`, return to mentor-session/SKILL.md.
-
-## Plan Status Reference
-
-| status | meaning |
-|---|---|
-| \`active\` | Active. ≤ 1. 0 valid (Case A). |
-| \`queued\` | Scheduled. Auto-promoted by \`sortOrder\` when active plan completes. |
-| \`paused\` | Suspended. |
-| \`completed\` | Done. |
-| \`backlog\` | Not started, timing undecided. **Default for new plans.** |
-| \`removed\` | Soft-deleted. Plan Panel only. |
 `;
 
 export const MENTOR_SESSION_SKILL_MD = `---
@@ -224,7 +196,7 @@ description: Main learning session — loads session state, runs Teaching Cycle,
    - Read file.
    - Empty, placeholder, or wrong task → overwrite with \`currentTask.name\` + steps (from plan md if available, else draft from goal).
    - AI is sole writer. Extension only seeds placeholder at setup.
-4. (Conditional) \`relevantGaps\` match task's topic → propose quick review first.
+4. (Conditional) \`relevantGaps\` match task's topic → propose 1 quick review first.
 5. (Always) Decide how to begin:
    - \`currentTask\` null after plan-health → tell user to pick/activate in Plan Panel (\`Mentor Studio Code: Open Plan Panel\`), stop.
    - \`currentTask\` set, \`resumeContext\` active:
@@ -241,7 +213,10 @@ Every concept step:
 
 ### (a) Explain
 Concept with project-relevant example.
-- Depth + analogies → \`learner.level\`
+- Level:
+  - \`beginner\` → concrete, define terms, minimize abstraction.
+  - \`intermediate\` → connect files, responsibilities, and data flow.
+  - \`advanced\` → include tradeoffs, design choices, and optimization when relevant.
 - Analogies from \`learner.experience\`
 - Tie to \`learner.interests\`
 - Depth → \`learner.mentorStyle\`
@@ -251,7 +226,10 @@ GATE: explained → (b)
 Check \`relevantGaps\`:
 - Matches task's topic → review one. Remember \`id\` for (e) UPDATE.
 - Else → 1 question on needed concept.
-  - Difficulty → \`learner.level\`.
+  - By level:
+    - \`beginner\` → prioritize reading and explaining code, small edits, fill-in-the-blank, or copy/paste level tasks.
+    - \`intermediate\` → before code, ask for implementation image: overall approach, file roles, function responsibilities, data flow. Junior-dev interview level.
+    - \`advanced\` → same, plus tradeoffs, alternatives, edge cases, failure modes, maintainability, performance. Senior-dev interview level.
   - Prefer \`learner.weakAreas\` when related.
   - Frame with \`learner.interests\` if natural.
   - Phrasing → \`learner.mentorStyle\`.
@@ -273,7 +251,10 @@ GATE: done → (f)
 
 ### (f) Code
 Write/modify code, line-by-line explanation.
-- Scaffolding → \`learner.level\`
+- By level:
+  - \`beginner\` → AI may write most code. User may do small edits, fill blanks, or copy/paste. Prioritize understanding and explanation over typing volume.
+  - \`intermediate\` → before generating code, ensure user can explain the intended implementation at high level and per-file.
+  - \`advanced\` → before generating code, ensure user can explain design, tradeoffs, edge cases, and why this approach fits.
 - Style → \`learner.mentorStyle\`
 GATE: written → (g)
 
@@ -354,9 +335,13 @@ User asks to review/practice missed concepts.
 2. Calibrate via \`learner\`; follow \`learner.mentorStyle\`.
 3. Pick a gap from \`gaps\`:
    - Prefer oldest \`lastAnsweredAt\` (already ordered).
-   - Ask in **different context** — not rephrased original.
+   - Ask in **different context** — not rephrased original; frame with \`learner.interests\` if natural.
    - Remember \`id\` for step 5 UPDATE.
-4. 1 review question (same as (b) Ask — snippet, file path, calibrate).
+4. 1 review question:
+   - \`beginner\` → prioritize understanding: terminology, code reading, what was wrong before, and what would make it correct now.
+   - \`intermediate\` → ask for implementation image: overall approach, file roles, function responsibilities, data flow, and why this answer is better now. Junior-dev interview level.
+   - \`advanced\` → ask for design choices, tradeoffs, alternatives, edge cases, failure modes, maintainability, performance, and why the previous answer failed. Senior-dev interview level.
+   - For code questions, include snippet, file path, and surrounding context.
    GATE: asked → wait
 5. Wait for user, then teaching-cycle-reference.md (d) → (e). Pass gap's \`id\` for UPDATE:
    \`node .mentor/tools/mentor-cli.cjs record-answer '{"id":42,"userAnswer":"...","isCorrect":true}'\`
@@ -397,7 +382,11 @@ Fields: \`learner\`, \`allTopics\` (\`[{id, label}]\`), \`coveredConcepts\` (\`[
    - Vary — don't repeat topic consecutively.
    - **New** concepts — prefer NOT in \`coveredConcepts\` for that topic.
    - Frame with \`learner.interests\` if natural; follow \`learner.mentorStyle\`.
-2. 1 question (same as (b) Ask — snippet, file path, calibrate).
+2. 1 question:
+   - \`beginner\` → prioritize understanding: terminology, code reading, behavior prediction, or small-change reasoning.
+   - \`intermediate\` → ask for implementation image: overall approach, file roles, function responsibilities, data flow. Junior-dev interview level.
+   - \`advanced\` → ask for design choices, tradeoffs, alternatives, edge cases, failure modes, maintainability, performance. Senior-dev interview level.
+   - For code questions, include snippet, file path, and surrounding context.
    GATE: asked → wait
 3. Wait for user, then teaching-cycle-reference.md (d) → (e).
    **Comprehension-check uses \`"taskId":null\`** (not tied to task):
@@ -474,14 +463,15 @@ Triggered when no active plan exists, or all tasks in current plan complete (see
    \`\`\`bash
    node .mentor/tools/mentor-cli.cjs add-plan '{"name":"<plan-name>","filePath":".mentor/plan/<dated-slug>.md"}'
    \`\`\`
-   Capture returned \`id\`. Then for each task:
+   Capture returned \`planId\`. Then for each task:
    \`\`\`bash
-   node .mentor/tools/mentor-cli.cjs add-task '{"planId":<id>,"name":"<task-name>"}'
+   node .mentor/tools/mentor-cli.cjs add-task '{"planId":<planId>,"name":"<task-name>"}'
    \`\`\`
+   If tasks came from numbered markdown headings, pass the full heading text as \`<task-name>\` (for example, \`Task 2: Build API\`), not just the suffix.
 6. Ask which status. Three choices:
    - **active** — start now:
      \`\`\`bash
-     node .mentor/tools/mentor-cli.cjs activate-plan '{"id":<id>}'
+     node .mentor/tools/mentor-cli.cjs activate-plan '{"id":<planId>}'
      \`\`\`
    - **queued** — auto-activates when current active plan completes. Leave it.
    - **backlog** — register, work later. **Default**. Leave it.
@@ -559,34 +549,25 @@ description: Use when learner_profile has not been set (learner.lastUpdated is n
 
 # Intake
 
-## NEVER
-
-- Ask more than 1 question at a time during Initial Intake Flow
-- Proceed to session work before writing learner_profile via \`update-profile\`
-
 ## Entry
 
-Get \`learner.lastUpdated\`:
-- Caller passed \`session-brief\` result → use that.
-- Standalone (\`[flow:intake]\`):
+Use case 1: \`learner.lastUpdated\` null → \`## Initial Intake Flow\`
+
+Use case 2: user asks to update profile → \`## Update Flow\`
+- Use caller's \`session-brief\` result if provided.
+- Standalone (\`[flow:intake]\`) → run:
   \`\`\`bash
   node .mentor/tools/mentor-cli.cjs session-brief '{"flow":"mentor-session"}'
   \`\`\`
   Read \`learner\`.
 
-Branch:
-- null → \`## Initial Intake Flow\`
-- set → \`## Update Flow\`
-
-During Update Flow, user asks to start over ("start over", "最初から", etc.) → jump to \`## Initial Intake Flow\`.
-
-All user-facing prose (tables, prompts, confirmations, cancellations) → user's \`locale\`. English below = templates, translate.
-
 ## Update Flow
 
 ### Step 1: Show current profile
 
-Render 5 fields from \`learner\` as markdown table. Keep field keys English (DB/CLI contract); translate header + surrounding prose to \`locale\`.
+Render 5 fields from \`learner\` as markdown table. User-facing labels in \`locale\`.
+
+For CLI writes, map them to these exact keys: \`experience\`, \`level\`, \`interests\`, \`weak_areas\`, \`mentor_style\`.
 
 | Field | Current value |
 |-------|---------------|
@@ -607,19 +588,18 @@ Do NOT proceed until user responds.
 
 ### Step 3: Interpret and show diff
 
+**Ambiguity guard**: ambiguous ("a bit harder") → 1 clarifying question, then Step 3.
+
+**Add vs replace**: "add Rust" → append. "only Rust" → full replace. Unclear → ask.
+
 Build partial update with only changed fields. Arrays (\`interests\`, \`weak_areas\`) = full replacement (CLI replaces whole arrays).
 
-Diff table (only changed; translate header to \`locale\`):
-
+Diff table (only changed; user-facing labels in \`locale\`):
 | Field | Before | After |
 |-------|--------|-------|
 | <field> | <before> | <after> |
 
 Ask to confirm, invite corrections.
-
-**Ambiguity guard**: ambiguous ("a bit harder") → 1 clarifying question, then Step 3.
-
-**Add vs replace**: "add Rust" → append. "only Rust" → full replace. Unclear → ask.
 
 ### Step 4: Handle confirmation
 
@@ -642,18 +622,18 @@ Programming experience: how long, which languages, what they've built.
 
 ### Question 2: Self-assessed Level
 Three choices:
-- **beginner** — learning fundamentals
-- **intermediate** — writes code, deepening understanding
-- **advanced** — confident in design and optimization
+- **beginner** — learning fundamentals; mentor gives more code support and checks understanding with small edits/explanations
+- **intermediate** — writes code, deepening understanding; mentor expects the user to explain implementation approach, file roles, and code behavior
+- **advanced** — confident in design and optimization; mentor asks higher-level design, tradeoff, and edge-case questions
 
 ### Question 3: Interests
-Fields / technologies / projects — things to build or explore.
+Fields / technologies / projects — things to build or explore. These help the mentor tailor examples, explanations, and questions to what the user wants to make or learn.
 
 ### Question 4: Weak Areas
 Difficult programming concepts/areas. None is fine.
 
 ### Question 5: Mentor Style
-How mentor should interact. Examples: hints only, collaborative, fast-paced guided.
+How mentor should interact. User may specify tone, pacing, hint style, directness, or even a character/persona. Multiple preferences are fine. Examples: hints only, collaborative, fast-paced guided, praise-heavy, gentle, strict, or "talk like a cat."
 
 ## After All 5 Answers
 
