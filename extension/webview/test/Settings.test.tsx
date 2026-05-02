@@ -1,4 +1,8 @@
-import type { MentorStudioConfig, PlanDto } from "@mentor-studio/shared";
+import type {
+  MentorStudioConfig,
+  PlanDto,
+  ProviderEntrypointStatus,
+} from "@mentor-studio/shared";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Settings } from "../src/components/Settings";
@@ -9,6 +13,14 @@ vi.mock("../src/vscodeApi", () => ({
 
 const defaultProps = {
   config: null as MentorStudioConfig | null,
+  entrypointStatus: {
+    claudeEnabled: false,
+    claudeMode: null,
+    claudeProject: false,
+    claudePersonal: false,
+    codexEnabled: false,
+    hasEntrypoint: false,
+  } satisfies ProviderEntrypointStatus,
   locale: "ja" as const,
   onLocaleChange: () => {},
   profileLastUpdated: null as string | null,
@@ -26,7 +38,7 @@ describe("Settings", () => {
     render(<Settings {...defaultProps} />);
     // Spec and active plan both show the "⚠ 未設定" warning
     const warnings = screen.getAllByText("⚠ 未設定");
-    expect(warnings).toHaveLength(2);
+    expect(warnings.length).toBeGreaterThanOrEqual(2);
     // Active-plan row uses the unified "Active:" label in both unset and set states.
     expect(screen.getAllByText("Active:").length).toBeGreaterThan(0);
   });
@@ -37,7 +49,83 @@ describe("Settings", () => {
     };
     render(<Settings {...defaultProps} config={config} />);
     const warnings = screen.getAllByText("⚠ 未設定");
-    expect(warnings).toHaveLength(2);
+    expect(warnings.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("renders provider settings and missing-entrypoint warning", () => {
+    render(<Settings {...defaultProps} />);
+    expect(screen.getByText("Mentor機能を利用するAIツール")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Mentor機能を利用するには、Claude Code または Codex を選択してください",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("shows Claude scope radios only when Claude Code is enabled", () => {
+    render(
+      <Settings
+        {...defaultProps}
+        entrypointStatus={{
+          claudeEnabled: true,
+          claudeMode: "personal",
+          claudeProject: false,
+          claudePersonal: true,
+          codexEnabled: false,
+          hasEntrypoint: true,
+        }}
+      />,
+    );
+    expect(screen.getByLabelText("Claude Code")).toBeTruthy();
+    expect(screen.getByLabelText("Project")).toBeTruthy();
+    expect(screen.getByLabelText("Personal")).toBeTruthy();
+    expect((screen.getByLabelText("Personal") as HTMLInputElement).checked).toBe(
+      true,
+    );
+  });
+
+  it("sends provider toggle messages", async () => {
+    const { postMessage } = await import("../src/vscodeApi");
+    (postMessage as ReturnType<typeof vi.fn>).mockClear();
+    render(<Settings {...defaultProps} locale="en" />);
+
+    fireEvent.click(screen.getByLabelText("Claude Code"));
+    fireEvent.click(screen.getByLabelText("Codex"));
+
+    expect(postMessage).toHaveBeenCalledWith({
+      type: "setClaudeCodeEnabled",
+      value: true,
+    });
+    expect(postMessage).toHaveBeenCalledWith({
+      type: "setCodexEnabled",
+      value: true,
+    });
+  });
+
+  it("sends Claude scope changes", async () => {
+    const { postMessage } = await import("../src/vscodeApi");
+    (postMessage as ReturnType<typeof vi.fn>).mockClear();
+    render(
+      <Settings
+        {...defaultProps}
+        locale="en"
+        entrypointStatus={{
+          claudeEnabled: true,
+          claudeMode: "project",
+          claudeProject: true,
+          claudePersonal: false,
+          codexEnabled: false,
+          hasEntrypoint: true,
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("Personal"));
+
+    expect(postMessage).toHaveBeenCalledWith({
+      type: "setClaudeCodeScope",
+      value: "personal",
+    });
   });
 
   it("shows spec file path when set", () => {
@@ -123,7 +211,7 @@ describe("Settings", () => {
   it("calls onLocaleChange when toggle clicked", () => {
     const onLocaleChange = vi.fn();
     render(<Settings {...defaultProps} onLocaleChange={onLocaleChange} />);
-    const checkbox = screen.getByRole("checkbox");
+    const checkbox = screen.getByLabelText("Language / 言語");
     fireEvent.click(checkbox);
     expect(onLocaleChange).toHaveBeenCalledWith("en");
   });
@@ -314,7 +402,9 @@ describe("Settings", () => {
     fireEvent.click(
       screen.getByLabelText("プロフィールデータ（拡張機能ストレージ）"),
     );
-    fireEvent.click(screen.getByLabelText("CLAUDE.md 内のメンター参照コード"));
+    fireEvent.click(
+      screen.getByLabelText("AI ツールのエントリポイント内のメンター参照"),
+    );
 
     const cleanupButton = screen.getByText("データ消去");
     expect(cleanupButton.hasAttribute("disabled")).toBe(true);

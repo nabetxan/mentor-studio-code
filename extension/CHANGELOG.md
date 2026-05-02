@@ -2,6 +2,20 @@
 
 All notable changes to "Mentor Studio Code" will be documented in this file.
 
+## [0.6.8] - 2026-05-02
+
+### Added
+
+- Provider-aware Mentor wiring in Setup and Settings: you can now enable Mentor for `Claude Code`, `Codex`, or both, and switch Claude between project `CLAUDE.md` and personal `~/.claude/projects/.../CLAUDE.md`.
+- Managed Codex entrypoint support via project `AGENTS.md`, plus live Settings refresh when `CLAUDE.md`, personal `CLAUDE.md`, or `AGENTS.md` changes on disk.
+
+### Changed
+
+- Remove Mentor / cleanup now removes Mentor wiring from supported AI entrypoint files, not only `CLAUDE.md`.
+- Settings now shows an **AI Tools Using Mentor** section and warns when no provider entrypoint is configured, which also blocks re-enabling Mentor until Claude Code or Codex is set up.
+- Tuned the mentor skill templates and uninstall guidance to match provider-aware entrypoint cleanup, including the managed Codex `AGENTS.md` block.
+
+
 ## [0.6.7] - 2026-04-29
 
 ### Fixed

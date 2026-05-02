@@ -206,6 +206,30 @@ const translations = {
   "settings.detach": { ja: "外す", en: "Detach" },
   "settings.language": { ja: "Language / 言語", en: "Language" },
   "settings.enableMentor": { ja: "メンター機能", en: "Mentor" },
+  "settings.providers.title": {
+    ja: "Mentor機能を利用するAIツール",
+    en: "AI Tools Using Mentor",
+  },
+  "settings.providers.claude": {
+    ja: "Claude Code",
+    en: "Claude Code",
+  },
+  "settings.providers.codex": {
+    ja: "Codex",
+    en: "Codex",
+  },
+  "settings.providers.project": {
+    ja: "Project",
+    en: "Project",
+  },
+  "settings.providers.personal": {
+    ja: "Personal",
+    en: "Personal",
+  },
+  "settings.providers.missing": {
+    ja: "Mentor機能を利用するには、Claude Code または Codex を選択してください",
+    en: "Select Claude Code or Codex to use Mentor.",
+  },
   "settings.prompt.spec": {
     ja: "@.mentor/rules/CREATE_SPEC.md 仕様ファイルを作成してください。不足している情報があればユーザーに質問してください。仕様作成に使える外部スキルがあれば活用してください。",
     en: "@.mentor/rules/CREATE_SPEC.md Create a spec file. Ask the user if any information is missing. If any external skill for spec creation is available, feel free to use it.",
@@ -296,8 +320,8 @@ const translations = {
     en: "Profile data (extension storage)",
   },
   "settings.uninstall.check.claudeMdRef": {
-    ja: "CLAUDE.md 内のメンター参照コード",
-    en: "Mentor reference in CLAUDE.md",
+    ja: "AI ツールのエントリポイント内のメンター参照",
+    en: "Mentor references in AI entrypoint files",
   },
   "settings.uninstall.check.externalDb": {
     ja: "学習履歴 DB（外部ストレージ）",

@@ -1,5 +1,6 @@
 import type {
   CleanupOptions,
+  ProviderEntrypointStatus,
   FileField,
   Locale,
   MentorStudioConfig,
@@ -20,6 +21,7 @@ import {
 
 interface SettingsProps {
   config: MentorStudioConfig | null;
+  entrypointStatus: ProviderEntrypointStatus;
   locale: Locale;
   onLocaleChange: (locale: Locale) => void;
   profileLastUpdated: string | null;
@@ -27,6 +29,94 @@ interface SettingsProps {
   nextPlan: PlanDto | null;
   planActionError: string | null;
   dataLocation?: { dbPath: string; dirPath: string };
+}
+
+function ProviderSection({
+  entrypointStatus,
+  locale,
+}: {
+  entrypointStatus: ProviderEntrypointStatus;
+  locale: Locale;
+}) {
+  const warning = !entrypointStatus.hasEntrypoint;
+
+  return (
+    <div className={`setting-item${warning ? " setting-item--warning" : ""}`}>
+      {warning && (
+        <span className="setting-warning-badge" aria-hidden="true">
+          !
+        </span>
+      )}
+      <div className="setting-label">
+        {t("settings.providers.title", locale)}
+      </div>
+      <div className="setting-actions-vertical">
+        <label className="uninstall-check">
+          <input
+            type="checkbox"
+            checked={entrypointStatus.claudeEnabled}
+            onChange={() =>
+              postMessage({
+                type: "setClaudeCodeEnabled",
+                value: !entrypointStatus.claudeEnabled,
+              })
+            }
+          />
+          {t("settings.providers.claude", locale)}
+        </label>
+        {entrypointStatus.claudeEnabled && (
+          <div className="setting-actions">
+            <label className="uninstall-check">
+              <input
+                type="radio"
+                name="claude-scope"
+                checked={entrypointStatus.claudeMode !== "personal"}
+                onChange={() =>
+                  postMessage({
+                    type: "setClaudeCodeScope",
+                    value: "project",
+                  })
+                }
+              />
+              {t("settings.providers.project", locale)}
+            </label>
+            <label className="uninstall-check">
+              <input
+                type="radio"
+                name="claude-scope"
+                checked={entrypointStatus.claudeMode === "personal"}
+                onChange={() =>
+                  postMessage({
+                    type: "setClaudeCodeScope",
+                    value: "personal",
+                  })
+                }
+              />
+              {t("settings.providers.personal", locale)}
+            </label>
+          </div>
+        )}
+        <label className="uninstall-check">
+          <input
+            type="checkbox"
+            checked={entrypointStatus.codexEnabled}
+            onChange={() =>
+              postMessage({
+                type: "setCodexEnabled",
+                value: !entrypointStatus.codexEnabled,
+              })
+            }
+          />
+          {t("settings.providers.codex", locale)}
+        </label>
+        {warning && (
+          <p className="setting-warning" role="alert">
+            {t("settings.providers.missing", locale)}
+          </p>
+        )}
+      </div>
+    </div>
+  );
 }
 
 interface ActivePlanRowProps {
@@ -584,6 +674,7 @@ function UninstallSection({
 
 export function Settings({
   config,
+  entrypointStatus,
   locale,
   onLocaleChange,
   profileLastUpdated,
@@ -599,6 +690,7 @@ export function Settings({
 
   return (
     <div className="settings">
+      <ProviderSection entrypointStatus={entrypointStatus} locale={locale} />
       <ProfileSection profileLastUpdated={profileLastUpdated} locale={locale} />
       <p className="setting-guide">{t("settings.unsetGuide", locale)}</p>
       <PlanSection

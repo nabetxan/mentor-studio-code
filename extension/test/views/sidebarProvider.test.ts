@@ -90,6 +90,42 @@ describe("SidebarProvider", () => {
     expect(() => sub.postMessage({ type: "dbChanged" })).not.toThrow();
   });
 
+  it("sendConfig includes derived provider entrypoint status", async () => {
+    const provider = new SidebarProvider(
+      vscodeMock.Uri.file("/ext") as unknown as ConstructorParameters<
+        typeof SidebarProvider
+      >[0],
+    );
+    const view = makeView();
+    provider.resolveWebviewView(
+      view as unknown as Parameters<typeof provider.resolveWebviewView>[0],
+    );
+    vi.spyOn(vscodeMock.workspace.fs, "readFile").mockImplementation(
+      async (uri) => {
+        if (uri.fsPath === "/workspace/AGENTS.md") {
+          return Uint8Array.from(
+            Buffer.from(
+              "<!-- msc:codex:start -->\nRead `.mentor/config.json`.\n- If config is missing or invalid, stop.\n- If `enableMentor` is false, stop.\n- If `enableMentor` is true, continue to `@.mentor/rules/MENTOR_RULES.md`.\n<!-- msc:codex:end -->\n",
+            ),
+          );
+        }
+        return new Uint8Array();
+      },
+    );
+
+    await provider.sendConfig({ repositoryName: "repo", enableMentor: true });
+
+    expect(view.__posted).toContainEqual(
+      expect.objectContaining({
+        type: "config",
+        entrypointStatus: expect.objectContaining({
+          codexEnabled: true,
+          hasEntrypoint: true,
+        }),
+      }),
+    );
+  });
+
   it("mergeTopic message calls the registered handler", async () => {
     const provider = new SidebarProvider(
       vscodeMock.Uri.file("/ext") as unknown as ConstructorParameters<

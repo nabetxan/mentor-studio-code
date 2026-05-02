@@ -3,6 +3,7 @@ import type {
   ExtensionMessage,
   Locale,
   MentorStudioConfig,
+  ProviderEntrypointStatus,
 } from "@mentor-studio/shared";
 import { useEffect, useRef, useState } from "react";
 import { Actions } from "./components/Actions";
@@ -14,10 +15,21 @@ import { onMessage, postMessage } from "./vscodeApi";
 
 type Tab = "actions" | "overview" | "settings";
 
+const EMPTY_ENTRYPOINT_STATUS: ProviderEntrypointStatus = {
+  claudeEnabled: false,
+  claudeMode: null,
+  claudeProject: false,
+  claudePersonal: false,
+  codexEnabled: false,
+  hasEntrypoint: false,
+};
+
 export function App() {
   const [tab, setTab] = useState<Tab>("actions");
   const [data, setData] = useState<DashboardData | null>(null);
   const [config, setConfig] = useState<MentorStudioConfig | null>(null);
+  const [entrypointStatus, setEntrypointStatus] =
+    useState<ProviderEntrypointStatus>(EMPTY_ENTRYPOINT_STATUS);
   const [dataLocation, setDataLocation] = useState<
     { dbPath: string; dirPath: string } | undefined
   >(undefined);
@@ -52,7 +64,10 @@ export function App() {
     return () => ro.disconnect();
   }, []);
 
-  const settingsHasWarning = !data?.activePlan || !data?.profileLastUpdated;
+  const settingsHasWarning =
+    !data?.activePlan ||
+    !data?.profileLastUpdated ||
+    !entrypointStatus.hasEntrypoint;
 
   useEffect(() => {
     const cleanup = onMessage((message: ExtensionMessage) => {
@@ -62,6 +77,9 @@ export function App() {
           break;
         case "config":
           setConfig(message.data);
+          setEntrypointStatus(
+            message.entrypointStatus ?? EMPTY_ENTRYPOINT_STATUS,
+          );
           setDataLocation(message.dataLocation);
           setHasConfig(true);
           setNeedsMigration(false);
@@ -343,6 +361,7 @@ export function App() {
         {tab === "settings" && (
           <Settings
             config={config}
+            entrypointStatus={entrypointStatus}
             locale={locale}
             onLocaleChange={handleLocaleChange}
             profileLastUpdated={data?.profileLastUpdated ?? null}

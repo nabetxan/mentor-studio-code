@@ -50,6 +50,17 @@ export interface MentorStudioConfig {
   extensionUninstalled?: boolean;
 }
 
+export type ClaudeEntrypointMode = "project" | "personal";
+
+export interface ProviderEntrypointStatus {
+  claudeEnabled: boolean;
+  claudeMode: ClaudeEntrypointMode | null;
+  claudeProject: boolean;
+  claudePersonal: boolean;
+  codexEnabled: boolean;
+  hasEntrypoint: boolean;
+}
+
 // === Dashboard stats (computed by extension, sent to webview) ===
 
 export interface TopicStats {
@@ -126,6 +137,7 @@ export type ExtensionMessage =
   | {
       type: "config";
       data: MentorStudioConfig;
+      entrypointStatus?: ProviderEntrypointStatus;
       /** Runtime DB location info — populated once Setup has run (workspaceId known). */
       dataLocation?: {
         dbPath: string; // /Users/.../MentorStudioCode/<uuid>/data.db
@@ -157,6 +169,9 @@ export type WebviewMessage =
   | { type: "clearFile"; field: FileField }
   | { type: "setLocale"; locale: Locale }
   | { type: "setEnableMentor"; value: boolean }
+  | { type: "setClaudeCodeEnabled"; value: boolean }
+  | { type: "setClaudeCodeScope"; value: ClaudeEntrypointMode }
+  | { type: "setCodexEnabled"; value: boolean }
   | { type: "mergeTopic"; fromKey: string; toKey: string }
   | { type: "updateTopicLabel"; key: string; newLabel: string }
   | { type: "addTopic"; label: string }

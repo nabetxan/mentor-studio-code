@@ -4,9 +4,11 @@ import {
   CREATE_PLAN_MD,
   INTAKE_SKILL_MD,
   MENTOR_SESSION_SKILL_MD,
+  MENTOR_RULES_MD,
   MENTOR_SKILLS,
   PLAN_HEALTH_MD,
   SHARED_RULES_MD,
+  TEACHING_CYCLE_REFERENCE_MD,
 } from "../../src/templates/mentorFiles";
 
 describe("SKILL.md templates", () => {
@@ -184,5 +186,27 @@ describe("CREATE_PLAN_MD", () => {
       /pass the full heading text as `?<task-name>`?/,
     );
     expect(CREATE_PLAN_MD).toMatch(/Task 2: Build API/);
+  });
+});
+
+describe("MENTOR_RULES_MD uninstall guidance", () => {
+  it("includes AGENTS.md and provider-aware removal instructions", () => {
+    expect(MENTOR_RULES_MD).toMatch(/AGENTS\.md/);
+    expect(MENTOR_RULES_MD).toMatch(/remove the `@\.mentor\/rules\/MENTOR_RULES\.md` line/);
+    expect(MENTOR_RULES_MD).toMatch(/remove only the managed `<!-- msc:codex:start -->`\.\.\.`<!-- msc:codex:end -->` block/);
+  });
+});
+
+describe("template brevity", () => {
+  function wordCount(content: string): number {
+    return content.trim().split(/\s+/).filter(Boolean).length;
+  }
+
+  it("keeps the heaviest templates compact", () => {
+    expect(wordCount(SHARED_RULES_MD)).toBeLessThanOrEqual(230);
+    expect(wordCount(TEACHING_CYCLE_REFERENCE_MD)).toBeLessThanOrEqual(230);
+    expect(wordCount(MENTOR_SESSION_SKILL_MD)).toBeLessThanOrEqual(560);
+    expect(wordCount(CREATE_PLAN_MD)).toBeLessThanOrEqual(360);
+    expect(wordCount(INTAKE_SKILL_MD)).toBeLessThanOrEqual(470);
   });
 });

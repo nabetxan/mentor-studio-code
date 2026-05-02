@@ -1,4 +1,8 @@
-import type { DashboardData, MentorStudioConfig } from "@mentor-studio/shared";
+import type {
+  DashboardData,
+  MentorStudioConfig,
+  ProviderEntrypointStatus,
+} from "@mentor-studio/shared";
 import {
   act,
   cleanup,
@@ -41,6 +45,15 @@ function simulateMessage(msg: unknown) {
 
 const mockConfig: MentorStudioConfig = {
   repositoryName: "test-repo",
+};
+
+const noEntrypoints: ProviderEntrypointStatus = {
+  claudeEnabled: false,
+  claudeMode: null,
+  claudeProject: false,
+  claudePersonal: false,
+  codexEnabled: false,
+  hasEntrypoint: false,
 };
 
 const mockData: DashboardData = {
@@ -93,9 +106,15 @@ describe("App", () => {
 
   it("switches to Settings tab", () => {
     render(<App />);
-    simulateMessage({ type: "config", data: mockConfig });
+    simulateMessage({ type: "config", data: mockConfig, entrypointStatus: noEntrypoints });
     fireEvent.click(screen.getByText("Settings"));
     expect(screen.getByText("プラン")).toBeTruthy();
+  });
+
+  it("shows settings warning badge when no entrypoints are configured", () => {
+    render(<App />);
+    simulateMessage({ type: "config", data: mockConfig, entrypointStatus: noEntrypoints });
+    expect(screen.getAllByText("!").length).toBeGreaterThan(0);
   });
 
   it("sends ready message on mount", () => {
@@ -119,9 +138,7 @@ describe("App", () => {
     render(<App />);
     simulateMessage({ type: "config", data: mockConfig });
     fireEvent.click(screen.getByText("Settings"));
-    const checkboxes = screen.getAllByRole("checkbox");
-    // locale toggle is the second checkbox
-    fireEvent.click(checkboxes[1]);
+    fireEvent.click(screen.getByLabelText("Language / 言語"));
     expect(mockApi.postMessage).toHaveBeenCalledWith({
       type: "setLocale",
       locale: "en",
@@ -132,8 +149,9 @@ describe("App", () => {
     render(<App />);
     simulateMessage({ type: "config", data: mockConfig });
     fireEvent.click(screen.getByText("Settings"));
-    const checkboxes = screen.getAllByRole("checkbox");
-    expect((checkboxes[0] as HTMLInputElement).checked).toBe(true);
+    expect(
+      (screen.getByLabelText("メンター機能") as HTMLInputElement).checked,
+    ).toBe(true);
   });
 
   it("enableMentor toggle reflects false from config", () => {
@@ -143,16 +161,16 @@ describe("App", () => {
       data: { ...mockConfig, enableMentor: false },
     });
     fireEvent.click(screen.getByText("Settings"));
-    const checkboxes = screen.getAllByRole("checkbox");
-    expect((checkboxes[0] as HTMLInputElement).checked).toBe(false);
+    expect(
+      (screen.getByLabelText("メンター機能") as HTMLInputElement).checked,
+    ).toBe(false);
   });
 
   it("sends setEnableMentor message when enableMentor toggle clicked", () => {
     render(<App />);
     simulateMessage({ type: "config", data: mockConfig });
     fireEvent.click(screen.getByText("Settings"));
-    const checkboxes = screen.getAllByRole("checkbox");
-    fireEvent.click(checkboxes[0]);
+    fireEvent.click(screen.getByLabelText("メンター機能"));
     expect(mockApi.postMessage).toHaveBeenCalledWith({
       type: "setEnableMentor",
       value: false,

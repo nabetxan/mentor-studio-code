@@ -4,7 +4,16 @@ import * as vscode from "vscode";
 import { openDb } from "../db";
 import { acquireLock, releaseLock } from "../db/lock";
 import { migrateToV3, shouldMigrateV3 } from "../migration/v3ExternalDb";
-import { findMentorRef, promptAndAddMentorRef } from "../services/claudeMd";
+import {
+  ensureCodexProjectEntrypoint,
+  getEntrypointStatus,
+  promptForClaudeMode,
+  promptForSetupProviders,
+  removeClaudePersonalEntrypoint,
+  removeClaudeProjectEntrypoint,
+  removeCodexProjectEntrypoint,
+  setClaudeMode,
+} from "../services/claudeMd";
 import { derivePaths } from "../utils/derivePaths";
 import { ensureWorkspaceId } from "../utils/workspaceId";
 import {
@@ -446,19 +455,42 @@ export async function runSetup(
     ? existingConfig.locale !== "en"
     : detectedLocale === "ja";
 
-  // Handle CLAUDE.md — let user choose project-wide or personal
-  const refStatus = await findMentorRef(wsRoot);
-  let claudeAction = "skipped (already contains mentorRef)";
+  const currentEntrypoints = await getEntrypointStatus(wsRoot);
+  let claudeAction = "kept existing Claude entrypoints";
+  let codexAction = "kept existing Codex entrypoint";
+  const providerSelection = await promptForSetupProviders(isJa);
 
-  if (!refStatus.personal && !refStatus.project) {
-    const result = await promptAndAddMentorRef(wsRoot, isJa);
-    if (result === "project") {
-      claudeAction = "added to project CLAUDE.md";
-    } else if (result === "personal") {
-      claudeAction = "added to personal CLAUDE.md";
+  if (providerSelection) {
+    if (providerSelection.claude) {
+      const claudeMode =
+        (await promptForClaudeMode(isJa)) ?? currentEntrypoints.claudeMode;
+      if (claudeMode) {
+        await setClaudeMode(wsRoot, claudeMode);
+        claudeAction =
+          claudeMode === "project"
+            ? "added to project CLAUDE.md"
+            : "added to personal CLAUDE.md";
+      } else {
+        claudeAction = "skipped by user";
+      }
     } else {
-      claudeAction = "skipped by user";
+      await Promise.all([
+        removeClaudeProjectEntrypoint(wsRoot),
+        removeClaudePersonalEntrypoint(wsRoot),
+      ]);
+      claudeAction = "removed from Claude entrypoints";
     }
+
+    if (providerSelection.codex) {
+      await ensureCodexProjectEntrypoint(wsRoot);
+      codexAction = "added to project AGENTS.md";
+    } else {
+      await removeCodexProjectEntrypoint(wsRoot);
+      codexAction = "removed from project AGENTS.md";
+    }
+  } else {
+    claudeAction = "skipped by user";
+    codexAction = "skipped by user";
   }
 
   // Output results
@@ -467,7 +499,8 @@ export async function runSetup(
     `Created: ${createdFiles.join(", ") || "none (all existed)"}`,
   );
   outputChannel.appendLine(`Skipped: ${skippedFiles.join(", ") || "none"}`);
-  outputChannel.appendLine(`CLAUDE.md: ${claudeAction}`);
+  outputChannel.appendLine(`Claude Code: ${claudeAction}`);
+  outputChannel.appendLine(`Codex: ${codexAction}`);
   outputChannel.show(true);
 
   // Untrack legacy DB from git if it's still indexed. v0.6.6 moved the DB
