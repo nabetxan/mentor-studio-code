@@ -335,7 +335,7 @@ User asks to review/practice missed concepts.
 2. Calibrate via \`learner\`; follow \`learner.mentorStyle\`.
 3. Pick a gap from \`gaps\`:
    - Prefer oldest \`lastAnsweredAt\` (already ordered).
-   - Ask in **different context** — not rephrased original; frame with \`learner.interests\` if natural.
+   - Ask in **different context** — not rephrased original.
    - Remember \`id\` for step 5 UPDATE.
 4. 1 review question:
    - \`beginner\` → prioritize understanding: terminology, code reading, what was wrong before, and what would make it correct now.
@@ -399,8 +399,6 @@ Fields: \`learner\`, \`allTopics\` (\`[{id, label}]\`), \`coveredConcepts\` (\`[
    - Correct/incorrect breakdown.
    - Topics covered, per-topic performance.
    - Weak areas identified/confirmed.
-
-vs Review: Review re-asks \`isCorrect:false\` concepts. Comprehension Check generates **new** questions across all topics.
 `;
 
 export const IMPLEMENTATION_REVIEW_SKILL_MD = `---
