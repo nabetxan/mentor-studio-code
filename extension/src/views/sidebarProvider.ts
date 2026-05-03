@@ -629,7 +629,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     }
     const status = await getEntrypointStatus(wsRoot);
     const movingToPersonal =
-      value === "personal" && status.claudeMdScope !== "personal";
+      value === "personal" && status.claudeMdScope === "project";
     const movingToProject =
       value === "project" && status.claudeMdScope === "personal";
     const confirmed = await this.confirmSettingsEntrypointEdit(

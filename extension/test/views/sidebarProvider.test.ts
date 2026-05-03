@@ -217,6 +217,44 @@ describe("SidebarProvider", () => {
     expect(files.get("/workspace/CLAUDE.md")).toBe(`${MENTOR_REF}\n`);
   });
 
+  it("uses a generic CLAUDE.md prompt when no existing scope is set", async () => {
+    const files = new Map<string, string>();
+    vi.spyOn(vscodeMock.workspace.fs, "readFile").mockImplementation(async (uri) =>
+      Uint8Array.from(Buffer.from(files.get(uri.fsPath) ?? "")),
+    );
+    const writeFile = vi
+      .spyOn(vscodeMock.workspace.fs, "writeFile")
+      .mockImplementation(async (uri, content) => {
+        files.set(uri.fsPath, Buffer.from(content).toString());
+      });
+    vi.spyOn(vscodeMock.workspace.fs, "createDirectory").mockResolvedValue();
+
+    const provider = new SidebarProvider(
+      vscodeMock.Uri.file("/ext") as unknown as ConstructorParameters<
+        typeof SidebarProvider
+      >[0],
+    );
+    const view = makeView();
+    provider.resolveWebviewView(
+      view as unknown as Parameters<typeof provider.resolveWebviewView>[0],
+    );
+    await provider.sendConfig({ repositoryName: "repo", locale: "en" });
+    writeFile.mockClear();
+
+    const confirm = vi
+      .spyOn(vscodeMock.window, "showWarningMessage")
+      .mockResolvedValue(undefined);
+
+    await view.__trigger({ type: "setClaudeMdScope", value: "personal" });
+
+    expect(confirm).toHaveBeenCalledWith(
+      "This will update the Mentor reference in `CLAUDE.md`. Continue?",
+      { modal: true },
+      "Continue",
+    );
+    expect(writeFile).not.toHaveBeenCalled();
+  });
+
   it("prompts in Japanese before enabling AGENTS.md from Settings and updates after approval", async () => {
     const files = new Map<string, string>();
     vi.spyOn(vscodeMock.workspace.fs, "readFile").mockImplementation(async (uri) =>

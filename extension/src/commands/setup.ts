@@ -579,14 +579,7 @@ export async function runSetup(
       ]);
       claudeAction = "removed from CLAUDE.md entrypoints";
     } else if (entrypointSelection.claudeMd) {
-      if (currentEntrypoints.claudeMdScope) {
-        claudeAction =
-          currentEntrypoints.claudeMdScope === "project"
-            ? "kept existing project CLAUDE.md entrypoint"
-            : "kept existing personal CLAUDE.md entrypoint";
-      } else {
-        claudeAction = "CLAUDE.md was selected, but no scope was chosen";
-      }
+      claudeAction = "CLAUDE.md was selected, but no scope was chosen";
     }
 
     if (entrypointPlan.agentsMode === "ensure") {
