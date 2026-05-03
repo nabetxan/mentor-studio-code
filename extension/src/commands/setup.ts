@@ -6,7 +6,9 @@ import { acquireLock, releaseLock } from "../db/lock";
 import { migrateToV3, shouldMigrateV3 } from "../migration/v3ExternalDb";
 import {
   ensureProjectAgentsMdEntrypoint,
+  type EntrypointFileSelection,
   getEntrypointStatus,
+  type MentorEntrypointStatus,
   promptForClaudeMdScope,
   promptForSetupEntrypointFiles,
   removePersonalClaudeMdEntrypoint,
@@ -54,6 +56,95 @@ export interface EnsureExternalDbResult {
   dbPath: string;
   migratedFromLegacy: boolean;
   bootstrapped: boolean;
+}
+
+export type SetupClaudeMode =
+  | "keep"
+  | "remove"
+  | "setProject"
+  | "setPersonal";
+
+export type SetupAgentsMode = "keep" | "remove" | "ensure";
+
+export interface ResolveSetupEntrypointPlanInput {
+  currentStatus: Pick<
+    MentorEntrypointStatus,
+    | "projectClaudeMd"
+    | "personalClaudeMd"
+    | "projectAgentsMd"
+    | "claudeMdScope"
+    | "hasEntrypointFile"
+  >;
+  selection: EntrypointFileSelection | undefined;
+  selectedClaudeScope: "project" | "personal" | undefined;
+}
+
+export interface SetupEntrypointPlan {
+  claudeMode: SetupClaudeMode;
+  agentsMode: SetupAgentsMode;
+  mentorEnabled: boolean;
+}
+
+export function resolveSetupEntrypointPlan(
+  input: ResolveSetupEntrypointPlanInput,
+): SetupEntrypointPlan {
+  let claudeMode: SetupClaudeMode = "keep";
+  let agentsMode: SetupAgentsMode = "keep";
+  let finalProjectClaudeMd = input.currentStatus.projectClaudeMd;
+  let finalPersonalClaudeMd = input.currentStatus.personalClaudeMd;
+  let finalProjectAgentsMd = input.currentStatus.projectAgentsMd;
+
+  if (input.selection) {
+    if (input.selection.claudeMd) {
+      const resolvedScope =
+        input.selectedClaudeScope ?? input.currentStatus.claudeMdScope;
+      if (resolvedScope === "project") {
+        claudeMode = "setProject";
+        finalProjectClaudeMd = true;
+        finalPersonalClaudeMd = false;
+      } else if (resolvedScope === "personal") {
+        claudeMode = "setPersonal";
+        finalProjectClaudeMd = false;
+        finalPersonalClaudeMd = true;
+      } else {
+        finalProjectClaudeMd = false;
+        finalPersonalClaudeMd = false;
+      }
+    } else {
+      claudeMode = "remove";
+      finalProjectClaudeMd = false;
+      finalPersonalClaudeMd = false;
+    }
+
+    if (input.selection.agentsMd) {
+      agentsMode = "ensure";
+      finalProjectAgentsMd = true;
+    } else {
+      agentsMode = "remove";
+      finalProjectAgentsMd = false;
+    }
+  }
+
+  return {
+    claudeMode,
+    agentsMode,
+    mentorEnabled:
+      finalProjectClaudeMd || finalPersonalClaudeMd || finalProjectAgentsMd,
+  };
+}
+
+export function buildSetupCompletionMessage(
+  isJa: boolean,
+  mentorEnabled: boolean,
+): string {
+  if (mentorEnabled) {
+    return isJa
+      ? "Mentor Studio Code のセットアップが完了しました！ダッシュボードを有効にするにはリロードしてください。"
+      : "Mentor Studio Code setup complete! Reload to activate the dashboard.";
+  }
+  return isJa
+    ? "Mentor Studio Code のセットアップは完了しましたが、Mentor はまだ無効です。CLAUDE.md または AGENTS.md のエントリポイントを設定してから、Settings か Setup でもう一度有効化してください。"
+    : "Mentor Studio Code setup finished, but Mentor is still disabled. Configure a CLAUDE.md or AGENTS.md entrypoint, then enable Mentor from Settings or run Setup again.";
 }
 
 /**
@@ -289,33 +380,35 @@ export async function runSetup(
 
   const detectedLocale = vscode.env.language.startsWith("ja") ? "ja" : "en";
 
+  const configData =
+    existingConfig ??
+    ({
+      repositoryName: folderName,
+      enableMentor: false,
+      mentorFiles: { spec: null },
+      locale: detectedLocale,
+      extensionVersion,
+      workspacePath: wsRoot.fsPath,
+    } satisfies Record<string, unknown>);
+
+  configData.extensionVersion = extensionVersion;
+  configData.workspacePath = wsRoot.fsPath;
+  delete configData.extensionUninstalled;
+  if (typeof configData.enableMentor !== "boolean") {
+    configData.enableMentor = false;
+  }
+
   if (existingConfig) {
-    // Update extensionVersion in existing config
-    existingConfig.extensionVersion = extensionVersion;
-    existingConfig.workspacePath = wsRoot.fsPath;
-    existingConfig.enableMentor = true;
-    delete (existingConfig as Record<string, unknown>).extensionUninstalled;
     await vscode.workspace.fs.writeFile(
       configUri,
-      Buffer.from(JSON.stringify(existingConfig, null, 2) + "\n"),
+      Buffer.from(JSON.stringify(configData, null, 2) + "\n"),
     );
     skippedFiles.push(".mentor/config.json (updated version)");
   } else {
-    // Create new config
-    const configContent =
-      JSON.stringify(
-        {
-          repositoryName: folderName,
-          enableMentor: true,
-          mentorFiles: { spec: null },
-          locale: detectedLocale,
-          extensionVersion,
-          workspacePath: wsRoot.fsPath,
-        },
-        null,
-        2,
-      ) + "\n";
-    await vscode.workspace.fs.writeFile(configUri, Buffer.from(configContent));
+    await vscode.workspace.fs.writeFile(
+      configUri,
+      Buffer.from(JSON.stringify(configData, null, 2) + "\n"),
+    );
     createdFiles.push(".mentor/config.json");
   }
 
@@ -456,46 +549,67 @@ export async function runSetup(
     : detectedLocale === "ja";
 
   const currentEntrypoints = await getEntrypointStatus(wsRoot);
-  let claudeAction = "kept existing CLAUDE.md entrypoints";
-  let agentsAction = "kept existing AGENTS.md entrypoint";
   const entrypointSelection = await promptForSetupEntrypointFiles(isJa, {
     claudeMdEnabled:
       currentEntrypoints.projectClaudeMd || currentEntrypoints.personalClaudeMd,
     agentsMdEnabled: currentEntrypoints.projectAgentsMd,
   });
+  const selectedClaudeScope = entrypointSelection?.claudeMd
+    ? await promptForClaudeMdScope(isJa)
+    : undefined;
+  const entrypointPlan = resolveSetupEntrypointPlan({
+    currentStatus: currentEntrypoints,
+    selection: entrypointSelection,
+    selectedClaudeScope,
+  });
+  let claudeAction = "kept existing CLAUDE.md entrypoints";
+  let agentsAction = "kept existing AGENTS.md entrypoint";
 
   if (entrypointSelection) {
-    if (entrypointSelection.claudeMd) {
-      const claudeMdScope =
-        (await promptForClaudeMdScope(isJa)) ?? currentEntrypoints.claudeMdScope;
-      if (claudeMdScope) {
-        await setClaudeMdScope(wsRoot, claudeMdScope);
-        claudeAction =
-          claudeMdScope === "project"
-            ? "added to project CLAUDE.md"
-            : "added to personal CLAUDE.md";
-      } else {
-        claudeAction = "skipped by user";
-      }
-    } else {
+    if (entrypointPlan.claudeMode === "setProject") {
+      await setClaudeMdScope(wsRoot, "project");
+      claudeAction = "added to project CLAUDE.md";
+    } else if (entrypointPlan.claudeMode === "setPersonal") {
+      await setClaudeMdScope(wsRoot, "personal");
+      claudeAction = "added to personal CLAUDE.md";
+    } else if (entrypointPlan.claudeMode === "remove") {
       await Promise.all([
         removeProjectClaudeMdEntrypoint(wsRoot),
         removePersonalClaudeMdEntrypoint(wsRoot),
       ]);
       claudeAction = "removed from CLAUDE.md entrypoints";
+    } else if (entrypointSelection.claudeMd) {
+      if (currentEntrypoints.claudeMdScope) {
+        claudeAction =
+          currentEntrypoints.claudeMdScope === "project"
+            ? "kept existing project CLAUDE.md entrypoint"
+            : "kept existing personal CLAUDE.md entrypoint";
+      } else {
+        claudeAction = "CLAUDE.md was selected, but no scope was chosen";
+      }
     }
 
-    if (entrypointSelection.agentsMd) {
+    if (entrypointPlan.agentsMode === "ensure") {
       await ensureProjectAgentsMdEntrypoint(wsRoot);
       agentsAction = "added to project AGENTS.md";
-    } else {
+    } else if (entrypointPlan.agentsMode === "remove") {
       await removeProjectAgentsMdEntrypoint(wsRoot);
       agentsAction = "removed from project AGENTS.md";
     }
   } else {
-    claudeAction = "skipped by user";
-    agentsAction = "skipped by user";
+    claudeAction = currentEntrypoints.hasEntrypointFile
+      ? "kept existing CLAUDE.md entrypoints"
+      : "not configured";
+    agentsAction = currentEntrypoints.projectAgentsMd
+      ? "kept existing AGENTS.md entrypoint"
+      : "not configured";
   }
+
+  configData.enableMentor = entrypointPlan.mentorEnabled;
+  await vscode.workspace.fs.writeFile(
+    configUri,
+    Buffer.from(JSON.stringify(configData, null, 2) + "\n"),
+  );
 
   // Output results
   outputChannel.appendLine("=== Mentor Studio Code Setup Results ===");
@@ -539,15 +653,20 @@ export async function runSetup(
   }
 
   // Prompt reload with a button
-  const reloadButton = isJa ? "ウィンドウを再読み込み" : "Reload Window";
-  const choice = await vscode.window.showInformationMessage(
-    isJa
-      ? "Mentor Studio Code のセットアップが完了しました！ダッシュボードを有効にするにはリロードしてください。"
-      : "Mentor Studio Code setup complete! Reload to activate the dashboard.",
-    { modal: true },
-    reloadButton,
-  );
-  if (choice === reloadButton) {
-    vscode.commands.executeCommand("workbench.action.reloadWindow");
+  if (entrypointPlan.mentorEnabled) {
+    const reloadButton = isJa ? "ウィンドウを再読み込み" : "Reload Window";
+    const choice = await vscode.window.showInformationMessage(
+      buildSetupCompletionMessage(isJa, true),
+      { modal: true },
+      reloadButton,
+    );
+    if (choice === reloadButton) {
+      vscode.commands.executeCommand("workbench.action.reloadWindow");
+    }
+    return;
   }
+
+  await vscode.window.showInformationMessage(
+    buildSetupCompletionMessage(isJa, false),
+  );
 }
