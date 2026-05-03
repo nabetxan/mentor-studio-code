@@ -110,16 +110,18 @@
       </p>
       <p
         class="hero-note"
-        data-ja="※ この拡張機能は <a href='https://docs.anthropic.com/en/docs/claude-code/overview'>Claude Code</a> と合わせて使用することを前提としています。<br/>インストール・動作要件・利用可能なプランについては Anthropic 公式ドキュメントをご確認ください。<br/>本拡張機能は独立したオープンソースプロジェクトであり、<br/>Anthropic, PBC との提携・推薦・後援関係はありません。"
-        data-en="* This extension is designed to work with <a href='https://docs.anthropic.com/en/docs/claude-code/overview'>Claude Code</a>. Please refer to Anthropic's official documentation for installation, requirements, and available plans.<br/>This extension is an independent open-source project and is not affiliated with, <br/>endorsed by, or sponsored by Anthropic, PBC."
+        data-ja="※ Mentor Studio Code 自体には AI モデルやチャット機能は含まれていません。<br/>利用する AI ツールのエントリポイント（Claude Code 向けの CLAUDE.md、または AGENTS.md）に Mentor 用の指示を書き込んで動作します。<br/>Claude Code を使う場合は <a href='https://docs.anthropic.com/en/docs/claude-code/overview'>Anthropic 公式ドキュメント</a> をご確認ください。<br/>本拡張機能は独立したオープンソースプロジェクトであり、Anthropic, PBC との提携・推薦・後援関係はありません。"
+        data-en="* Mentor Studio Code does not include or run an AI model by itself.<br/>It writes Mentor instructions into the entrypoint files used by your AI tool: CLAUDE.md for Claude Code, or AGENTS.md for tools that read AGENTS.md.<br/>If you use Claude Code, see <a href='https://docs.anthropic.com/en/docs/claude-code/overview'>Anthropic's official documentation</a> for setup and availability.<br/>This extension is an independent open-source project and is not affiliated with, endorsed by, or sponsored by Anthropic, PBC."
       >
-        ※ この拡張機能は
+        ※ Mentor Studio Code 自体には AI モデルやチャット機能は含まれていません。<br />
+        利用する AI ツールのエントリポイント（Claude Code 向けの
+        CLAUDE.md、または AGENTS.md）に Mentor 用の指示を書き込んで動作します。<br />
+        Claude Code を使う場合は
         <a href="https://docs.anthropic.com/en/docs/claude-code/overview"
-          >Claude Code</a
+          >Anthropic 公式ドキュメント</a
         >
-        と合わせて使用することを前提としています。インストール・動作要件・利用可能なプランについては
-        Anthropic 公式ドキュメントをご確認ください。<br />
-        本拡張機能は独立したオープンソースプロジェクトであり、<br />Anthropic,
+        をご確認ください。<br />
+        本拡張機能は独立したオープンソースプロジェクトであり、Anthropic,
         PBC との提携・推薦・後援関係はありません。
       </p>
     </section>
@@ -138,10 +140,10 @@
           <h2 data-ja="① 初回セットアップ" data-en="① Initial Setup">① 初回セットアップ</h2>
           <p
             class="wt-section-lead"
-            data-ja="インストールしてメンターが使える状態になるまでの7ステップ。"
-            data-en="Seven steps from installing to having a working mentor."
+            data-ja="インストールしてメンターが使える状態になるまでの7ステップ。Setup では CLAUDE.md / AGENTS.md のどちらを使うか選べます。"
+            data-en="Seven steps from installing to having a working mentor. Setup lets you choose CLAUDE.md, AGENTS.md, or both."
           >
-            インストールしてメンターが使える状態になるまでの7ステップ。
+            インストールしてメンターが使える状態になるまでの7ステップ。Setup では CLAUDE.md / AGENTS.md のどちらを使うか選べます。
           </p>
 
           <div class="step-card">
@@ -185,17 +187,17 @@
           <div class="step-card">
             <div class="step-number">3</div>
             <div class="step-body">
-              <h3 data-ja="CLAUDE.md 参照先を選ぶ" data-en="Choose the CLAUDE.md reference location">CLAUDE.md 参照先を選ぶ</h3>
+              <h3 data-ja="エントリポイントを選ぶ" data-en="Choose entrypoint files">エントリポイントを選ぶ</h3>
               <p
-                data-ja="メンタールールの参照追加先を選択します。プロジェクト共通で使う場合は Project CLAUDE.md、個人用なら Personal CLAUDE.md を選んでください。"
-                data-en="Choose where to add the mentor rule reference. Pick Project CLAUDE.md to share across the team, or Personal CLAUDE.md for personal use."
+                data-ja="Mentor を使うエントリポイントとして CLAUDE.md / AGENTS.md を選択します。CLAUDE.md を選んだ場合は、プロジェクト共通の CLAUDE.md か個人用 CLAUDE.md のどちらに参照を追加するか続けて選べます。AGENTS.md を選んだ場合は、プロジェクトの AGENTS.md に管理対象の Mentor ブロックが追加されます。"
+                data-en="Choose which entrypoint files should use Mentor: CLAUDE.md, AGENTS.md, or both. If you enable CLAUDE.md, you can then choose project CLAUDE.md or personal CLAUDE.md. If you enable AGENTS.md, Setup adds a managed Mentor block to the project AGENTS.md."
               >
-                メンタールールの参照追加先を選択します。プロジェクト共通で使う場合は Project CLAUDE.md、個人用なら Personal CLAUDE.md を選んでください。
+                Mentor を使うエントリポイントとして CLAUDE.md / AGENTS.md を選択します。CLAUDE.md を選んだ場合は、プロジェクト共通の CLAUDE.md か個人用 CLAUDE.md のどちらに参照を追加するか続けて選べます。AGENTS.md を選んだ場合は、プロジェクトの AGENTS.md に管理対象の Mentor ブロックが追加されます。
               </p>
               <figure class="step-screenshot">
                 <img
                   src="images/walkthrough/setup-03-claude-md-choice.png"
-                  alt="QuickPick asking where to add the CLAUDE.md reference"
+                  alt="Setup entrypoint selection for CLAUDE.md and AGENTS.md"
                 />
               </figure>
             </div>
@@ -225,15 +227,15 @@
             <div class="step-body">
               <h3 data-ja="プロフィール登録" data-en="Register your profile">プロフィール登録</h3>
               <p
-                data-ja="Settings タブの「プロフィール登録」ボタンを押すとプロンプトがクリップボードにコピーされます。そのまま Claude Code のチャットに貼り付けると、AI が対話でレベル・興味・メンタースタイルを聞き取りながらプロフィールを登録します。"
-                data-en='In the Settings tab, clicking the "Register Profile" button copies a prompt to your clipboard. Paste it into the Claude Code chat, and the AI registers your level, interests, and mentor style through a dialogue.'
+                data-ja="Settings タブの「プロフィール登録」ボタンを押すとプロンプトがクリップボードにコピーされます。そのまま設定済みの AI ツールに貼り付けると、AI が対話でレベル・興味・メンタースタイルを聞き取りながらプロフィールを登録します。"
+                data-en='In the Settings tab, clicking the "Register Profile" button copies a prompt to your clipboard. Paste it into your configured AI tool, and the AI registers your level, interests, and mentor style through a dialogue.'
               >
-                Settings タブの「プロフィール登録」ボタンを押すとプロンプトがクリップボードにコピーされます。そのまま Claude Code のチャットに貼り付けると、AI が対話でレベル・興味・メンタースタイルを聞き取りながらプロフィールを登録します。
+                Settings タブの「プロフィール登録」ボタンを押すとプロンプトがクリップボードにコピーされます。そのまま設定済みの AI ツールに貼り付けると、AI が対話でレベル・興味・メンタースタイルを聞き取りながらプロフィールを登録します。
               </p>
               <figure class="step-screenshot">
                 <img
                   src="images/walkthrough/setup-05-profile.png"
-                  alt="Settings tab: clicking the Register Profile button copies a prompt to paste into Claude Code"
+                  alt="Settings tab: clicking the Register Profile button copies a prompt"
                 />
               </figure>
             </div>
@@ -283,10 +285,10 @@
           <h2 data-ja="② 1セッションの流れ" data-en="② One Session Flow">② 1セッションの流れ</h2>
           <p
             class="wt-section-lead"
-            data-ja="Actions タブからプロンプトをコピーして、Claude Code でメンターと対話する1回の学習サイクル。"
-            data-en="Copy a prompt from the Actions tab and talk with the mentor in Claude Code — one learning cycle."
+            data-ja="Actions タブからプロンプトをコピーして、設定済みの AI ツールでメンターと対話する1回の学習サイクル。"
+            data-en="Copy a prompt from the Actions tab and talk with the mentor in your configured AI tool — one learning cycle."
           >
-            Actions タブからプロンプトをコピーして、Claude Code でメンターと対話する1回の学習サイクル。
+            Actions タブからプロンプトをコピーして、設定済みの AI ツールでメンターと対話する1回の学習サイクル。
           </p>
 
           <div class="step-card">
@@ -311,12 +313,12 @@
           <div class="step-card">
             <div class="step-number">2</div>
             <div class="step-body">
-              <h3 data-ja="Claude Code に貼る" data-en="Paste into Claude Code">Claude Code に貼る</h3>
+              <h3 data-ja="AI ツールに貼る" data-en="Paste into your AI tool">AI ツールに貼る</h3>
               <p
-                data-ja="コピーしたプロンプトを Claude Code のチャット欄に貼り付けて送信します。メンターセッションが開始されます。"
-                data-en="Paste the copied prompt into the Claude Code chat and send. The mentor session begins."
+                data-ja="コピーしたプロンプトを、設定済みの CLAUDE.md / AGENTS.md を読んでいる AI ツールに貼り付けて送信します。メンターセッションが開始されます。"
+                data-en="Paste the copied prompt into the AI tool that reads your configured CLAUDE.md or AGENTS.md entrypoint, then send it. The mentor session begins."
               >
-                コピーしたプロンプトを Claude Code のチャット欄に貼り付けて送信します。メンターセッションが開始されます。
+                コピーしたプロンプトを、設定済みの CLAUDE.md / AGENTS.md を読んでいる AI ツールに貼り付けて送信します。メンターセッションが開始されます。
               </p>
             </div>
           </div>
@@ -389,10 +391,10 @@
       </div>
       <p
         class="footer-note"
-        data-ja="※ Claude Code と合わせて使用することを前提としています。本拡張機能は Anthropic, PBC とは無関係の独立プロジェクトです。"
-        data-en="* Designed for use with Claude Code. This extension is an independent project, not affiliated with Anthropic, PBC."
+        data-ja="※ CLAUDE.md / AGENTS.md に Mentor 用の指示を書き込んで使います。本拡張機能は Anthropic, PBC とは無関係の独立プロジェクトです。"
+        data-en="* Uses CLAUDE.md and/or AGENTS.md entrypoints for Mentor instructions. This extension is an independent project, not affiliated with Anthropic, PBC."
       >
-        ※ Claude Code と合わせて使用することを前提としています。本拡張機能は
+        ※ CLAUDE.md / AGENTS.md に Mentor 用の指示を書き込んで使います。本拡張機能は
         Anthropic, PBC とは無関係の独立プロジェクトです。
       </p>
       <p class="footer-license">MIT License · Free & Open Source</p>

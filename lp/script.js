@@ -32,6 +32,12 @@
       }
     }
 
+    var images = document.querySelectorAll("[data-src-ja][data-src-en]");
+    for (var k = 0; k < images.length; k++) {
+      var image = images[k];
+      image.setAttribute("src", image.getAttribute("data-src-" + lang));
+    }
+
     var options = document.querySelectorAll(".lang-option");
     for (var j = 0; j < options.length; j++) {
       if (options[j].getAttribute("data-lang") === lang) {
