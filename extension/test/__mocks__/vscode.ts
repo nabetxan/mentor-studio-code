@@ -28,49 +28,14 @@ export function __resetWatchers(): void {
   __watchers.length = 0;
 }
 
-export const workspace = {
-  createFileSystemWatcher: (
-    pattern: RelativePattern,
-  ): MockFileSystemWatcher => {
-    const changeHandlers: Handler[] = [];
-    const createHandlers: Handler[] = [];
-    const deleteHandlers: Handler[] = [];
-    const w: MockFileSystemWatcher = {
-      pattern,
-      onDidChange: (h) => {
-        changeHandlers.push(h);
-        return new Disposable();
-      },
-      onDidCreate: (h) => {
-        createHandlers.push(h);
-        return new Disposable();
-      },
-      onDidDelete: (h) => {
-        deleteHandlers.push(h);
-        return new Disposable();
-      },
-      dispose: () => {},
-      emitChange: () => {
-        for (const h of changeHandlers) h(undefined);
-      },
-      emitCreate: () => {
-        for (const h of createHandlers) h(undefined);
-      },
-      emitDelete: () => {
-        for (const h of deleteHandlers) h(undefined);
-      },
-    };
-    __watchers.push(w);
-    return w;
-  },
-};
-
 export const window = {
   showWarningMessage: (..._args: unknown[]): Promise<string | undefined> =>
     Promise.resolve(undefined),
   showErrorMessage: (..._args: unknown[]): Promise<string | undefined> =>
     Promise.resolve(undefined),
   showInformationMessage: (..._args: unknown[]): Promise<string | undefined> =>
+    Promise.resolve(undefined),
+  showQuickPick: (..._args: unknown[]): Promise<unknown> =>
     Promise.resolve(undefined),
   showOpenDialog: (..._args: unknown[]): Promise<unknown> =>
     Promise.resolve(undefined),
@@ -121,15 +86,63 @@ interface MutableWorkspace {
   fs: {
     readFile: (uri: MockUri) => Promise<Uint8Array>;
     writeFile: (uri: MockUri, content: Uint8Array) => Promise<void>;
+    createDirectory?: (uri: MockUri) => Promise<void>;
   };
 }
 
-(workspace as unknown as MutableWorkspace).workspaceFolders = undefined;
-(workspace as unknown as MutableWorkspace).getWorkspaceFolder = (
+export const workspace: MutableWorkspace = {
+  createFileSystemWatcher: (
+    pattern: RelativePattern,
+  ): MockFileSystemWatcher => {
+    const changeHandlers: Handler[] = [];
+    const createHandlers: Handler[] = [];
+    const deleteHandlers: Handler[] = [];
+    const w: MockFileSystemWatcher = {
+      pattern,
+      onDidChange: (h) => {
+        changeHandlers.push(h);
+        return new Disposable();
+      },
+      onDidCreate: (h) => {
+        createHandlers.push(h);
+        return new Disposable();
+      },
+      onDidDelete: (h) => {
+        deleteHandlers.push(h);
+        return new Disposable();
+      },
+      dispose: () => {},
+      emitChange: () => {
+        for (const h of changeHandlers) h(undefined);
+      },
+      emitCreate: () => {
+        for (const h of createHandlers) h(undefined);
+      },
+      emitDelete: () => {
+        for (const h of deleteHandlers) h(undefined);
+      },
+    };
+    __watchers.push(w);
+    return w;
+  },
+  workspaceFolders: undefined,
+  asRelativePath: (_uri: MockUri, _includeWorkspaceFolder: boolean): string =>
+    "",
+  getWorkspaceFolder: (_uri: MockUri): { uri: MockUri } | undefined =>
+    undefined,
+  fs: {
+    readFile: (_uri: MockUri): Promise<Uint8Array> =>
+      Promise.resolve(new Uint8Array()),
+    writeFile: (_uri: MockUri, _content: Uint8Array): Promise<void> =>
+      Promise.resolve(),
+    createDirectory: (_uri: MockUri): Promise<void> => Promise.resolve(),
+  },
+};
+
+workspace.getWorkspaceFolder = (
   uri: MockUri,
 ): { uri: MockUri } | undefined => {
-  const folders =
-    (workspace as unknown as MutableWorkspace).workspaceFolders ?? [];
+  const folders = workspace.workspaceFolders ?? [];
   for (const f of folders) {
     const base = f.uri.fsPath.replace(/\/+$/, "");
     if (uri.fsPath === base || uri.fsPath.startsWith(base + "/")) {
@@ -138,23 +151,15 @@ interface MutableWorkspace {
   }
   return undefined;
 };
-(workspace as unknown as MutableWorkspace).asRelativePath = (
+workspace.asRelativePath = (
   uri: MockUri,
   _includeWorkspaceFolder: boolean,
 ): string => {
-  const folder = (workspace as unknown as MutableWorkspace).getWorkspaceFolder(
-    uri,
-  );
+  const folder = workspace.getWorkspaceFolder(uri);
   if (!folder) return uri.fsPath;
   const base = folder.uri.fsPath.replace(/\/+$/, "");
   if (uri.fsPath === base) return "";
   return uri.fsPath.startsWith(base + "/")
     ? uri.fsPath.slice(base.length + 1)
     : uri.fsPath;
-};
-(workspace as unknown as MutableWorkspace).fs = {
-  readFile: (_uri: MockUri): Promise<Uint8Array> =>
-    Promise.resolve(new Uint8Array()),
-  writeFile: (_uri: MockUri, _content: Uint8Array): Promise<void> =>
-    Promise.resolve(),
 };

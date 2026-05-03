@@ -2,6 +2,7 @@ import type {
   CleanupOptions,
   FileField,
   Locale,
+  MentorEntrypointFileStatus,
   MentorStudioConfig,
   PlanDto,
 } from "@mentor-studio/shared";
@@ -20,6 +21,7 @@ import {
 
 interface SettingsProps {
   config: MentorStudioConfig | null;
+  entrypointStatus: MentorEntrypointFileStatus;
   locale: Locale;
   onLocaleChange: (locale: Locale) => void;
   profileLastUpdated: string | null;
@@ -27,6 +29,94 @@ interface SettingsProps {
   nextPlan: PlanDto | null;
   planActionError: string | null;
   dataLocation?: { dbPath: string; dirPath: string };
+}
+
+function ProviderSection({
+  entrypointStatus,
+  locale,
+}: {
+  entrypointStatus: MentorEntrypointFileStatus;
+  locale: Locale;
+}) {
+  const warning = !entrypointStatus.hasEntrypointFile;
+
+  return (
+    <div className={`setting-item${warning ? " setting-item--warning" : ""}`}>
+      {warning && (
+        <span className="setting-warning-badge" aria-hidden="true">
+          !
+        </span>
+      )}
+      <div className="setting-label">
+        {t("settings.providers.title", locale)}
+      </div>
+      <div className="setting-actions-vertical">
+        <label className="uninstall-check setting-choice">
+          <input
+            type="checkbox"
+            checked={entrypointStatus.claudeMdEnabled}
+            onChange={() =>
+              postMessage({
+                type: "setClaudeMdEnabled",
+                value: !entrypointStatus.claudeMdEnabled,
+              })
+            }
+          />
+          {t("settings.providers.claudeMd", locale)}
+        </label>
+        {entrypointStatus.claudeMdEnabled && (
+          <div className="setting-actions setting-actions--claude-scope">
+            <label className="uninstall-check setting-choice">
+              <input
+                type="radio"
+                name="claude-scope"
+                checked={entrypointStatus.claudeMdScope !== "personal"}
+                onChange={() =>
+                  postMessage({
+                    type: "setClaudeMdScope",
+                    value: "project",
+                  })
+                }
+              />
+              {t("settings.providers.project", locale)}
+            </label>
+            <label className="uninstall-check setting-choice">
+              <input
+                type="radio"
+                name="claude-scope"
+                checked={entrypointStatus.claudeMdScope === "personal"}
+                onChange={() =>
+                  postMessage({
+                    type: "setClaudeMdScope",
+                    value: "personal",
+                  })
+                }
+              />
+              {t("settings.providers.personal", locale)}
+            </label>
+          </div>
+        )}
+        <label className="uninstall-check setting-choice">
+          <input
+            type="checkbox"
+            checked={entrypointStatus.agentsMdEnabled}
+            onChange={() =>
+              postMessage({
+                type: "setAgentsMdEnabled",
+                value: !entrypointStatus.agentsMdEnabled,
+              })
+            }
+          />
+          {t("settings.providers.agentsMd", locale)}
+        </label>
+        {warning && (
+          <p className="setting-warning" role="alert">
+            {t("settings.providers.missing", locale)}
+          </p>
+        )}
+      </div>
+    </div>
+  );
 }
 
 interface ActivePlanRowProps {
@@ -462,7 +552,7 @@ function UninstallSection({
   const [checks, setChecks] = useState<CleanupOptions>({
     mentorFolder: false,
     profile: true,
-    claudeMdRef: true,
+    entrypointFiles: true,
     wipeExternalDb: false,
   });
 
@@ -472,7 +562,7 @@ function UninstallSection({
   const hasSelection =
     checks.mentorFolder ||
     checks.profile ||
-    checks.claudeMdRef ||
+    checks.entrypointFiles ||
     checks.wipeExternalDb;
 
   const handleCleanup = () => {
@@ -516,10 +606,10 @@ function UninstallSection({
             <label className="uninstall-check">
               <input
                 type="checkbox"
-                checked={checks.claudeMdRef}
-                onChange={() => toggle("claudeMdRef")}
+                checked={checks.entrypointFiles}
+                onChange={() => toggle("entrypointFiles")}
               />
-              {t("settings.uninstall.check.claudeMdRef", locale)}
+              {t("settings.uninstall.check.entrypointFiles", locale)}
             </label>
             <label className="uninstall-check">
               <input
@@ -584,6 +674,7 @@ function UninstallSection({
 
 export function Settings({
   config,
+  entrypointStatus,
   locale,
   onLocaleChange,
   profileLastUpdated,
@@ -599,6 +690,7 @@ export function Settings({
 
   return (
     <div className="settings">
+      <ProviderSection entrypointStatus={entrypointStatus} locale={locale} />
       <ProfileSection profileLastUpdated={profileLastUpdated} locale={locale} />
       <p className="setting-guide">{t("settings.unsetGuide", locale)}</p>
       <PlanSection

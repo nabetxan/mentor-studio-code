@@ -104,6 +104,28 @@ describe("FileWatcherService: data.db watcher", () => {
 
     svc.dispose();
   });
+
+  it("watches project and personal AI entrypoint files", async () => {
+    const svc = new FileWatcherService(dir, ".mentor", () => {});
+
+    await svc.start();
+
+    const patterns = __watchers.map((w) => `${w.pattern.base}:${w.pattern.pattern}`);
+    expect(patterns.some((pattern) => pattern.endsWith(`${dir}:CLAUDE.md`))).toBe(
+      true,
+    );
+    expect(patterns.some((pattern) => pattern.endsWith(`${dir}:AGENTS.md`))).toBe(
+      true,
+    );
+    expect(
+      patterns.some(
+        (pattern) =>
+          pattern.includes(".claude/projects/") && pattern.endsWith(":CLAUDE.md"),
+      ),
+    ).toBe(true);
+
+    svc.dispose();
+  });
 });
 
 // Helper to open a read-only DB for assertions

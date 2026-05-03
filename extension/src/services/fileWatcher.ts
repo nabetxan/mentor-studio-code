@@ -3,6 +3,7 @@ import type {
   LearnerProfile,
   MentorStudioConfig,
 } from "@mentor-studio/shared";
+import * as os from "os";
 import { readFile, writeFile } from "fs/promises";
 import { existsSync, readFileSync } from "node:fs";
 import { basename, dirname, join } from "path";
@@ -117,6 +118,43 @@ export class FileWatcherService implements vscode.Disposable {
     mentorDirWatcher.onDidDelete(handleConfigDelete);
     mentorDirWatcher.onDidCreate(reloadConfig);
     this.disposables.push(mentorDirWatcher);
+
+    const fireEntrypointChanged = (): void => {
+      void this.emitConfig().catch((err) =>
+        this.log?.(`emitConfig failed: ${String(err)}`),
+      );
+    };
+    const entrypointPatterns = [
+      new vscode.RelativePattern(this.workspaceRoot, "CLAUDE.md"),
+      new vscode.RelativePattern(this.workspaceRoot, "AGENTS.md"),
+      new vscode.RelativePattern(
+        dirname(
+          join(
+            os.homedir(),
+            ".claude",
+            "projects",
+            this.workspaceRoot.replace(/[:\\/]/g, "-"),
+            "CLAUDE.md",
+          ),
+        ),
+        basename(
+          join(
+            os.homedir(),
+            ".claude",
+            "projects",
+            this.workspaceRoot.replace(/[:\\/]/g, "-"),
+            "CLAUDE.md",
+          ),
+        ),
+      ),
+    ];
+    for (const pattern of entrypointPatterns) {
+      const watcher = vscode.workspace.createFileSystemWatcher(pattern);
+      watcher.onDidChange(fireEntrypointChanged);
+      watcher.onDidCreate(fireEntrypointChanged);
+      watcher.onDidDelete(fireEntrypointChanged);
+      this.disposables.push(watcher);
+    }
 
     await this.refresh();
   }

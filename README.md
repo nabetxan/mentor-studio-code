@@ -1,4 +1,4 @@
-![version](https://img.shields.io/badge/version-0.6.7-blue)
+![version](https://img.shields.io/badge/version-0.6.8-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 [![website](https://img.shields.io/badge/%F0%9F%8C%90_Website-Landing_Page-7ec8e3)](https://nabetxan.github.io/mentor-studio-code/)
 
@@ -6,20 +6,26 @@
 
 🌐 [Website](https://nabetxan.github.io/mentor-studio-code/)
 
-Learn to code with an AI mentor powered by Claude Code. Track your understanding, spot your weak points, and keep learning in your own projects — all inside VS Code.
+Learn to code with an AI mentor workflow wired into `CLAUDE.md` and `AGENTS.md` entrypoints. Track your understanding, spot your weak points, and keep learning in your own projects — all inside VS Code.
 
-> **Note:** This extension is designed to work with [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview). Please refer to [Anthropic's official documentation](https://docs.anthropic.com/en/docs/claude-code/overview) for Claude Code's installation, requirements, and available plans.
+> **How It Works:** Mentor Studio Code does not include or run an AI model by itself. Instead, it writes Mentor instructions into the entrypoint files used by your AI tool: `CLAUDE.md` for Claude Code, or `AGENTS.md` for tools that read `AGENTS.md`.
 >
-> **Disclaimer:** This extension is an independent open-source project and is not affiliated with, endorsed by, or sponsored by Anthropic, PBC. "Claude" and "Claude Code" are trademarks of Anthropic.
+> **Note:** If you plan to use Claude Code, see [Anthropic's official documentation](https://docs.anthropic.com/en/docs/claude-code/overview) for setup, requirements, and current availability. "Claude" and "Claude Code" are trademarks of Anthropic.
 
 <img src="https://raw.githubusercontent.com/nabetxan/mentor-studio-code/main/extension/images/overview_mentor-studio-code.png" alt="Dashboard" width="350">
 
 ## Quick Start
 
-1. Install [VS Code](https://code.visualstudio.com/) 1.85.0+ and [Claude Code Extension](https://marketplace.visualstudio.com/items?itemName=anthropic.claude-code)
-2. Install [Mentor Studio Code](https://marketplace.visualstudio.com/items?itemName=nabetxan.mentor-studio-code) from the Marketplace
-3. Click the Mentor Studio Code icon in the Activity Bar and press the **Setup** button
+1. Install [VS Code](https://code.visualstudio.com/) 1.85.0+
+2. If you want Claude Code support, install the [Claude Code Extension](https://marketplace.visualstudio.com/items?itemName=anthropic.claude-code)
+3. Install [Mentor Studio Code](https://marketplace.visualstudio.com/items?itemName=nabetxan.mentor-studio-code) from the Marketplace
+4. Click the Mentor Studio Code icon in the Activity Bar and press the **Setup** button
    - If the icon doesn't appear, open Command Palette (`Cmd+Shift+P`) → `Mentor Studio Code: Setup Mentor`
+5. In Setup, choose which entrypoint files should use Mentor (`CLAUDE.md` and/or `AGENTS.md`)
+6. If you enable `CLAUDE.md`, choose whether Mentor should be added to the project `CLAUDE.md` or your personal Claude settings
+7. If you enable `AGENTS.md`, Setup writes a managed Mentor block to the project `AGENTS.md`
+
+You can change the entrypoint wiring later in **Settings** → **Entrypoint Files Using Mentor**. Re-running Setup preselects whichever entrypoint files are already enabled, and Settings asks for confirmation before it edits `CLAUDE.md` or `AGENTS.md`.
 
 For detailed usage, see [extension/README.md](extension/README.md). For the full product spec, see [docs/app-specification.md](docs/app-specification.md).
 
@@ -56,18 +62,24 @@ If you previously committed `.mentor/data.db` to git, Setup also offers a one-cl
 
 🌐 [Website](https://nabetxan.github.io/mentor-studio-code/)
 
-Claude Code を活用した AI メンター付きの VS Code 拡張。自分のプロジェクトの中で、理解度の確認・正答率の可視化・弱点トピックの追跡ができます。
+`CLAUDE.md` と `AGENTS.md` のエントリポイントに接続して使う、AI メンターワークフロー向けの VS Code 拡張。自分のプロジェクトの中で、理解度の確認・正答率の可視化・弱点トピックの追跡ができます。
 
-> **注:** この拡張機能は [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) と合わせて使用することを前提としています。Claude Code のインストール・動作要件・利用可能なプランについては [Anthropic公式ドキュメント](https://docs.anthropic.com/en/docs/claude-code/overview) をご確認ください。
+> **仕組み:** Mentor Studio Code 自体には AI モデルやチャット機能は含まれていません。代わりに、利用する AI ツールのエントリポイントに Mentor 用の指示を書き込みます。`CLAUDE.md` は Claude Code 向け、`AGENTS.md` は `AGENTS.md` を読むツール向けです。
 >
-> **免責事項:** この拡張機能は独立したオープンソースプロジェクトであり、Anthropic, PBC との提携・推薦・後援関係はありません。「Claude」「Claude Code」は Anthropic の商標です。
+> **注:** Claude Code を使う場合は、セットアップ・動作要件・最新の提供状況について [Anthropic公式ドキュメント](https://docs.anthropic.com/en/docs/claude-code/overview) をご確認ください。「Claude」「Claude Code」は Anthropic の商標です。
 
 ## Quick Start
 
-1. [VS Code](https://code.visualstudio.com/) 1.85.0+ と [Claude Code Extension](https://marketplace.visualstudio.com/items?itemName=anthropic.claude-code) をインストール
-2. マーケットプレイスから [Mentor Studio Code](https://marketplace.visualstudio.com/items?itemName=nabetxan.mentor-studio-code) をインストール
-3. アクティビティバーの Mentor Studio Code アイコンをクリックし、**Setup** ボタンを押す
+1. [VS Code](https://code.visualstudio.com/) 1.85.0+ をインストール
+2. Claude Code を使う場合は [Claude Code Extension](https://marketplace.visualstudio.com/items?itemName=anthropic.claude-code) をインストール
+3. マーケットプレイスから [Mentor Studio Code](https://marketplace.visualstudio.com/items?itemName=nabetxan.mentor-studio-code) をインストール
+4. アクティビティバーの Mentor Studio Code アイコンをクリックし、**Setup** ボタンを押す
    - アイコンが見つからない場合は、コマンドパレット（`Cmd+Shift+P`）→ `Mentor Studio Code: Setup Mentor`
+5. Setup で Mentor を使うエントリポイントファイル（`CLAUDE.md` / `AGENTS.md`）を選択
+6. `CLAUDE.md` を有効にした場合は、`CLAUDE.md` の追加先をプロジェクト共通か個人設定か選択
+7. `AGENTS.md` を有効にした場合は、プロジェクトの `AGENTS.md` に管理対象の Mentor ブロックを追加
+
+あとから **Settings** → **Entrypoint Files Using Mentor** で変更できます。Setup を再実行すると、現在有効なエントリポイントファイルが最初から選択された状態になります。Settings から `CLAUDE.md` / `AGENTS.md` を変更する場合は、実際にファイルを書き換える前に確認ダイアログが表示されます。
 
 詳しい使い方は [extension/README.md](extension/README.md) をご覧ください。
 

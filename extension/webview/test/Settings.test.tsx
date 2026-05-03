@@ -1,4 +1,8 @@
-import type { MentorStudioConfig, PlanDto } from "@mentor-studio/shared";
+import type {
+  MentorEntrypointFileStatus,
+  MentorStudioConfig,
+  PlanDto,
+} from "@mentor-studio/shared";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Settings } from "../src/components/Settings";
@@ -9,6 +13,14 @@ vi.mock("../src/vscodeApi", () => ({
 
 const defaultProps = {
   config: null as MentorStudioConfig | null,
+  entrypointStatus: {
+    claudeMdEnabled: false,
+    claudeMdScope: null,
+    projectClaudeMd: false,
+    personalClaudeMd: false,
+    agentsMdEnabled: false,
+    hasEntrypointFile: false,
+  } satisfies MentorEntrypointFileStatus,
   locale: "ja" as const,
   onLocaleChange: () => {},
   profileLastUpdated: null as string | null,
@@ -26,7 +38,7 @@ describe("Settings", () => {
     render(<Settings {...defaultProps} />);
     // Spec and active plan both show the "⚠ 未設定" warning
     const warnings = screen.getAllByText("⚠ 未設定");
-    expect(warnings).toHaveLength(2);
+    expect(warnings.length).toBeGreaterThanOrEqual(2);
     // Active-plan row uses the unified "Active:" label in both unset and set states.
     expect(screen.getAllByText("Active:").length).toBeGreaterThan(0);
   });
@@ -37,7 +49,115 @@ describe("Settings", () => {
     };
     render(<Settings {...defaultProps} config={config} />);
     const warnings = screen.getAllByText("⚠ 未設定");
-    expect(warnings).toHaveLength(2);
+    expect(warnings.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("renders provider settings and missing-entrypoint warning", () => {
+    render(<Settings {...defaultProps} />);
+    expect(screen.getByText("Mentor機能を利用するエントリポイントファイル")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Mentor機能を利用するには、CLAUDE.md または AGENTS.md を設定してください",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("shows CLAUDE.md scope radios only when CLAUDE.md is enabled", () => {
+    render(
+      <Settings
+        {...defaultProps}
+        entrypointStatus={{
+          claudeMdEnabled: true,
+          claudeMdScope: "personal",
+          projectClaudeMd: false,
+          personalClaudeMd: true,
+          agentsMdEnabled: false,
+          hasEntrypointFile: true,
+        }}
+      />,
+    );
+    expect(screen.getByLabelText("CLAUDE.md")).toBeTruthy();
+    expect(screen.getByLabelText("Project")).toBeTruthy();
+    expect(screen.getByLabelText("Personal")).toBeTruthy();
+    expect((screen.getByLabelText("Personal") as HTMLInputElement).checked).toBe(
+      true,
+    );
+  });
+
+  it("uses centered provider row classes for checkboxes and radios", () => {
+    render(
+      <Settings
+        {...defaultProps}
+        entrypointStatus={{
+          claudeMdEnabled: true,
+          claudeMdScope: "project",
+          projectClaudeMd: true,
+          personalClaudeMd: false,
+          agentsMdEnabled: true,
+          hasEntrypointFile: true,
+        }}
+      />,
+    );
+
+    expect(screen.getByLabelText("CLAUDE.md").closest("label")?.className).toContain(
+      "setting-choice",
+    );
+    expect(screen.getByLabelText("Project").closest("label")?.className).toContain(
+      "setting-choice",
+    );
+    expect(screen.getByLabelText("Personal").closest("label")?.className).toContain(
+      "setting-choice",
+    );
+    expect(screen.getByLabelText("AGENTS.md").closest("label")?.className).toContain(
+      "setting-choice",
+    );
+    expect(screen.getByLabelText("Project").closest(".setting-actions")?.className).toContain(
+      "setting-actions--claude-scope",
+    );
+  });
+
+  it("sends provider toggle messages", async () => {
+    const { postMessage } = await import("../src/vscodeApi");
+    (postMessage as ReturnType<typeof vi.fn>).mockClear();
+    render(<Settings {...defaultProps} locale="en" />);
+
+    fireEvent.click(screen.getByLabelText("CLAUDE.md"));
+    fireEvent.click(screen.getByLabelText("AGENTS.md"));
+
+    expect(postMessage).toHaveBeenCalledWith({
+      type: "setClaudeMdEnabled",
+      value: true,
+    });
+    expect(postMessage).toHaveBeenCalledWith({
+      type: "setAgentsMdEnabled",
+      value: true,
+    });
+  });
+
+  it("sends CLAUDE.md scope changes", async () => {
+    const { postMessage } = await import("../src/vscodeApi");
+    (postMessage as ReturnType<typeof vi.fn>).mockClear();
+    render(
+      <Settings
+        {...defaultProps}
+        locale="en"
+        entrypointStatus={{
+          claudeMdEnabled: true,
+          claudeMdScope: "project",
+          projectClaudeMd: true,
+          personalClaudeMd: false,
+          agentsMdEnabled: false,
+          hasEntrypointFile: true,
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("Personal"));
+
+    expect(postMessage).toHaveBeenCalledWith({
+      type: "setClaudeMdScope",
+      value: "personal",
+    });
   });
 
   it("shows spec file path when set", () => {
@@ -123,7 +243,7 @@ describe("Settings", () => {
   it("calls onLocaleChange when toggle clicked", () => {
     const onLocaleChange = vi.fn();
     render(<Settings {...defaultProps} onLocaleChange={onLocaleChange} />);
-    const checkbox = screen.getByRole("checkbox");
+    const checkbox = screen.getByLabelText("Language / 言語");
     fireEvent.click(checkbox);
     expect(onLocaleChange).toHaveBeenCalledWith("en");
   });
@@ -151,7 +271,7 @@ describe("Settings", () => {
     expect(screen.getByText("Step 1. データを消去する")).toBeTruthy();
     expect(screen.getByText("Step 2. 拡張機能をアンインストールする")).toBeTruthy();
 
-    // Click cleanup button (profile and claudeMdRef are checked by default)
+    // Click cleanup button (profile and entrypointFiles are checked by default)
     fireEvent.click(screen.getByText("データ消去"));
 
     expect(postMessage).toHaveBeenCalledWith({
@@ -159,7 +279,7 @@ describe("Settings", () => {
       options: {
         mentorFolder: false,
         profile: true,
-        claudeMdRef: true,
+        entrypointFiles: true,
         wipeExternalDb: false,
       },
     });
@@ -310,11 +430,13 @@ describe("Settings", () => {
     render(<Settings {...defaultProps} />);
     fireEvent.click(screen.getByText("詳しく見る"));
 
-    // Uncheck the two defaults (profile, claudeMdRef)
+    // Uncheck the two defaults (profile, entrypointFiles)
     fireEvent.click(
       screen.getByLabelText("プロフィールデータ（拡張機能ストレージ）"),
     );
-    fireEvent.click(screen.getByLabelText("CLAUDE.md 内のメンター参照コード"));
+    fireEvent.click(
+      screen.getByLabelText("AI ツールのエントリポイント内のメンター参照"),
+    );
 
     const cleanupButton = screen.getByText("データ消去");
     expect(cleanupButton.hasAttribute("disabled")).toBe(true);

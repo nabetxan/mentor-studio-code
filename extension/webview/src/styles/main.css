@@ -925,6 +925,10 @@ body {
   gap: 6px;
 }
 
+.setting-actions--claude-scope {
+  margin-left: 22px;
+}
+
 .setting-warning {
   color: var(--vscode-editorWarning-foreground, #cca700);
   font-size: 0.9rem;
@@ -1209,9 +1213,18 @@ body {
   cursor: pointer;
 }
 
+.setting-choice {
+  align-items: center;
+}
+
 .uninstall-check input[type="checkbox"] {
   accent-color: var(--vscode-focusBorder, #007fd4);
   cursor: pointer;
+}
+
+.setting-choice input[type="checkbox"],
+.setting-choice input[type="radio"] {
+  margin: 0;
 }
 
 .uninstall-check-path {

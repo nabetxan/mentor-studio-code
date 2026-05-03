@@ -4,7 +4,16 @@ import * as vscode from "vscode";
 import { openDb } from "../db";
 import { acquireLock, releaseLock } from "../db/lock";
 import { migrateToV3, shouldMigrateV3 } from "../migration/v3ExternalDb";
-import { findMentorRef, promptAndAddMentorRef } from "../services/claudeMd";
+import {
+  ensureProjectAgentsMdEntrypoint,
+  getEntrypointStatus,
+  promptForClaudeMdScope,
+  promptForSetupEntrypointFiles,
+  removePersonalClaudeMdEntrypoint,
+  removeProjectAgentsMdEntrypoint,
+  removeProjectClaudeMdEntrypoint,
+  setClaudeMdScope,
+} from "../services/claudeMd";
 import { derivePaths } from "../utils/derivePaths";
 import { ensureWorkspaceId } from "../utils/workspaceId";
 import {
@@ -446,19 +455,46 @@ export async function runSetup(
     ? existingConfig.locale !== "en"
     : detectedLocale === "ja";
 
-  // Handle CLAUDE.md — let user choose project-wide or personal
-  const refStatus = await findMentorRef(wsRoot);
-  let claudeAction = "skipped (already contains mentorRef)";
+  const currentEntrypoints = await getEntrypointStatus(wsRoot);
+  let claudeAction = "kept existing CLAUDE.md entrypoints";
+  let agentsAction = "kept existing AGENTS.md entrypoint";
+  const entrypointSelection = await promptForSetupEntrypointFiles(isJa, {
+    claudeMdEnabled:
+      currentEntrypoints.projectClaudeMd || currentEntrypoints.personalClaudeMd,
+    agentsMdEnabled: currentEntrypoints.projectAgentsMd,
+  });
 
-  if (!refStatus.personal && !refStatus.project) {
-    const result = await promptAndAddMentorRef(wsRoot, isJa);
-    if (result === "project") {
-      claudeAction = "added to project CLAUDE.md";
-    } else if (result === "personal") {
-      claudeAction = "added to personal CLAUDE.md";
+  if (entrypointSelection) {
+    if (entrypointSelection.claudeMd) {
+      const claudeMdScope =
+        (await promptForClaudeMdScope(isJa)) ?? currentEntrypoints.claudeMdScope;
+      if (claudeMdScope) {
+        await setClaudeMdScope(wsRoot, claudeMdScope);
+        claudeAction =
+          claudeMdScope === "project"
+            ? "added to project CLAUDE.md"
+            : "added to personal CLAUDE.md";
+      } else {
+        claudeAction = "skipped by user";
+      }
     } else {
-      claudeAction = "skipped by user";
+      await Promise.all([
+        removeProjectClaudeMdEntrypoint(wsRoot),
+        removePersonalClaudeMdEntrypoint(wsRoot),
+      ]);
+      claudeAction = "removed from CLAUDE.md entrypoints";
     }
+
+    if (entrypointSelection.agentsMd) {
+      await ensureProjectAgentsMdEntrypoint(wsRoot);
+      agentsAction = "added to project AGENTS.md";
+    } else {
+      await removeProjectAgentsMdEntrypoint(wsRoot);
+      agentsAction = "removed from project AGENTS.md";
+    }
+  } else {
+    claudeAction = "skipped by user";
+    agentsAction = "skipped by user";
   }
 
   // Output results
@@ -468,6 +504,7 @@ export async function runSetup(
   );
   outputChannel.appendLine(`Skipped: ${skippedFiles.join(", ") || "none"}`);
   outputChannel.appendLine(`CLAUDE.md: ${claudeAction}`);
+  outputChannel.appendLine(`AGENTS.md: ${agentsAction}`);
   outputChannel.show(true);
 
   // Untrack legacy DB from git if it's still indexed. v0.6.6 moved the DB

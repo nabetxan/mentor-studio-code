@@ -206,6 +206,30 @@ const translations = {
   "settings.detach": { ja: "外す", en: "Detach" },
   "settings.language": { ja: "Language / 言語", en: "Language" },
   "settings.enableMentor": { ja: "メンター機能", en: "Mentor" },
+  "settings.providers.title": {
+    ja: "Mentor機能を利用するエントリポイントファイル",
+    en: "Entrypoint Files Using Mentor",
+  },
+  "settings.providers.claudeMd": {
+    ja: "CLAUDE.md",
+    en: "CLAUDE.md",
+  },
+  "settings.providers.agentsMd": {
+    ja: "AGENTS.md",
+    en: "AGENTS.md",
+  },
+  "settings.providers.project": {
+    ja: "Project",
+    en: "Project",
+  },
+  "settings.providers.personal": {
+    ja: "Personal",
+    en: "Personal",
+  },
+  "settings.providers.missing": {
+    ja: "Mentor機能を利用するには、CLAUDE.md または AGENTS.md を設定してください",
+    en: "Configure CLAUDE.md or AGENTS.md to use Mentor.",
+  },
   "settings.prompt.spec": {
     ja: "@.mentor/rules/CREATE_SPEC.md 仕様ファイルを作成してください。不足している情報があればユーザーに質問してください。仕様作成に使える外部スキルがあれば活用してください。",
     en: "@.mentor/rules/CREATE_SPEC.md Create a spec file. Ask the user if any information is missing. If any external skill for spec creation is available, feel free to use it.",
@@ -295,9 +319,9 @@ const translations = {
     ja: "プロフィールデータ（拡張機能ストレージ）",
     en: "Profile data (extension storage)",
   },
-  "settings.uninstall.check.claudeMdRef": {
-    ja: "CLAUDE.md 内のメンター参照コード",
-    en: "Mentor reference in CLAUDE.md",
+  "settings.uninstall.check.entrypointFiles": {
+    ja: "AI ツールのエントリポイント内のメンター参照",
+    en: "Mentor references in AI entrypoint files",
   },
   "settings.uninstall.check.externalDb": {
     ja: "学習履歴 DB（外部ストレージ）",
@@ -358,8 +382,8 @@ const translations = {
     en: "Run Setup",
   },
   "app.noConfig.hint": {
-    ja: "* Setup Mentorを実行するとプロジェクトのルートディレクトリに .mentor フォルダが作成されます。また、メンター機能を利用するために必要な一文をCLAUDE.mdへ追加しますがプロジェクトのCLAUDE.mdに追加するか、個人のCLAUDE.mdに追加するか選択できます。",
-    en: "* Running Setup Mentor creates a .mentor folder in your project root. It also adds a line to CLAUDE.md that's needed for the mentor feature — you can choose whether to add it to the project CLAUDE.md or your personal CLAUDE.md.",
+    ja: "* Setup Mentorを実行するとプロジェクトのルートディレクトリに .mentor フォルダが作成されます。また、Mentor を使うための参照を `CLAUDE.md` と `AGENTS.md` に設定できます。`CLAUDE.md` はプロジェクト用か個人用かを選択できます。",
+    en: "* Running Setup Mentor creates a .mentor folder in your project root. It also configures the Mentor reference in `CLAUDE.md` and/or `AGENTS.md`. For `CLAUDE.md`, you can choose project or personal scope.",
   },
 
   // App-level

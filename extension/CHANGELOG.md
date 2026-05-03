@@ -2,6 +2,21 @@
 
 All notable changes to "Mentor Studio Code" will be documented in this file.
 
+## [0.6.8] - 2026-05-03
+
+### Added
+
+- File-based Mentor wiring in Setup and Settings: you can now enable Mentor for `CLAUDE.md`, `AGENTS.md`, or both, and switch `CLAUDE.md` between project and personal `~/.claude/projects/.../CLAUDE.md`.
+- Managed `AGENTS.md` entrypoint support, plus live Settings refresh when project `CLAUDE.md`, personal `CLAUDE.md`, or `AGENTS.md` changes on disk.
+
+### Changed
+
+- Remove Mentor / cleanup now removes Mentor wiring from supported AI entrypoint files, not only `CLAUDE.md`.
+- Settings now shows an **Entrypoint Files Using Mentor** section and warns when no entrypoint file is configured, which also blocks re-enabling Mentor until `CLAUDE.md` or `AGENTS.md` is set up.
+- Setup now preselects the entrypoint files that are already enabled, and Settings asks for confirmation before writing changes to `CLAUDE.md` or `AGENTS.md`.
+- Tuned the mentor skill templates and uninstall guidance to match file-based entrypoint cleanup, including the managed `AGENTS.md` block.
+
+
 ## [0.6.7] - 2026-04-29
 
 ### Fixed
