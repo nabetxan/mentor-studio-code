@@ -5,14 +5,14 @@ import { openDb } from "../db";
 import { acquireLock, releaseLock } from "../db/lock";
 import { migrateToV3, shouldMigrateV3 } from "../migration/v3ExternalDb";
 import {
-  ensureCodexProjectEntrypoint,
+  ensureProjectAgentsMdEntrypoint,
   getEntrypointStatus,
-  promptForClaudeMode,
-  promptForSetupProviders,
-  removeClaudePersonalEntrypoint,
-  removeClaudeProjectEntrypoint,
-  removeCodexProjectEntrypoint,
-  setClaudeMode,
+  promptForClaudeMdScope,
+  promptForSetupEntrypointFiles,
+  removePersonalClaudeMdEntrypoint,
+  removeProjectAgentsMdEntrypoint,
+  removeProjectClaudeMdEntrypoint,
+  setClaudeMdScope,
 } from "../services/claudeMd";
 import { derivePaths } from "../utils/derivePaths";
 import { ensureWorkspaceId } from "../utils/workspaceId";
@@ -456,18 +456,22 @@ export async function runSetup(
     : detectedLocale === "ja";
 
   const currentEntrypoints = await getEntrypointStatus(wsRoot);
-  let claudeAction = "kept existing Claude entrypoints";
-  let codexAction = "kept existing Codex entrypoint";
-  const providerSelection = await promptForSetupProviders(isJa);
+  let claudeAction = "kept existing CLAUDE.md entrypoints";
+  let agentsAction = "kept existing AGENTS.md entrypoint";
+  const entrypointSelection = await promptForSetupEntrypointFiles(isJa, {
+    claudeMdEnabled:
+      currentEntrypoints.projectClaudeMd || currentEntrypoints.personalClaudeMd,
+    agentsMdEnabled: currentEntrypoints.projectAgentsMd,
+  });
 
-  if (providerSelection) {
-    if (providerSelection.claude) {
-      const claudeMode =
-        (await promptForClaudeMode(isJa)) ?? currentEntrypoints.claudeMode;
-      if (claudeMode) {
-        await setClaudeMode(wsRoot, claudeMode);
+  if (entrypointSelection) {
+    if (entrypointSelection.claudeMd) {
+      const claudeMdScope =
+        (await promptForClaudeMdScope(isJa)) ?? currentEntrypoints.claudeMdScope;
+      if (claudeMdScope) {
+        await setClaudeMdScope(wsRoot, claudeMdScope);
         claudeAction =
-          claudeMode === "project"
+          claudeMdScope === "project"
             ? "added to project CLAUDE.md"
             : "added to personal CLAUDE.md";
       } else {
@@ -475,22 +479,22 @@ export async function runSetup(
       }
     } else {
       await Promise.all([
-        removeClaudeProjectEntrypoint(wsRoot),
-        removeClaudePersonalEntrypoint(wsRoot),
+        removeProjectClaudeMdEntrypoint(wsRoot),
+        removePersonalClaudeMdEntrypoint(wsRoot),
       ]);
-      claudeAction = "removed from Claude entrypoints";
+      claudeAction = "removed from CLAUDE.md entrypoints";
     }
 
-    if (providerSelection.codex) {
-      await ensureCodexProjectEntrypoint(wsRoot);
-      codexAction = "added to project AGENTS.md";
+    if (entrypointSelection.agentsMd) {
+      await ensureProjectAgentsMdEntrypoint(wsRoot);
+      agentsAction = "added to project AGENTS.md";
     } else {
-      await removeCodexProjectEntrypoint(wsRoot);
-      codexAction = "removed from project AGENTS.md";
+      await removeProjectAgentsMdEntrypoint(wsRoot);
+      agentsAction = "removed from project AGENTS.md";
     }
   } else {
     claudeAction = "skipped by user";
-    codexAction = "skipped by user";
+    agentsAction = "skipped by user";
   }
 
   // Output results
@@ -499,8 +503,8 @@ export async function runSetup(
     `Created: ${createdFiles.join(", ") || "none (all existed)"}`,
   );
   outputChannel.appendLine(`Skipped: ${skippedFiles.join(", ") || "none"}`);
-  outputChannel.appendLine(`Claude Code: ${claudeAction}`);
-  outputChannel.appendLine(`Codex: ${codexAction}`);
+  outputChannel.appendLine(`CLAUDE.md: ${claudeAction}`);
+  outputChannel.appendLine(`AGENTS.md: ${agentsAction}`);
   outputChannel.show(true);
 
   // Untrack legacy DB from git if it's still indexed. v0.6.6 moved the DB

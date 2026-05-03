@@ -2,8 +2,8 @@ import type {
   DashboardData,
   ExtensionMessage,
   Locale,
+  MentorEntrypointFileStatus,
   MentorStudioConfig,
-  ProviderEntrypointStatus,
 } from "@mentor-studio/shared";
 import { useEffect, useRef, useState } from "react";
 import { Actions } from "./components/Actions";
@@ -15,13 +15,13 @@ import { onMessage, postMessage } from "./vscodeApi";
 
 type Tab = "actions" | "overview" | "settings";
 
-const EMPTY_ENTRYPOINT_STATUS: ProviderEntrypointStatus = {
-  claudeEnabled: false,
-  claudeMode: null,
-  claudeProject: false,
-  claudePersonal: false,
-  codexEnabled: false,
-  hasEntrypoint: false,
+const EMPTY_ENTRYPOINT_STATUS: MentorEntrypointFileStatus = {
+  claudeMdEnabled: false,
+  claudeMdScope: null,
+  projectClaudeMd: false,
+  personalClaudeMd: false,
+  agentsMdEnabled: false,
+  hasEntrypointFile: false,
 };
 
 export function App() {
@@ -29,7 +29,7 @@ export function App() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [config, setConfig] = useState<MentorStudioConfig | null>(null);
   const [entrypointStatus, setEntrypointStatus] =
-    useState<ProviderEntrypointStatus>(EMPTY_ENTRYPOINT_STATUS);
+    useState<MentorEntrypointFileStatus>(EMPTY_ENTRYPOINT_STATUS);
   const [dataLocation, setDataLocation] = useState<
     { dbPath: string; dirPath: string } | undefined
   >(undefined);
@@ -67,7 +67,7 @@ export function App() {
   const settingsHasWarning =
     !data?.activePlan ||
     !data?.profileLastUpdated ||
-    !entrypointStatus.hasEntrypoint;
+    !entrypointStatus.hasEntrypointFile;
 
   useEffect(() => {
     const cleanup = onMessage((message: ExtensionMessage) => {

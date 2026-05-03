@@ -5,14 +5,14 @@ Read \`.mentor/config.json\`.
 - NOT FOUND → tell user to click "Run Setup" in sidebar or run \`Mentor Studio Code: Setup Mentor\`. STOP.
 - Parse error → tell user JSON is invalid. Suggest fixing or re-running Setup. STOP.
 - \`extensionUninstalled: true\` → read \`locale\`, then:
-  1. Check these AI entrypoint files for mentor wiring:
+  1. Check these supported AI entrypoint files for mentor wiring:
      - Project: \`./CLAUDE.md\`
      - Personal: \`~/.claude/projects/<dir>/CLAUDE.md\` (derive \`<dir>\` from workspace path, replace \`/\`, \`\\\`, \`:\` with \`-\`)
-     - Codex project: \`./AGENTS.md\` managed block
+     - Project AGENTS.md: \`./AGENTS.md\` managed block
   2. Show each matching file as a clickable link.
-  3. Tell user extension uninstalled. Provider-aware cleanup:
-     - Claude Code: remove the \`@.mentor/rules/MENTOR_RULES.md\` line
-     - Codex: remove only the managed \`<!-- msc:codex:start -->\`...\`<!-- msc:codex:end -->\` block, not user-authored bare reference lines
+  3. Tell user extension uninstalled. File-aware cleanup:
+     - CLAUDE.md: remove the \`@.mentor/rules/MENTOR_RULES.md\` line
+     - AGENTS.md: remove only the managed \`<!-- msc:agents:start -->\`...\`<!-- msc:agents:end -->\` block, not user-authored bare reference lines
      STOP.
 - \`enableMentor: false\` → ignore everything below.
 - \`enableMentor: true\` → proceed.

@@ -4,13 +4,14 @@ import { join } from "node:path";
 import * as vscode from "vscode";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  CODEX_ENTRYPOINT_END,
-  CODEX_ENTRYPOINT_START,
+  AGENTS_ENTRYPOINT_END,
+  AGENTS_ENTRYPOINT_START,
+  ensureProjectAgentsMdEntrypoint,
   getEntrypointStatus,
-  promptForSetupProviders,
-  removeCodexEntrypointBlockFromContent,
+  promptForSetupEntrypointFiles,
+  removeAgentsEntrypointBlockFromContent,
   removeMentorRefFromContent,
-  setClaudeMode,
+  setClaudeMdScope,
 } from "../src/services/claudeMd";
 
 const REF = "@.mentor/rules/MENTOR_RULES.md";
@@ -52,15 +53,15 @@ describe("removeMentorRefFromContent", () => {
     expect(result).toBe("some text\n");
   });
 
-  it("removes the codex mentor block from AGENTS.md content", () => {
-    const content = `# Agents\n\n${CODEX_ENTRYPOINT_START}\nRead \`.mentor/config.json\`.\n- If config is missing or invalid, stop.\n- If \`enableMentor\` is false, stop.\n- If \`enableMentor\` is true, continue to \`${REF}\`.\n${CODEX_ENTRYPOINT_END}\n\nKeep local rules.\n`;
-    const result = removeCodexEntrypointBlockFromContent(content);
+  it("removes the managed mentor block from AGENTS.md content", () => {
+    const content = `# Agents\n\n${AGENTS_ENTRYPOINT_START}\n${REF}\n${AGENTS_ENTRYPOINT_END}\n\nKeep local rules.\n`;
+    const result = removeAgentsEntrypointBlockFromContent(content);
     expect(result).toBe("# Agents\n\nKeep local rules.\n");
   });
 
   it("does not remove a user-authored AGENTS mentor reference line without managed block markers", () => {
     const content = `# Agents\n\n${REF}\nKeep local rules.\n`;
-    const result = removeCodexEntrypointBlockFromContent(content);
+    const result = removeAgentsEntrypointBlockFromContent(content);
     expect(result).toBe(content);
   });
 });
@@ -101,35 +102,46 @@ describe("provider-aware entrypoints", () => {
     vi.restoreAllMocks();
   });
 
-  it("detects codex project entrypoints from AGENTS.md", async () => {
+  it("detects project AGENTS.md entrypoints", async () => {
     const wsRoot = vscode.Uri.file(workdir);
     writeFileSync(
       join(workdir, "AGENTS.md"),
-      `# Agents\n\n${CODEX_ENTRYPOINT_START}\nRead \`.mentor/config.json\`.\n- If config is missing or invalid, stop.\n- If \`enableMentor\` is false, stop.\n- If \`enableMentor\` is true, continue to \`${REF}\`.\n${CODEX_ENTRYPOINT_END}\n`,
+      `# Agents\n\n${AGENTS_ENTRYPOINT_START}\n${REF}\n${AGENTS_ENTRYPOINT_END}\n`,
     );
 
     const status = await getEntrypointStatus(wsRoot);
 
-    expect(status.codexProject).toBe(true);
-    expect(status.anyEntrypoint).toBe(true);
-    expect(status.claudeMode).toBeNull();
+    expect(status.projectAgentsMd).toBe(true);
+    expect(status.hasEntrypointFile).toBe(true);
+    expect(status.claudeMdScope).toBeNull();
   });
 
-  it("does not treat a bare AGENTS mentor reference line as a managed codex entrypoint", async () => {
+  it("does not treat a bare AGENTS mentor reference line as a managed AGENTS.md entrypoint", async () => {
     const wsRoot = vscode.Uri.file(workdir);
     writeFileSync(join(workdir, "AGENTS.md"), `# Agents\n\n${REF}\n`);
 
     const status = await getEntrypointStatus(wsRoot);
 
-    expect(status.codexProject).toBe(false);
-    expect(status.anyEntrypoint).toBe(false);
+    expect(status.projectAgentsMd).toBe(false);
+    expect(status.hasEntrypointFile).toBe(false);
   });
 
-  it("switches Claude to personal mode and removes the project entrypoint", async () => {
+  it("writes a compact managed AGENTS.md entrypoint block", async () => {
+    const wsRoot = vscode.Uri.file(workdir);
+
+    await ensureProjectAgentsMdEntrypoint(wsRoot);
+
+    const agents = readFileSync(join(workdir, "AGENTS.md"), "utf-8");
+    expect(agents).toBe(
+      `${AGENTS_ENTRYPOINT_START}\n${REF}\n${AGENTS_ENTRYPOINT_END}\n`,
+    );
+  });
+
+  it("switches CLAUDE.md to personal scope and removes the project entrypoint", async () => {
     const wsRoot = vscode.Uri.file(workdir);
     writeFileSync(join(workdir, "CLAUDE.md"), `${REF}\n`);
 
-    await setClaudeMode(wsRoot, "personal");
+    await setClaudeMdScope(wsRoot, "personal");
 
     const projectClaude = readFileSync(join(workdir, "CLAUDE.md"), "utf-8");
     const personalClaude = readFileSync(
@@ -147,12 +159,12 @@ describe("provider-aware entrypoints", () => {
     expect(personalClaude).toContain(REF);
 
     const status = await getEntrypointStatus(wsRoot);
-    expect(status.claudeProject).toBe(false);
-    expect(status.claudePersonal).toBe(true);
-    expect(status.claudeMode).toBe("personal");
+    expect(status.projectClaudeMd).toBe(false);
+    expect(status.personalClaudeMd).toBe(true);
+    expect(status.claudeMdScope).toBe("personal");
   });
 
-  it("treats empty setup provider selection as blocked and explains why", async () => {
+  it("treats empty setup entrypoint file selection as blocked and explains why", async () => {
     vi.spyOn(
       vscode.window as unknown as {
         showQuickPick: (
@@ -163,11 +175,37 @@ describe("provider-aware entrypoints", () => {
     ).mockResolvedValue([]);
     const info = vi.spyOn(vscode.window, "showInformationMessage");
 
-    const result = await promptForSetupProviders(true);
+    const result = await promptForSetupEntrypointFiles(true);
 
     expect(result).toBeUndefined();
     expect(info).toHaveBeenCalledWith(
-      "少なくとも Claude Code または Codex のどちらかを選択してください。",
+      "少なくとも CLAUDE.md または AGENTS.md のどちらかを選択してください。",
+    );
+  });
+
+  it("preselects currently enabled entrypoint files in setup", async () => {
+    const showQuickPick = vi
+      .spyOn(
+        vscode.window as unknown as {
+          showQuickPick: (
+            ...args: unknown[]
+          ) => Promise<vscode.QuickPickItem[] | undefined>;
+        },
+        "showQuickPick",
+      )
+      .mockResolvedValue([{ label: "CLAUDE.md" }, { label: "AGENTS.md" }]);
+
+    await promptForSetupEntrypointFiles(true, {
+      claudeMdEnabled: true,
+      agentsMdEnabled: true,
+    });
+
+    expect(showQuickPick).toHaveBeenCalledWith(
+      [
+        { label: "CLAUDE.md", picked: true },
+        { label: "AGENTS.md", picked: true },
+      ],
+      expect.any(Object),
     );
   });
 });

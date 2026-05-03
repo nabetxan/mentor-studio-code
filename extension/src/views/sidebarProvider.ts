@@ -4,19 +4,19 @@ import type {
   ExtensionMessage,
   FileField,
   Locale,
+  MentorEntrypointFileStatus,
   MentorStudioConfig,
-  ProviderEntrypointStatus,
   WebviewMessage,
 } from "@mentor-studio/shared";
 import * as path from "node:path";
 import * as vscode from "vscode";
 import {
-  ensureCodexProjectEntrypoint,
+  ensureProjectAgentsMdEntrypoint,
   getEntrypointStatus,
-  removeClaudePersonalEntrypoint,
-  removeClaudeProjectEntrypoint,
-  removeCodexProjectEntrypoint,
-  setClaudeMode,
+  removePersonalClaudeMdEntrypoint,
+  removeProjectAgentsMdEntrypoint,
+  removeProjectClaudeMdEntrypoint,
+  setClaudeMdScope as setClaudeMdScopeOnDisk,
 } from "../services/claudeMd";
 import { parseConfig } from "../services/dataParser";
 import { derivePaths } from "../utils/derivePaths";
@@ -146,12 +146,12 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
           await this.updateLocale(message.locale);
         } else if (message.type === "setEnableMentor") {
           await this.updateEnableMentor(message.value);
-        } else if (message.type === "setClaudeCodeEnabled") {
-          await this.setClaudeCodeEnabled(message.value);
-        } else if (message.type === "setClaudeCodeScope") {
-          await this.setClaudeCodeScope(message.value);
-        } else if (message.type === "setCodexEnabled") {
-          await this.setCodexEnabled(message.value);
+        } else if (message.type === "setClaudeMdEnabled") {
+          await this.setClaudeMdEnabled(message.value);
+        } else if (message.type === "setClaudeMdScope") {
+          await this.setClaudeMdScope(message.value);
+        } else if (message.type === "setAgentsMdEnabled") {
+          await this.setAgentsMdEnabled(message.value);
         } else if (message.type === "mergeTopic") {
           try {
             await this.onMergeTopic?.(message.fromKey, message.toKey);
@@ -327,7 +327,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             opts === null ||
             typeof opts.mentorFolder !== "boolean" ||
             typeof opts.profile !== "boolean" ||
-            typeof opts.claudeMdRef !== "boolean" ||
+            typeof opts.entrypointFiles !== "boolean" ||
             typeof opts.wipeExternalDb !== "boolean"
           ) {
             return;
@@ -434,7 +434,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
           : "Profile data (extension storage)",
       );
     }
-    if (deleted.claudeMdRef) {
+    if (deleted.entrypointFiles) {
       items.push(
         isJa
           ? "AI ツールのエントリポイント内のメンター参照"
@@ -466,6 +466,22 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
   private get isJa(): boolean {
     return (this.latestConfig?.locale ?? this.detectLocale()) !== "en";
+  }
+
+  private async restoreSettingsState(): Promise<void> {
+    if (this.latestConfig) {
+      await this.postConfigMessage(this.latestConfig);
+    }
+  }
+
+  private async confirmSettingsEntrypointEdit(messageJa: string, messageEn: string) {
+    const confirmLabel = this.isJa ? "続行する" : "Continue";
+    const choice = await vscode.window.showWarningMessage(
+      this.isJa ? messageJa : messageEn,
+      { modal: true },
+      confirmLabel,
+    );
+    return choice === confirmLabel;
   }
 
   private async flushState(): Promise<void> {
@@ -555,7 +571,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
     const status = await getEntrypointStatus(wsRoot);
 
-    if (status.anyEntrypoint) {
+    if (status.hasEntrypointFile) {
       await this.updateConfig((config, rawObj) => {
         config.enableMentor = true;
         delete rawObj.extensionUninstalled;
@@ -565,26 +581,38 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
     vscode.window.showInformationMessage(
       this.isJa
-        ? "有効なエントリポイントがないため、有効化できません。Claude Code または Codex を設定してください。"
-        : "Cannot enable Mentor because no AI entrypoint is configured. Enable Claude Code or Codex first.",
+        ? "有効なエントリポイントファイルがないため、有効化できません。CLAUDE.md または AGENTS.md を設定してください。"
+        : "Cannot enable Mentor because no entrypoint file is configured. Configure CLAUDE.md or AGENTS.md first.",
     );
     if (this.latestConfig) {
       await this.postConfigMessage(this.latestConfig);
     }
   }
 
-  private async setClaudeCodeEnabled(value: boolean): Promise<void> {
+  private async setClaudeMdEnabled(value: boolean): Promise<void> {
     const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
     if (!wsRoot) {
       return;
     }
+    const confirmed = await this.confirmSettingsEntrypointEdit(
+      value
+        ? "`CLAUDE.md` を更新して Mentor 参照を追加します。続行しますか？"
+        : "`CLAUDE.md` から Mentor 参照を削除します。続行しますか？",
+      value
+        ? "This will update `CLAUDE.md` and add the Mentor reference. Continue?"
+        : "This will remove the Mentor reference from `CLAUDE.md`. Continue?",
+    );
+    if (!confirmed) {
+      await this.restoreSettingsState();
+      return;
+    }
     if (value) {
       const status = await getEntrypointStatus(wsRoot);
-      await setClaudeMode(wsRoot, status.claudeMode ?? "project");
+      await setClaudeMdScopeOnDisk(wsRoot, status.claudeMdScope ?? "project");
     } else {
       await Promise.all([
-        removeClaudeProjectEntrypoint(wsRoot),
-        removeClaudePersonalEntrypoint(wsRoot),
+        removeProjectClaudeMdEntrypoint(wsRoot),
+        removePersonalClaudeMdEntrypoint(wsRoot),
       ]);
     }
     if (this.latestConfig) {
@@ -592,28 +620,61 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  private async setClaudeCodeScope(
+  private async setClaudeMdScope(
     value: "project" | "personal",
   ): Promise<void> {
     const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
     if (!wsRoot) {
       return;
     }
-    await setClaudeMode(wsRoot, value);
+    const status = await getEntrypointStatus(wsRoot);
+    const movingToPersonal =
+      value === "personal" && status.claudeMdScope !== "personal";
+    const movingToProject =
+      value === "project" && status.claudeMdScope === "personal";
+    const confirmed = await this.confirmSettingsEntrypointEdit(
+      movingToPersonal
+        ? "Mentor 参照をプロジェクトの `CLAUDE.md` から個人用 `CLAUDE.md` に移動します。続行しますか？"
+        : movingToProject
+          ? "Mentor 参照を個人用 `CLAUDE.md` からプロジェクトの `CLAUDE.md` に移動します。続行しますか？"
+          : "`CLAUDE.md` の Mentor 参照を更新します。続行しますか？",
+      movingToPersonal
+        ? "This will move the Mentor reference from the project `CLAUDE.md` to your personal `CLAUDE.md`. Continue?"
+        : movingToProject
+          ? "This will move the Mentor reference from your personal `CLAUDE.md` to the project `CLAUDE.md`. Continue?"
+          : "This will update the Mentor reference in `CLAUDE.md`. Continue?",
+    );
+    if (!confirmed) {
+      await this.restoreSettingsState();
+      return;
+    }
+    await setClaudeMdScopeOnDisk(wsRoot, value);
     if (this.latestConfig) {
       await this.postConfigMessage(this.latestConfig);
     }
   }
 
-  private async setCodexEnabled(value: boolean): Promise<void> {
+  private async setAgentsMdEnabled(value: boolean): Promise<void> {
     const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
     if (!wsRoot) {
       return;
     }
+    const confirmed = await this.confirmSettingsEntrypointEdit(
+      value
+        ? "`AGENTS.md` を更新して Mentor 参照を追加します。続行しますか？"
+        : "`AGENTS.md` から Mentor 参照を削除します。続行しますか？",
+      value
+        ? "This will update `AGENTS.md` and add the Mentor reference. Continue?"
+        : "This will remove the Mentor reference from `AGENTS.md`. Continue?",
+    );
+    if (!confirmed) {
+      await this.restoreSettingsState();
+      return;
+    }
     if (value) {
-      await ensureCodexProjectEntrypoint(wsRoot);
+      await ensureProjectAgentsMdEntrypoint(wsRoot);
     } else {
-      await removeCodexProjectEntrypoint(wsRoot);
+      await removeProjectAgentsMdEntrypoint(wsRoot);
     }
     if (this.latestConfig) {
       await this.postConfigMessage(this.latestConfig);
@@ -638,26 +699,26 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
     this.view?.webview.postMessage(message);
   }
 
-  private async buildEntrypointStatus(): Promise<ProviderEntrypointStatus> {
+  private async buildEntrypointStatus(): Promise<MentorEntrypointFileStatus> {
     const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
     if (!wsRoot) {
       return {
-        claudeEnabled: false,
-        claudeMode: null,
-        claudeProject: false,
-        claudePersonal: false,
-        codexEnabled: false,
-        hasEntrypoint: false,
+        claudeMdEnabled: false,
+        claudeMdScope: null,
+        projectClaudeMd: false,
+        personalClaudeMd: false,
+        agentsMdEnabled: false,
+        hasEntrypointFile: false,
       };
     }
     const status = await getEntrypointStatus(wsRoot);
     return {
-      claudeEnabled: status.claudeProject || status.claudePersonal,
-      claudeMode: status.claudeMode,
-      claudeProject: status.claudeProject,
-      claudePersonal: status.claudePersonal,
-      codexEnabled: status.codexProject,
-      hasEntrypoint: status.anyEntrypoint,
+      claudeMdEnabled: status.projectClaudeMd || status.personalClaudeMd,
+      claudeMdScope: status.claudeMdScope,
+      projectClaudeMd: status.projectClaudeMd,
+      personalClaudeMd: status.personalClaudeMd,
+      agentsMdEnabled: status.projectAgentsMd,
+      hasEntrypointFile: status.hasEntrypointFile,
     };
   }
 

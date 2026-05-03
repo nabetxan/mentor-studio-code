@@ -110,7 +110,7 @@ export async function runRemoveMentor(
 
   // Check if ref exists before removing
   const refStatus = await getEntrypointStatus(wsRoot);
-  const hadRef = refStatus.anyEntrypoint;
+  const hadRef = refStatus.hasEntrypointFile;
 
   // Remove mentor entrypoints from all supported AI entrypoint files.
   await removeMentorRef(wsRoot);
@@ -210,7 +210,7 @@ export async function runCleanupMentor(
         {
           mentorFolder: false,
           profile: false,
-          claudeMdRef: false,
+          entrypointFiles: false,
           wipeExternalDb: false,
         },
         isJa,
@@ -243,7 +243,7 @@ export async function runCleanupMentor(
   const deleted: CleanupOptions = {
     mentorFolder: false,
     profile: false,
-    claudeMdRef: false,
+    entrypointFiles: false,
     wipeExternalDb: false,
   };
 
@@ -282,12 +282,12 @@ export async function runCleanupMentor(
     outputChannel.appendLine("Cleared learnerProfile from globalState");
   }
 
-  // 3. Remove CLAUDE.md reference
-  if (options.claudeMdRef) {
+  // 3. Remove Mentor references from supported entrypoint files
+  if (options.entrypointFiles) {
     const refStatus = await getEntrypointStatus(wsRoot);
-    const hadRef = refStatus.anyEntrypoint;
+    const hadRef = refStatus.hasEntrypointFile;
     await removeMentorRef(wsRoot);
-    deleted.claudeMdRef = hadRef;
+    deleted.entrypointFiles = hadRef;
     outputChannel.appendLine(
       hadRef
         ? "Removed mentor references from AI entrypoint files"

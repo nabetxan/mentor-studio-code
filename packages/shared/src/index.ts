@@ -1,5 +1,5 @@
 export type {
-  ClaudeEntrypointMode,
+  ClaudeMdScope,
   CleanupOptions,
   CompletedTask,
   DashboardData,
@@ -9,9 +9,9 @@ export type {
   Locale,
   MentorFiles,
   MentorStudioConfig,
+  MentorEntrypointFileStatus,
   PlanDto,
   PlanStatus,
-  ProviderEntrypointStatus,
   SkippedTask,
   TaskDto,
   TaskStatus,

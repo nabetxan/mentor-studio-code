@@ -193,7 +193,7 @@ describe("MENTOR_RULES_MD uninstall guidance", () => {
   it("includes AGENTS.md and provider-aware removal instructions", () => {
     expect(MENTOR_RULES_MD).toMatch(/AGENTS\.md/);
     expect(MENTOR_RULES_MD).toMatch(/remove the `@\.mentor\/rules\/MENTOR_RULES\.md` line/);
-    expect(MENTOR_RULES_MD).toMatch(/remove only the managed `<!-- msc:codex:start -->`\.\.\.`<!-- msc:codex:end -->` block/);
+    expect(MENTOR_RULES_MD).toMatch(/remove only the managed `<!-- msc:agents:start -->`\.\.\.`<!-- msc:agents:end -->` block/);
   });
 });
 

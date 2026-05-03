@@ -3,16 +3,13 @@ import * as path from "path";
 import * as vscode from "vscode";
 
 export const MENTOR_REF = "@.mentor/rules/MENTOR_RULES.md";
-export const CODEX_ENTRYPOINT_START = "<!-- msc:codex:start -->";
-export const CODEX_ENTRYPOINT_END = "<!-- msc:codex:end -->";
+export const AGENTS_ENTRYPOINT_START = "<!-- msc:agents:start -->";
+export const AGENTS_ENTRYPOINT_END = "<!-- msc:agents:end -->";
 
-const CODEX_ENTRYPOINT_BLOCK = [
-  CODEX_ENTRYPOINT_START,
-  "Read `.mentor/config.json`.",
-  "- If config is missing or invalid, stop.",
-  "- If `enableMentor` is false, stop.",
-  `- If \`enableMentor\` is true, continue to \`${MENTOR_REF}\`.`,
-  CODEX_ENTRYPOINT_END,
+const AGENTS_ENTRYPOINT_BLOCK = [
+  AGENTS_ENTRYPOINT_START,
+  MENTOR_REF,
+  AGENTS_ENTRYPOINT_END,
 ].join("\n");
 
 export interface MentorRefStatus {
@@ -23,19 +20,24 @@ export interface MentorRefStatus {
 }
 
 export interface MentorEntrypointStatus {
-  claudeProject: boolean;
-  claudePersonal: boolean;
-  codexProject: boolean;
-  claudeProjectPath: string;
-  claudePersonalPath: string;
-  codexProjectPath: string;
-  claudeMode: "project" | "personal" | null;
-  anyEntrypoint: boolean;
+  projectClaudeMd: boolean;
+  personalClaudeMd: boolean;
+  projectAgentsMd: boolean;
+  projectClaudeMdPath: string;
+  personalClaudeMdPath: string;
+  projectAgentsMdPath: string;
+  claudeMdScope: "project" | "personal" | null;
+  hasEntrypointFile: boolean;
 }
 
-export interface ProviderSetupSelection {
-  claude: boolean;
-  codex: boolean;
+export interface EntrypointFileSelection {
+  claudeMd: boolean;
+  agentsMd: boolean;
+}
+
+interface SetupEntrypointPromptStatus {
+  claudeMdEnabled: boolean;
+  agentsMdEnabled: boolean;
 }
 
 function getPersonalClaudeMdPath(wsRoot: vscode.Uri): string {
@@ -52,7 +54,7 @@ function getProjectClaudeMdUri(wsRoot: vscode.Uri): vscode.Uri {
   return vscode.Uri.joinPath(wsRoot, "CLAUDE.md");
 }
 
-function getProjectCodexAgentsUri(wsRoot: vscode.Uri): vscode.Uri {
+function getProjectAgentsMdUri(wsRoot: vscode.Uri): vscode.Uri {
   return vscode.Uri.joinPath(wsRoot, "AGENTS.md");
 }
 
@@ -62,17 +64,17 @@ function collapseWhitespace(content: string): string {
   return trimmed === "" ? "" : trimmed + "\n";
 }
 
-function stripCodexEntrypointBlock(content: string): string {
+function stripAgentsEntrypointBlock(content: string): string {
   return content.replace(
-    /\n?<!-- msc:codex:start -->[\s\S]*?<!-- msc:codex:end -->\n?/g,
+    /\n?<!-- msc:agents:start -->[\s\S]*?<!-- msc:agents:end -->\n?/g,
     "\n",
   );
 }
 
-function hasManagedCodexEntrypoint(content: string): boolean {
+function hasManagedAgentsEntrypoint(content: string): boolean {
   return (
-    content.includes(CODEX_ENTRYPOINT_START) &&
-    content.includes(CODEX_ENTRYPOINT_END)
+    content.includes(AGENTS_ENTRYPOINT_START) &&
+    content.includes(AGENTS_ENTRYPOINT_END)
   );
 }
 
@@ -106,32 +108,33 @@ export async function getEntrypointStatus(
 ): Promise<MentorEntrypointStatus> {
   const claudePersonalPath = getPersonalClaudeMdPath(wsRoot);
   const claudeProjectUri = getProjectClaudeMdUri(wsRoot);
-  const codexProjectUri = getProjectCodexAgentsUri(wsRoot);
+  const agentsProjectUri = getProjectAgentsMdUri(wsRoot);
 
-  const [claudePersonalContent, claudeProjectContent, codexProjectContent] =
+  const [claudePersonalContent, claudeProjectContent, agentsProjectContent] =
     await Promise.all([
       readFileText(vscode.Uri.file(claudePersonalPath)),
       readFileText(claudeProjectUri),
-      readFileText(codexProjectUri),
+      readFileText(agentsProjectUri),
     ]);
 
-  const claudePersonal = claudePersonalContent.includes(MENTOR_REF);
-  const claudeProject = claudeProjectContent.includes(MENTOR_REF);
-  const codexProject = hasManagedCodexEntrypoint(codexProjectContent);
+  const personalClaudeMd = claudePersonalContent.includes(MENTOR_REF);
+  const projectClaudeMd = claudeProjectContent.includes(MENTOR_REF);
+  const projectAgentsMd = hasManagedAgentsEntrypoint(agentsProjectContent);
 
   return {
-    claudeProject,
-    claudePersonal,
-    codexProject,
-    claudeProjectPath: claudeProjectUri.fsPath,
-    claudePersonalPath,
-    codexProjectPath: codexProjectUri.fsPath,
-    claudeMode: claudeProject
+    projectClaudeMd,
+    personalClaudeMd,
+    projectAgentsMd,
+    projectClaudeMdPath: claudeProjectUri.fsPath,
+    personalClaudeMdPath: claudePersonalPath,
+    projectAgentsMdPath: agentsProjectUri.fsPath,
+    claudeMdScope: projectClaudeMd
       ? "project"
-      : claudePersonal
+      : personalClaudeMd
         ? "personal"
         : null,
-    anyEntrypoint: claudeProject || claudePersonal || codexProject,
+    hasEntrypointFile:
+      projectClaudeMd || personalClaudeMd || projectAgentsMd,
   };
 }
 
@@ -140,10 +143,10 @@ export async function findMentorRef(
 ): Promise<MentorRefStatus> {
   const status = await getEntrypointStatus(wsRoot);
   return {
-    personal: status.claudePersonal,
-    project: status.claudeProject,
-    personalPath: status.claudePersonalPath,
-    projectPath: status.claudeProjectPath,
+    personal: status.personalClaudeMd,
+    project: status.projectClaudeMd,
+    personalPath: status.personalClaudeMdPath,
+    projectPath: status.projectClaudeMdPath,
   };
 }
 
@@ -153,8 +156,8 @@ export function removeMentorRefFromContent(content: string): string {
   return collapseWhitespace(filtered.join("\n"));
 }
 
-export function removeCodexEntrypointBlockFromContent(content: string): string {
-  return collapseWhitespace(stripCodexEntrypointBlock(content));
+export function removeAgentsEntrypointBlockFromContent(content: string): string {
+  return collapseWhitespace(stripAgentsEntrypointBlock(content));
 }
 
 async function removeClaudeEntrypointAtUri(uri: vscode.Uri): Promise<void> {
@@ -165,9 +168,9 @@ async function removeClaudeEntrypointAtUri(uri: vscode.Uri): Promise<void> {
   }
 }
 
-async function removeCodexEntrypointAtUri(uri: vscode.Uri): Promise<void> {
+async function removeAgentsEntrypointAtUri(uri: vscode.Uri): Promise<void> {
   const content = await readFileText(uri);
-  const updated = removeCodexEntrypointBlockFromContent(content);
+  const updated = removeAgentsEntrypointBlockFromContent(content);
   if (updated !== content) {
     await writeFileText(uri, updated);
   }
@@ -183,25 +186,25 @@ async function ensureMentorRefLine(uri: vscode.Uri): Promise<void> {
   await writeFileText(uri, nextContent);
 }
 
-async function ensureCodexEntrypointBlock(uri: vscode.Uri): Promise<void> {
+async function ensureAgentsEntrypointBlock(uri: vscode.Uri): Promise<void> {
   const content = await readFileText(uri);
-  if (content.includes(CODEX_ENTRYPOINT_START)) {
+  if (content.includes(AGENTS_ENTRYPOINT_START)) {
     return;
   }
   const nextContent =
     content === ""
-      ? `${CODEX_ENTRYPOINT_BLOCK}\n`
-      : `${content.trimEnd()}\n\n${CODEX_ENTRYPOINT_BLOCK}\n`;
+      ? `${AGENTS_ENTRYPOINT_BLOCK}\n`
+      : `${content.trimEnd()}\n\n${AGENTS_ENTRYPOINT_BLOCK}\n`;
   await writeFileText(uri, nextContent);
 }
 
-export async function ensureClaudeProjectEntrypoint(
+export async function ensureProjectClaudeMdEntrypoint(
   wsRoot: vscode.Uri,
 ): Promise<void> {
   await ensureMentorRefLine(getProjectClaudeMdUri(wsRoot));
 }
 
-export async function ensureClaudePersonalEntrypoint(
+export async function ensurePersonalClaudeMdEntrypoint(
   wsRoot: vscode.Uri,
 ): Promise<void> {
   const uri = vscode.Uri.file(getPersonalClaudeMdPath(wsRoot));
@@ -209,19 +212,19 @@ export async function ensureClaudePersonalEntrypoint(
   await ensureMentorRefLine(uri);
 }
 
-export async function ensureCodexProjectEntrypoint(
+export async function ensureProjectAgentsMdEntrypoint(
   wsRoot: vscode.Uri,
 ): Promise<void> {
-  await ensureCodexEntrypointBlock(getProjectCodexAgentsUri(wsRoot));
+  await ensureAgentsEntrypointBlock(getProjectAgentsMdUri(wsRoot));
 }
 
-export async function removeClaudeProjectEntrypoint(
+export async function removeProjectClaudeMdEntrypoint(
   wsRoot: vscode.Uri,
 ): Promise<void> {
   await removeClaudeEntrypointAtUri(getProjectClaudeMdUri(wsRoot));
 }
 
-export async function removeClaudePersonalEntrypoint(
+export async function removePersonalClaudeMdEntrypoint(
   wsRoot: vscode.Uri,
 ): Promise<void> {
   await removeClaudeEntrypointAtUri(
@@ -229,17 +232,17 @@ export async function removeClaudePersonalEntrypoint(
   );
 }
 
-export async function removeCodexProjectEntrypoint(
+export async function removeProjectAgentsMdEntrypoint(
   wsRoot: vscode.Uri,
 ): Promise<void> {
-  await removeCodexEntrypointAtUri(getProjectCodexAgentsUri(wsRoot));
+  await removeAgentsEntrypointAtUri(getProjectAgentsMdUri(wsRoot));
 }
 
 export async function removeMentorRef(wsRoot: vscode.Uri): Promise<void> {
   await Promise.all([
-    removeClaudeProjectEntrypoint(wsRoot),
-    removeClaudePersonalEntrypoint(wsRoot),
-    removeCodexProjectEntrypoint(wsRoot),
+    removeProjectClaudeMdEntrypoint(wsRoot),
+    removePersonalClaudeMdEntrypoint(wsRoot),
+    removeProjectAgentsMdEntrypoint(wsRoot),
   ]);
 }
 
@@ -248,26 +251,26 @@ export async function addMentorRef(
   target: "project" | "personal",
 ): Promise<void> {
   if (target === "project") {
-    await ensureClaudeProjectEntrypoint(wsRoot);
+    await ensureProjectClaudeMdEntrypoint(wsRoot);
     return;
   }
-  await ensureClaudePersonalEntrypoint(wsRoot);
+  await ensurePersonalClaudeMdEntrypoint(wsRoot);
 }
 
-export async function setClaudeMode(
+export async function setClaudeMdScope(
   wsRoot: vscode.Uri,
   target: "project" | "personal",
 ): Promise<void> {
   if (target === "project") {
-    await ensureClaudeProjectEntrypoint(wsRoot);
-    await removeClaudePersonalEntrypoint(wsRoot);
+    await ensureProjectClaudeMdEntrypoint(wsRoot);
+    await removePersonalClaudeMdEntrypoint(wsRoot);
     return;
   }
-  await ensureClaudePersonalEntrypoint(wsRoot);
-  await removeClaudeProjectEntrypoint(wsRoot);
+  await ensurePersonalClaudeMdEntrypoint(wsRoot);
+  await removeProjectClaudeMdEntrypoint(wsRoot);
 }
 
-export async function promptForClaudeMode(
+export async function promptForClaudeMdScope(
   isJa: boolean,
 ): Promise<"project" | "personal" | undefined> {
   const projectLabel = isJa
@@ -280,8 +283,8 @@ export async function promptForClaudeMode(
 
   const target = await vscode.window.showInformationMessage(
     isJa
-      ? `Claude Code のメンター設定をどこに追加しますか？\nプロジェクト: チーム全員に適用\n個人設定: 自分だけに適用`
-      : `Where should the Claude Code mentor reference be added?\nProject: applies to the whole team\nPersonal: applies only to you`,
+      ? `Mentor の参照をどの CLAUDE.md に追加しますか？\nプロジェクト: チーム全員に適用\n個人設定: 自分だけに適用`
+      : `Which CLAUDE.md should receive the Mentor reference?\nProject: applies to the whole team\nPersonal: applies only to you`,
     { modal: true },
     projectLabel,
     personalLabel,
@@ -297,9 +300,10 @@ export async function promptForClaudeMode(
   return undefined;
 }
 
-export async function promptForSetupProviders(
+export async function promptForSetupEntrypointFiles(
   isJa: boolean,
-): Promise<ProviderSetupSelection | undefined> {
+  currentStatus?: SetupEntrypointPromptStatus,
+): Promise<EntrypointFileSelection | undefined> {
   if (!("showQuickPick" in vscode.window)) {
     return undefined;
   }
@@ -319,16 +323,24 @@ export async function promptForSetupProviders(
 
   const picks = await showQuickPick(
     [
-      { label: "Claude Code" },
-      { label: "Codex" },
+      {
+        label: "CLAUDE.md",
+        picked: currentStatus?.claudeMdEnabled ?? false,
+      },
+      {
+        label: "AGENTS.md",
+        picked: currentStatus?.agentsMdEnabled ?? false,
+      },
     ],
     {
       canPickMany: true,
       ignoreFocusOut: true,
       placeHolder: isJa
-        ? "Mentor機能を利用するAIツールを選択してください"
-        : "Choose the AI tools that should use Mentor",
-      title: isJa ? "AI ツールを選択" : "Choose AI tools",
+        ? "Mentor機能を利用するエントリポイントファイルを選択してください"
+        : "Choose the entrypoint files that should use Mentor",
+      title: isJa
+        ? "エントリポイントファイルを選択"
+        : "Choose entrypoint files",
     },
   );
 
@@ -339,15 +351,15 @@ export async function promptForSetupProviders(
   if (picks.length === 0) {
     await vscode.window.showInformationMessage(
       isJa
-        ? "少なくとも Claude Code または Codex のどちらかを選択してください。"
-        : "Choose at least one of Claude Code or Codex to continue.",
+        ? "少なくとも CLAUDE.md または AGENTS.md のどちらかを選択してください。"
+        : "Choose at least one of CLAUDE.md or AGENTS.md to continue.",
     );
     return undefined;
   }
 
   return {
-    claude: picks.some((pick) => pick.label === "Claude Code"),
-    codex: picks.some((pick) => pick.label === "Codex"),
+    claudeMd: picks.some((pick) => pick.label === "CLAUDE.md"),
+    agentsMd: picks.some((pick) => pick.label === "AGENTS.md"),
   };
 }
 
@@ -355,10 +367,10 @@ export async function promptAndAddMentorRef(
   wsRoot: vscode.Uri,
   isJa: boolean,
 ): Promise<"project" | "personal" | undefined> {
-  const target = await promptForClaudeMode(isJa);
+  const target = await promptForClaudeMdScope(isJa);
   if (!target) {
     return undefined;
   }
-  await setClaudeMode(wsRoot, target);
+  await setClaudeMdScope(wsRoot, target);
   return target;
 }

@@ -1,7 +1,7 @@
 {
   "name": "mentor-studio-code",
   "displayName": "Mentor Studio Code",
-  "description": "Learn to code inside your own projects. Adds lesson structure, progress tracking, and weak-topic detection on top of Claude Code. Independent, unofficial project — not affiliated with Anthropic.",
+  "description": "Learn to code inside your own projects. Adds lesson structure, progress tracking, and weak-topic detection through CLAUDE.md and AGENTS.md entrypoints. Independent, unofficial project — not affiliated with Anthropic.",
   "version": "0.6.8",
   "icon": "images/icon.png",
   "license": "MIT",

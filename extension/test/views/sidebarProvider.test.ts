@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SidebarProvider } from "../../src/views/sidebarProvider";
 import * as vscodeMock from "../__mocks__/vscode";
 
+const MENTOR_REF = "@.mentor/rules/MENTOR_RULES.md";
+const AGENTS_BLOCK = `<!-- msc:agents:start -->\n${MENTOR_REF}\n<!-- msc:agents:end -->\n`;
+
 // Convenience: full set of no-op plan handlers
 function noopPlanHandlers() {
   return {
@@ -90,7 +93,7 @@ describe("SidebarProvider", () => {
     expect(() => sub.postMessage({ type: "dbChanged" })).not.toThrow();
   });
 
-  it("sendConfig includes derived provider entrypoint status", async () => {
+  it("sendConfig includes derived entrypoint file status", async () => {
     const provider = new SidebarProvider(
       vscodeMock.Uri.file("/ext") as unknown as ConstructorParameters<
         typeof SidebarProvider
@@ -105,7 +108,7 @@ describe("SidebarProvider", () => {
         if (uri.fsPath === "/workspace/AGENTS.md") {
           return Uint8Array.from(
             Buffer.from(
-              "<!-- msc:codex:start -->\nRead `.mentor/config.json`.\n- If config is missing or invalid, stop.\n- If `enableMentor` is false, stop.\n- If `enableMentor` is true, continue to `@.mentor/rules/MENTOR_RULES.md`.\n<!-- msc:codex:end -->\n",
+              "<!-- msc:agents:start -->\n@.mentor/rules/MENTOR_RULES.md\n<!-- msc:agents:end -->\n",
             ),
           );
         }
@@ -119,11 +122,136 @@ describe("SidebarProvider", () => {
       expect.objectContaining({
         type: "config",
         entrypointStatus: expect.objectContaining({
-          codexEnabled: true,
-          hasEntrypoint: true,
+          agentsMdEnabled: true,
+          hasEntrypointFile: true,
         }),
       }),
     );
+  });
+
+  it("prompts in English before enabling CLAUDE.md from Settings and cancels cleanly", async () => {
+    const files = new Map<string, string>();
+    vi.spyOn(vscodeMock.workspace.fs, "readFile").mockImplementation(async (uri) =>
+      Uint8Array.from(Buffer.from(files.get(uri.fsPath) ?? "")),
+    );
+    const writeFile = vi
+      .spyOn(vscodeMock.workspace.fs, "writeFile")
+      .mockImplementation(async (uri, content) => {
+        files.set(uri.fsPath, Buffer.from(content).toString());
+      });
+    vi.spyOn(vscodeMock.workspace.fs, "createDirectory").mockResolvedValue();
+
+    const provider = new SidebarProvider(
+      vscodeMock.Uri.file("/ext") as unknown as ConstructorParameters<
+        typeof SidebarProvider
+      >[0],
+    );
+    const view = makeView();
+    provider.resolveWebviewView(
+      view as unknown as Parameters<typeof provider.resolveWebviewView>[0],
+    );
+    await provider.sendConfig({ repositoryName: "repo", locale: "en" });
+    writeFile.mockClear();
+
+    const confirm = vi
+      .spyOn(vscodeMock.window, "showWarningMessage")
+      .mockResolvedValue(undefined);
+
+    await view.__trigger({ type: "setClaudeMdEnabled", value: true });
+
+    expect(confirm).toHaveBeenCalledWith(
+      "This will update `CLAUDE.md` and add the Mentor reference. Continue?",
+      { modal: true },
+      "Continue",
+    );
+    expect(writeFile).not.toHaveBeenCalled();
+    expect(files.get("/workspace/CLAUDE.md")).toBeUndefined();
+    expect(view.__posted.at(-1)).toEqual(
+      expect.objectContaining({
+        type: "config",
+        entrypointStatus: expect.objectContaining({
+          claudeMdEnabled: false,
+        }),
+      }),
+    );
+  });
+
+  it("prompts before changing CLAUDE.md scope from Settings", async () => {
+    const files = new Map<string, string>([
+      ["/workspace/CLAUDE.md", `${MENTOR_REF}\n`],
+    ]);
+    vi.spyOn(vscodeMock.workspace.fs, "readFile").mockImplementation(async (uri) =>
+      Uint8Array.from(Buffer.from(files.get(uri.fsPath) ?? "")),
+    );
+    const writeFile = vi
+      .spyOn(vscodeMock.workspace.fs, "writeFile")
+      .mockImplementation(async (uri, content) => {
+        files.set(uri.fsPath, Buffer.from(content).toString());
+      });
+    vi.spyOn(vscodeMock.workspace.fs, "createDirectory").mockResolvedValue();
+
+    const provider = new SidebarProvider(
+      vscodeMock.Uri.file("/ext") as unknown as ConstructorParameters<
+        typeof SidebarProvider
+      >[0],
+    );
+    const view = makeView();
+    provider.resolveWebviewView(
+      view as unknown as Parameters<typeof provider.resolveWebviewView>[0],
+    );
+    await provider.sendConfig({ repositoryName: "repo", locale: "en" });
+    writeFile.mockClear();
+
+    const confirm = vi
+      .spyOn(vscodeMock.window, "showWarningMessage")
+      .mockResolvedValue(undefined);
+
+    await view.__trigger({ type: "setClaudeMdScope", value: "personal" });
+
+    expect(confirm).toHaveBeenCalledWith(
+      "This will move the Mentor reference from the project `CLAUDE.md` to your personal `CLAUDE.md`. Continue?",
+      { modal: true },
+      "Continue",
+    );
+    expect(writeFile).not.toHaveBeenCalled();
+    expect(files.get("/workspace/CLAUDE.md")).toBe(`${MENTOR_REF}\n`);
+  });
+
+  it("prompts in Japanese before enabling AGENTS.md from Settings and updates after approval", async () => {
+    const files = new Map<string, string>();
+    vi.spyOn(vscodeMock.workspace.fs, "readFile").mockImplementation(async (uri) =>
+      Uint8Array.from(Buffer.from(files.get(uri.fsPath) ?? "")),
+    );
+    vi.spyOn(vscodeMock.workspace.fs, "writeFile").mockImplementation(
+      async (uri, content) => {
+        files.set(uri.fsPath, Buffer.from(content).toString());
+      },
+    );
+    vi.spyOn(vscodeMock.workspace.fs, "createDirectory").mockResolvedValue();
+
+    const provider = new SidebarProvider(
+      vscodeMock.Uri.file("/ext") as unknown as ConstructorParameters<
+        typeof SidebarProvider
+      >[0],
+    );
+    const view = makeView();
+    provider.resolveWebviewView(
+      view as unknown as Parameters<typeof provider.resolveWebviewView>[0],
+    );
+    await provider.sendConfig({ repositoryName: "repo", locale: "ja" });
+
+    const confirm = vi
+      .spyOn(vscodeMock.window, "showWarningMessage")
+      .mockResolvedValue("続行する");
+
+    await view.__trigger({ type: "setAgentsMdEnabled", value: true });
+
+    expect(confirm).toHaveBeenCalledWith(
+      "`AGENTS.md` を更新して Mentor 参照を追加します。続行しますか？",
+      { modal: true },
+      "続行する",
+    );
+    expect(files.get("/workspace/AGENTS.md")).toBe(AGENTS_BLOCK);
   });
 
   it("mergeTopic message calls the registered handler", async () => {

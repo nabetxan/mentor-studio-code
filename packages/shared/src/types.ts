@@ -50,15 +50,15 @@ export interface MentorStudioConfig {
   extensionUninstalled?: boolean;
 }
 
-export type ClaudeEntrypointMode = "project" | "personal";
+export type ClaudeMdScope = "project" | "personal";
 
-export interface ProviderEntrypointStatus {
-  claudeEnabled: boolean;
-  claudeMode: ClaudeEntrypointMode | null;
-  claudeProject: boolean;
-  claudePersonal: boolean;
-  codexEnabled: boolean;
-  hasEntrypoint: boolean;
+export interface MentorEntrypointFileStatus {
+  claudeMdEnabled: boolean;
+  claudeMdScope: ClaudeMdScope | null;
+  projectClaudeMd: boolean;
+  personalClaudeMd: boolean;
+  agentsMdEnabled: boolean;
+  hasEntrypointFile: boolean;
 }
 
 // === Dashboard stats (computed by extension, sent to webview) ===
@@ -128,7 +128,7 @@ export type DeleteTopicResultEntry = {
 export interface CleanupOptions {
   mentorFolder: boolean;
   profile: boolean;
-  claudeMdRef: boolean;
+  entrypointFiles: boolean;
   wipeExternalDb: boolean;
 }
 
@@ -137,7 +137,7 @@ export type ExtensionMessage =
   | {
       type: "config";
       data: MentorStudioConfig;
-      entrypointStatus?: ProviderEntrypointStatus;
+      entrypointStatus?: MentorEntrypointFileStatus;
       /** Runtime DB location info — populated once Setup has run (workspaceId known). */
       dataLocation?: {
         dbPath: string; // /Users/.../MentorStudioCode/<uuid>/data.db
@@ -169,9 +169,9 @@ export type WebviewMessage =
   | { type: "clearFile"; field: FileField }
   | { type: "setLocale"; locale: Locale }
   | { type: "setEnableMentor"; value: boolean }
-  | { type: "setClaudeCodeEnabled"; value: boolean }
-  | { type: "setClaudeCodeScope"; value: ClaudeEntrypointMode }
-  | { type: "setCodexEnabled"; value: boolean }
+  | { type: "setClaudeMdEnabled"; value: boolean }
+  | { type: "setClaudeMdScope"; value: ClaudeMdScope }
+  | { type: "setAgentsMdEnabled"; value: boolean }
   | { type: "mergeTopic"; fromKey: string; toKey: string }
   | { type: "updateTopicLabel"; key: string; newLabel: string }
   | { type: "addTopic"; label: string }

@@ -1,7 +1,7 @@
 import type {
   DashboardData,
+  MentorEntrypointFileStatus,
   MentorStudioConfig,
-  ProviderEntrypointStatus,
 } from "@mentor-studio/shared";
 import {
   act,
@@ -47,13 +47,13 @@ const mockConfig: MentorStudioConfig = {
   repositoryName: "test-repo",
 };
 
-const noEntrypoints: ProviderEntrypointStatus = {
-  claudeEnabled: false,
-  claudeMode: null,
-  claudeProject: false,
-  claudePersonal: false,
-  codexEnabled: false,
-  hasEntrypoint: false,
+const noEntrypoints: MentorEntrypointFileStatus = {
+  claudeMdEnabled: false,
+  claudeMdScope: null,
+  projectClaudeMd: false,
+  personalClaudeMd: false,
+  agentsMdEnabled: false,
+  hasEntrypointFile: false,
 };
 
 const mockData: DashboardData = {
