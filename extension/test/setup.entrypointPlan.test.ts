@@ -80,6 +80,27 @@ describe("resolveSetupEntrypointPlan", () => {
     expect(result.agentsMode).toBe("remove");
     expect(result.mentorEnabled).toBe(false);
   });
+
+  it("keeps existing CLAUDE.md wiring untouched when scope selection is cancelled", () => {
+    const result = resolveSetupEntrypointPlan({
+      currentStatus: {
+        projectClaudeMd: true,
+        personalClaudeMd: true,
+        projectAgentsMd: false,
+        claudeMdScope: "project",
+        hasEntrypointFile: true,
+      },
+      selection: {
+        claudeMd: true,
+        agentsMd: false,
+      },
+      selectedClaudeScope: undefined,
+    });
+
+    expect(result.claudeMode).toBe("keep");
+    expect(result.agentsMode).toBe("remove");
+    expect(result.mentorEnabled).toBe(true);
+  });
 });
 
 describe("buildSetupCompletionMessage", () => {

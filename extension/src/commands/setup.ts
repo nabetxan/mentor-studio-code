@@ -96,17 +96,15 @@ export function resolveSetupEntrypointPlan(
 
   if (input.selection) {
     if (input.selection.claudeMd) {
-      const resolvedScope =
-        input.selectedClaudeScope ?? input.currentStatus.claudeMdScope;
-      if (resolvedScope === "project") {
+      if (input.selectedClaudeScope === "project") {
         claudeMode = "setProject";
         finalProjectClaudeMd = true;
         finalPersonalClaudeMd = false;
-      } else if (resolvedScope === "personal") {
+      } else if (input.selectedClaudeScope === "personal") {
         claudeMode = "setPersonal";
         finalProjectClaudeMd = false;
         finalPersonalClaudeMd = true;
-      } else {
+      } else if (!input.currentStatus.claudeMdScope) {
         finalProjectClaudeMd = false;
         finalPersonalClaudeMd = false;
       }
