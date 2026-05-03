@@ -47,14 +47,14 @@ describe("remove-plan", () => {
       expect(status).toBe("removed");
     });
 
-    it("returns invalid_state when removing an active plan", async () => {
+    it("active plan also moves to removed", async () => {
       const res = await removePlan({ id: 2 }, env.paths);
-      expect(res).toMatchObject({ ok: false, error: "invalid_state" });
+      expect(res).toEqual({ ok: true, id: 2 });
       const status = await withDb(env.paths.dbPath, (db) => {
         const r = db.exec("SELECT status FROM plans WHERE id = 2");
         return String(r[0]?.values?.[0]?.[0]);
       });
-      expect(status).toBe("active");
+      expect(status).toBe("removed");
     });
 
     it("rejects missing id", async () => {

@@ -265,11 +265,6 @@ export class PlanPanel {
         }
         await planWrites.activatePlan(this.dbPath, { id }, this.wasmPath);
       } else if (toStatus === "removed") {
-        const snap = await readSnapshot(this.dbPath, this.wasmPath);
-        const plan = snap.plans.find((p) => p.id === id);
-        if (plan?.status === "active") {
-          await planWrites.deactivatePlan(this.dbPath, { id }, this.wasmPath);
-        }
         await planWrites.removePlan(this.dbPath, { id }, this.wasmPath);
       } else if (
         toStatus === "queued" ||

@@ -2,7 +2,7 @@ import type { CleanupOptions } from "@mentor-studio/shared";
 import { existsSync, promises as fsp } from "node:fs";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import * as vscode from "vscode";
-import { findMentorRef, removeMentorRef } from "../services/claudeMd";
+import { getEntrypointStatus, removeMentorRef } from "../services/claudeMd";
 import { parseConfig } from "../services/dataParser";
 import {
   getExternalDataDir,
@@ -98,8 +98,8 @@ export async function runRemoveMentor(
   const confirmLabel = isJa ? "実行する" : "Continue";
   const choice = await vscode.window.showWarningMessage(
     isJa
-      ? "CLAUDE.md からメンター参照を削除し、メンターを無効化します。.mentor フォルダ（学習履歴含む）は削除されません。よろしいですか？"
-      : "This will remove the mentor reference from CLAUDE.md and disable the mentor. The .mentor folder (including learning history) will not be deleted. Continue?",
+      ? "設定済みの AI エントリポイントからメンター参照を削除し、メンターを無効化します。.mentor フォルダ（学習履歴含む）は削除されません。よろしいですか？"
+      : "This will remove mentor references from configured AI entrypoint files and disable Mentor. The .mentor folder (including learning history) will not be deleted. Continue?",
     { modal: true },
     confirmLabel,
   );
@@ -109,10 +109,10 @@ export async function runRemoveMentor(
   }
 
   // Check if ref exists before removing
-  const refStatus = await findMentorRef(wsRoot);
-  const hadRef = refStatus.personal || refStatus.project;
+  const refStatus = await getEntrypointStatus(wsRoot);
+  const hadRef = refStatus.hasEntrypointFile;
 
-  // Remove @ref from both CLAUDE.md locations
+  // Remove mentor entrypoints from all supported AI entrypoint files.
   await removeMentorRef(wsRoot);
 
   // Clean up SQLite-era runtime artifacts (idempotent; leaves user-owned files alone)
@@ -153,21 +153,21 @@ export async function runRemoveMentor(
     vscode.window.showInformationMessage(
       isJa
         ? "メンター参照を削除しました。"
-        : "Mentor reference has been removed.",
+        : "Mentor references have been removed.",
     );
   } else {
     vscode.window.showInformationMessage(
       isJa
-        ? "CLAUDE.md にメンター参照が見つかりませんでした。メンターを無効化しました。"
-        : "No mentor reference found in CLAUDE.md. Mentor has been disabled.",
+        ? "AI エントリポイントにメンター参照が見つかりませんでした。メンターを無効化しました。"
+        : "No mentor references were found in AI entrypoint files. Mentor has been disabled.",
     );
   }
 
   outputChannel.appendLine("=== Remove Mentor ===");
   outputChannel.appendLine(
     hadRef
-      ? "Removed mentor reference from CLAUDE.md"
-      : "No mentor reference found in CLAUDE.md",
+      ? "Removed mentor references from AI entrypoint files"
+      : "No mentor references found in AI entrypoint files",
   );
 }
 
@@ -210,7 +210,7 @@ export async function runCleanupMentor(
         {
           mentorFolder: false,
           profile: false,
-          claudeMdRef: false,
+          entrypointFiles: false,
           wipeExternalDb: false,
         },
         isJa,
@@ -243,7 +243,7 @@ export async function runCleanupMentor(
   const deleted: CleanupOptions = {
     mentorFolder: false,
     profile: false,
-    claudeMdRef: false,
+    entrypointFiles: false,
     wipeExternalDb: false,
   };
 
@@ -282,16 +282,16 @@ export async function runCleanupMentor(
     outputChannel.appendLine("Cleared learnerProfile from globalState");
   }
 
-  // 3. Remove CLAUDE.md reference
-  if (options.claudeMdRef) {
-    const refStatus = await findMentorRef(wsRoot);
-    const hadRef = refStatus.personal || refStatus.project;
+  // 3. Remove Mentor references from supported entrypoint files
+  if (options.entrypointFiles) {
+    const refStatus = await getEntrypointStatus(wsRoot);
+    const hadRef = refStatus.hasEntrypointFile;
     await removeMentorRef(wsRoot);
-    deleted.claudeMdRef = hadRef;
+    deleted.entrypointFiles = hadRef;
     outputChannel.appendLine(
       hadRef
-        ? "Removed mentor reference from CLAUDE.md"
-        : "No mentor reference found in CLAUDE.md",
+        ? "Removed mentor references from AI entrypoint files"
+        : "No mentor references found in AI entrypoint files",
     );
   }
 

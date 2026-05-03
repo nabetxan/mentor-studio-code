@@ -1,4 +1,5 @@
 export type {
+  ClaudeMdScope,
   CleanupOptions,
   CompletedTask,
   DashboardData,
@@ -8,6 +9,7 @@ export type {
   Locale,
   MentorFiles,
   MentorStudioConfig,
+  MentorEntrypointFileStatus,
   PlanDto,
   PlanStatus,
   SkippedTask,

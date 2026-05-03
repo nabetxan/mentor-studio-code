@@ -26,9 +26,6 @@ export const removePlan: Command = async (rawArgs, paths) => {
     if (msg.startsWith("plan not found")) {
       return { ok: false, error: "not_found", detail: msg };
     }
-    if (msg.startsWith("cannot remove active plan")) {
-      return { ok: false, error: "invalid_state", detail: msg };
-    }
     return { ok: false, error: "unexpected", detail: msg };
   }
 };

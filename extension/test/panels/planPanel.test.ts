@@ -718,22 +718,8 @@ describe("PlanPanel", () => {
     });
   });
 
-  it("setPlanStatus to 'removed' from active: deactivates first, then removes", async () => {
+  it("setPlanStatus to 'removed' from active: removePlan handles the demotion in a single call", async () => {
     const { panel } = createPanel();
-    const snapshotMod = await import("../../src/panels/snapshot.js");
-    vi.mocked(snapshotMod.readSnapshot).mockResolvedValue({
-      plans: [
-        {
-          id: 1,
-          name: "Plan A",
-          filePath: null,
-          status: "active",
-          sortOrder: 1,
-        },
-      ],
-      tasks: [],
-      topics: [],
-    });
     const planWritesMod = await import("../../src/panels/writes/planWrites.js");
 
     await panel.webview.__triggerMessage({
@@ -743,11 +729,7 @@ describe("PlanPanel", () => {
       toStatus: "removed",
     });
 
-    expect(planWritesMod.deactivatePlan).toHaveBeenCalledWith(
-      FAKE_PATHS.dbPath,
-      { id: 1 },
-      FAKE_PATHS.wasmPath,
-    );
+    expect(planWritesMod.deactivatePlan).not.toHaveBeenCalled();
     expect(planWritesMod.removePlan).toHaveBeenCalledWith(
       FAKE_PATHS.dbPath,
       { id: 1 },

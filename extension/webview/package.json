@@ -1,11 +1,14 @@
 {
   "name": "@mentor-studio/webview",
-  "version": "0.6.7",
+  "version": "0.6.8",
   "private": true,
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
   "scripts": {
     "build": "node esbuild.config.mjs",
     "watch": "node esbuild.config.mjs --watch",
-    "test": "vitest run"
+    "test": "./scripts/run-vitest.sh run"
   },
   "dependencies": {
     "@mentor-studio/shared": "*",
