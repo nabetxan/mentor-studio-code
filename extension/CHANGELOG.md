@@ -10,7 +10,7 @@ All notable changes to "Mentor Studio Code" will be documented in this file.
 
 ### Fixed
 
-- Setup Flow
+- Setup flow
 
 ## [0.6.8] - 2026-05-03
 
