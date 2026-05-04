@@ -29,6 +29,12 @@ export function __resetWatchers(): void {
 }
 
 export const window = {
+  createOutputChannel: (..._args: unknown[]) => ({
+    appendLine: (_value: string) => undefined,
+    show: (..._showArgs: unknown[]) => undefined,
+    dispose: () => undefined,
+  }),
+  registerWebviewViewProvider: (..._args: unknown[]) => new Disposable(),
   showWarningMessage: (..._args: unknown[]): Promise<string | undefined> =>
     Promise.resolve(undefined),
   showErrorMessage: (..._args: unknown[]): Promise<string | undefined> =>
@@ -66,6 +72,7 @@ export const env = {
 };
 
 export const commands = {
+  registerCommand: (..._args: unknown[]) => new Disposable(),
   executeCommand: (..._args: unknown[]): Promise<unknown> =>
     Promise.resolve(undefined),
 };

@@ -3,7 +3,7 @@ import { SidebarProvider } from "../../src/views/sidebarProvider";
 import * as vscodeMock from "../__mocks__/vscode";
 
 const MENTOR_REF = "@.mentor/rules/MENTOR_RULES.md";
-const AGENTS_BLOCK = `<!-- msc:agents:start -->\n${MENTOR_REF}\n<!-- msc:agents:end -->\n`;
+const AGENTS_BLOCK = `<!-- msc:agents:start -->\nFollow ${MENTOR_REF}\n<!-- msc:agents:end -->\n`;
 
 // Convenience: full set of no-op plan handlers
 function noopPlanHandlers() {

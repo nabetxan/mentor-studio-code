@@ -460,7 +460,7 @@ New spec default = \`.mentor/spec/<slug>.md\`. Create dir if missing. Slug = sho
 - Ask permission before writing.
 - Mention Settings can change it later.
 - CLI: \`node .mentor/tools/mentor-cli.cjs update-config '{"mentorFiles":{"spec":"<path>"}}'\`
-- fileWatcher auto-reloads.
+- Extension file watcher refreshes config automatically.
 `;
 
 export const INTAKE_SKILL_MD = `---

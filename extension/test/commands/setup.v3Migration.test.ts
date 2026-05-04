@@ -2,6 +2,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -143,7 +144,12 @@ describe("setup: ensureExternalDb (v3 migration + bootstrap integration)", () =>
     );
     mkdirSync(externalDir, { recursive: true });
     const externalDbPath = join(externalDir, "data.db");
-    writeFileSync(externalDbPath, Buffer.from("preserved external bytes"));
+    const SQL = await loadSqlJs(WASM);
+    const db = new SQL.Database();
+    db.exec("CREATE TABLE topics (id INTEGER PRIMARY KEY, label TEXT)");
+    db.exec("INSERT INTO topics(label) VALUES ('preserved external row')");
+    writeFileSync(externalDbPath, Buffer.from(db.export()));
+    db.close();
 
     const result = await ensureExternalDb({
       workspaceRoot: work,
@@ -153,11 +159,47 @@ describe("setup: ensureExternalDb (v3 migration + bootstrap integration)", () =>
 
     expect(result.workspaceId).toBe("prebaked-uuid");
     expect(result.bootstrapped).toBe(false);
-    expect(readFileSync(externalDbPath).toString()).toBe(
-      "preserved external bytes",
+    const reread = new SQL.Database(readFileSync(externalDbPath));
+    expect(reread.exec("SELECT label FROM topics")[0].values.flat()).toContain(
+      "preserved external row",
     );
+    reread.close();
     // Legacy DB still gets renamed even if external is preserved (cleanup phase).
     expect(existsSync(legacyDb)).toBe(false);
+  });
+
+  it("repairs a corrupt external DB during setup bootstrap", async () => {
+    writeConfig({ workspaceId: "corrupt-external" });
+    const externalDir = join(
+      fakeHome,
+      "Library",
+      "Application Support",
+      "MentorStudioCode",
+      "corrupt-external",
+    );
+    mkdirSync(externalDir, { recursive: true });
+    const externalDbPath = join(externalDir, "data.db");
+    writeFileSync(externalDbPath, Buffer.from("not a sqlite database"));
+
+    const result = await ensureExternalDb({
+      workspaceRoot: work,
+      configPath,
+      wasmPath: WASM,
+    });
+
+    expect(result.workspaceId).toBe("corrupt-external");
+    expect(result.bootstrapped).toBe(true);
+    expect(
+      readdirSync(externalDir).some((name) =>
+        name.startsWith("data.db.corrupt-"),
+      ),
+    ).toBe(true);
+
+    const SQL = await loadSqlJs(WASM);
+    const db = new SQL.Database(readFileSync(result.dbPath));
+    const rows = db.exec("SELECT label FROM topics")[0]?.values.flat() ?? [];
+    expect(rows.length).toBeGreaterThan(0);
+    db.close();
   });
 
   it("is a no-op for legacy when called twice with no DB the second time", async () => {

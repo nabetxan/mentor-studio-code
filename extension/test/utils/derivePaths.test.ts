@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { derivePathsFor } from "../../src/utils/derivePaths";
+import {
+  deriveHomeDirForWorkspaceFor,
+  derivePathsFor,
+} from "../../src/utils/derivePaths";
 
 const FAKE_PLATFORM = "darwin" as const;
 const FAKE_ENV = {};
@@ -62,5 +65,15 @@ describe("derivePaths", () => {
     expect(paths.mentorRoot).toBe("/ws/.custom-mentor");
     expect(paths.configPath).toBe("/ws/.custom-mentor/config.json");
     expect(paths.dbPath).toBe("/ws/.custom-mentor/data.db");
+  });
+
+  it("anchors macOS runtime derivation to the workspace owner home", () => {
+    expect(
+      deriveHomeDirForWorkspaceFor(
+        "darwin",
+        "/Users/vscode-host",
+        "/Users/jonatan/workspace/discursin",
+      ),
+    ).toBe("/Users/jonatan");
   });
 });

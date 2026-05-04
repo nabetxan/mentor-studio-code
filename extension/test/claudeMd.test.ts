@@ -4,6 +4,7 @@ import { join } from "node:path";
 import * as vscode from "vscode";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  AGENTS_MENTOR_REF,
   AGENTS_ENTRYPOINT_END,
   AGENTS_ENTRYPOINT_START,
   ensureProjectAgentsMdEntrypoint,
@@ -133,7 +134,7 @@ describe("provider-aware entrypoints", () => {
 
     const agents = readFileSync(join(workdir, "AGENTS.md"), "utf-8");
     expect(agents).toBe(
-      `${AGENTS_ENTRYPOINT_START}\n${REF}\n${AGENTS_ENTRYPOINT_END}\n`,
+      `${AGENTS_ENTRYPOINT_START}\n${AGENTS_MENTOR_REF}\n${AGENTS_ENTRYPOINT_END}\n`,
     );
   });
 
