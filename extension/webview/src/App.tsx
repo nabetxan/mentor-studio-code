@@ -189,7 +189,9 @@ export function App() {
             <p>{t("app.needsMigration.instruction", locale)}</p>
             <button
               className="btn-primary"
-              onClick={() => postMessage({ type: "runSetup" })}
+              onClick={() =>
+                postMessage({ type: "runSetup", source: "sidebarMigration" })
+              }
             >
               {t("app.needsMigration.button", locale)}
             </button>
@@ -206,7 +208,9 @@ export function App() {
             <p>{t("app.noConfig.instruction", locale)}</p>
             <button
               className="btn-primary"
-              onClick={() => postMessage({ type: "runSetup" })}
+              onClick={() =>
+                postMessage({ type: "runSetup", source: "sidebarNoConfig" })
+              }
             >
               {t("app.noConfig.button", locale)}
             </button>

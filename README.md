@@ -1,4 +1,4 @@
-![version](https://img.shields.io/badge/version-0.6.8-blue)
+![version](https://img.shields.io/badge/version-0.6.9-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 [![website](https://img.shields.io/badge/%F0%9F%8C%90_Website-Landing_Page-7ec8e3)](https://nabetxan.github.io/mentor-studio-code/)
 
@@ -20,12 +20,13 @@ Learn to code with an AI mentor workflow wired into `CLAUDE.md` and `AGENTS.md` 
 2. If you want Claude Code support, install the [Claude Code Extension](https://marketplace.visualstudio.com/items?itemName=anthropic.claude-code)
 3. Install [Mentor Studio Code](https://marketplace.visualstudio.com/items?itemName=nabetxan.mentor-studio-code) from the Marketplace
 4. Click the Mentor Studio Code icon in the Activity Bar and press the **Setup** button
-   - If the icon doesn't appear, open Command Palette (`Cmd+Shift+P`) → `Mentor Studio Code: Setup Mentor`
+   - You can also click **Run Setup** in the notification, or open Command Palette (`Cmd+Shift+P`) → `Mentor Studio Code: Setup Mentor`
 5. In Setup, choose which entrypoint files should use Mentor (`CLAUDE.md` and/or `AGENTS.md`)
 6. If you enable `CLAUDE.md`, choose whether Mentor should be added to the project `CLAUDE.md` or your personal Claude settings
 7. If you enable `AGENTS.md`, Setup writes a managed Mentor block to the project `AGENTS.md`
+8. The dashboard updates immediately, and Mentor is ready to use
 
-You can change the entrypoint wiring later in **Settings** → **Entrypoint Files Using Mentor**. Re-running Setup preselects whichever entrypoint files are already enabled, and Settings asks for confirmation before it edits `CLAUDE.md` or `AGENTS.md`.
+You can change the entrypoint wiring later in **Settings** → **Entrypoint Files Using Mentor**. Re-running Setup refreshes Mentor templates and keeps existing entrypoint wiring; Settings asks for confirmation before it edits `CLAUDE.md` or `AGENTS.md`.
 
 For detailed usage, see [extension/README.md](extension/README.md). For the full product spec, see [docs/app-specification.md](docs/app-specification.md).
 
@@ -74,12 +75,13 @@ If you previously committed `.mentor/data.db` to git, Setup also offers a one-cl
 2. Claude Code を使う場合は [Claude Code Extension](https://marketplace.visualstudio.com/items?itemName=anthropic.claude-code) をインストール
 3. マーケットプレイスから [Mentor Studio Code](https://marketplace.visualstudio.com/items?itemName=nabetxan.mentor-studio-code) をインストール
 4. アクティビティバーの Mentor Studio Code アイコンをクリックし、**Setup** ボタンを押す
-   - アイコンが見つからない場合は、コマンドパレット（`Cmd+Shift+P`）→ `Mentor Studio Code: Setup Mentor`
+   - 通知の **Setup を実行** を押すか、コマンドパレット（`Cmd+Shift+P`）→ `Mentor Studio Code: Setup Mentor` からも実行できます
 5. Setup で Mentor を使うエントリポイントファイル（`CLAUDE.md` / `AGENTS.md`）を選択
 6. `CLAUDE.md` を有効にした場合は、`CLAUDE.md` の追加先をプロジェクト共通か個人設定か選択
 7. `AGENTS.md` を有効にした場合は、プロジェクトの `AGENTS.md` に管理対象の Mentor ブロックを追加
+8. ダッシュボードがすぐに更新され、そのまま Mentor を使い始められる
 
-あとから **Settings** → **Entrypoint Files Using Mentor** で変更できます。Setup を再実行すると、現在有効なエントリポイントファイルが最初から選択された状態になります。Settings から `CLAUDE.md` / `AGENTS.md` を変更する場合は、実際にファイルを書き換える前に確認ダイアログが表示されます。
+あとから **Settings** → **Entrypoint Files Using Mentor** で変更できます。Setup を再実行すると Mentor テンプレートを更新し、既存のエントリポイント設定は維持されます。Settings から `CLAUDE.md` / `AGENTS.md` を変更する場合は、実際にファイルを書き換える前に確認ダイアログが表示されます。
 
 詳しい使い方は [extension/README.md](extension/README.md) をご覧ください。
 

@@ -1,4 +1,4 @@
-![version](https://img.shields.io/badge/version-0.6.8-blue)
+![version](https://img.shields.io/badge/version-0.6.9-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 [![website](https://img.shields.io/badge/%F0%9F%8C%90_Website-Landing_Page-7ec8e3)](https://nabetxan.github.io/mentor-studio-code/)
 
@@ -29,15 +29,14 @@ Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/item
 
 1. Open the project you want to build with AI Mentor in VS Code
 2. Click the Mentor Studio Code icon in the Activity Bar and press the **Setup** button
-   - If the icon doesn't appear, open Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`) → `Mentor Studio Code: Setup Mentor`
+   - You can also click **Run Setup** in the notification, or open Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`) → `Mentor Studio Code: Setup Mentor`
 3. The `.mentor/` directory is created with config, rules, skills, and data files
 4. Choose which entrypoint files should use Mentor: `CLAUDE.md` and/or `AGENTS.md`
 5. If you enable `CLAUDE.md`, choose where to add the mentor reference — project-wide `CLAUDE.md` or your personal settings
 6. If you enable `AGENTS.md`, Setup writes a managed Mentor block to project `AGENTS.md`
-7. When the "Reload Window" dialog appears, click it
-8. After reload, the dashboard opens automatically
+7. The dashboard updates immediately, and Mentor is ready to use
 
-You can later change entrypoint wiring from **Settings** → **Entrypoint Files Using Mentor**. Re-running Setup preselects whichever entrypoint files are already enabled. When you change `CLAUDE.md` or `AGENTS.md` from Settings, the extension shows a confirmation dialog before it writes to those files. If no entrypoint file is enabled, the Settings tab shows a warning and Mentor cannot be turned on until `CLAUDE.md` or `AGENTS.md` is configured.
+You can later change entrypoint wiring from **Settings** → **Entrypoint Files Using Mentor**. Re-running Setup refreshes Mentor templates and keeps existing entrypoint wiring. When you change `CLAUDE.md` or `AGENTS.md` from Settings, the extension shows a confirmation dialog before it writes to those files. If no entrypoint file is enabled, the Settings tab shows a warning and Mentor cannot be turned on until `CLAUDE.md` or `AGENTS.md` is configured.
 
 ## Data Location
 
@@ -140,15 +139,14 @@ This extension bundles third-party code; see [THIRD_PARTY_NOTICES](THIRD_PARTY_N
 
 1. AIメンターと一緒に開発したいプロジェクトを VS Code で開く
 2. アクティビティバーの Mentor Studio Code アイコンをクリックし、**Setup** ボタンを押す
-   - アイコンが見つからない場合は、コマンドパレット（`Cmd+Shift+P` / `Ctrl+Shift+P`）→ `Mentor Studio Code: Setup Mentor`
+   - 通知の **Setup を実行** を押すか、コマンドパレット（`Cmd+Shift+P` / `Ctrl+Shift+P`）→ `Mentor Studio Code: Setup Mentor` からも実行できます
 3. `.mentor/` ディレクトリに設定・ルール・スキル・データファイルが生成される
 4. Mentor を使うエントリポイントファイルとして `CLAUDE.md` と `AGENTS.md` から利用したいものを選ぶ
 5. `CLAUDE.md` を有効にした場合は、メンター参照の追加先を選択する — プロジェクト共通の `CLAUDE.md` または個人設定
 6. `AGENTS.md` を有効にした場合は、プロジェクトの `AGENTS.md` に管理対象の Mentor ブロックが追加される
-7. 「Reload Window」ダイアログが表示されたら押す
-8. リロード後、ダッシュボードが自動で開く
+7. ダッシュボードがすぐに更新され、そのまま Mentor を使い始められる
 
-あとから **Settings** → **Entrypoint Files Using Mentor** で変更できます。Setup を再実行すると、現在有効なエントリポイントファイルが最初から選択された状態になります。Settings から `CLAUDE.md` / `AGENTS.md` を変更する場合は、実際にファイルを書き換える前に確認ダイアログが表示されます。どのエントリポイントファイルも有効になっていない場合は Settings タブに警告が表示され、その状態では Mentor を有効化できません。
+あとから **Settings** → **Entrypoint Files Using Mentor** で変更できます。Setup を再実行すると Mentor テンプレートを更新し、既存のエントリポイント設定は維持されます。Settings から `CLAUDE.md` / `AGENTS.md` を変更する場合は、実際にファイルを書き換える前に確認ダイアログが表示されます。どのエントリポイントファイルも有効になっていない場合は Settings タブに警告が表示され、その状態では Mentor を有効化できません。
 
 ## データの場所
 

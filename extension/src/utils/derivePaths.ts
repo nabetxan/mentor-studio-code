@@ -75,12 +75,30 @@ export function derivePathsFor(input: DerivePathsForInput): DerivedPaths {
   };
 }
 
+export function deriveHomeDirForWorkspaceFor(
+  platform: NodeJS.Platform | string,
+  processHomeDir: string,
+  workspaceRoot: string,
+): string {
+  if (platform !== "darwin") return processHomeDir;
+  const parts = workspaceRoot.split("/");
+  if (parts[0] === "" && parts[1] === "Users" && parts[2]) {
+    return join("/", "Users", parts[2]);
+  }
+  return processHomeDir;
+}
+
 /** Public wrapper — reads process state once. */
 export function derivePaths(input: DerivePathsInput): DerivedPaths {
+  const platform = process.platform;
   return derivePathsFor({
     ...input,
-    platform: process.platform,
+    platform,
     env: process.env,
-    homeDir: os.homedir(),
+    homeDir: deriveHomeDirForWorkspaceFor(
+      platform,
+      os.homedir(),
+      input.workspaceRoot,
+    ),
   });
 }

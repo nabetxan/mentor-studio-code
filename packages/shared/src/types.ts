@@ -164,7 +164,10 @@ export type Locale = "ja" | "en";
 export type WebviewMessage =
   | { type: "copy"; text: string }
   | { type: "ready" }
-  | { type: "runSetup" }
+  | {
+      type: "runSetup";
+      source?: "sidebarNoConfig" | "sidebarMigration" | "settingsManual";
+    }
   | { type: "selectFile"; field: FileField }
   | { type: "clearFile"; field: FileField }
   | { type: "setLocale"; locale: Locale }

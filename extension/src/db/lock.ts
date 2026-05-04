@@ -35,6 +35,13 @@ const STALE_MS: Record<LockPurpose, number> = {
 const activeHandles = new Set<LockHandle>();
 let cleanupRegistered = false;
 
+const LOCK_RM_OPTIONS = {
+  recursive: true,
+  force: true,
+  maxRetries: 5,
+  retryDelay: 20,
+} as const;
+
 function registerCleanup() {
   if (cleanupRegistered) return;
   cleanupRegistered = true;
@@ -144,7 +151,7 @@ export async function acquireLock(
     } catch (err: unknown) {
       if ((err as NodeJS.ErrnoException).code !== "EEXIST") throw err;
       if (await isStale(lockDir, deadline)) {
-        await rm(lockDir, { recursive: true, force: true });
+        await rm(lockDir, LOCK_RM_OPTIONS);
         continue;
       }
       if (Date.now() >= deadline) throw new LockTimeoutError(dbPath);
@@ -161,16 +168,5 @@ export async function releaseLock(handle: LockHandle): Promise<void> {
   if (handle.pendingHeartbeat) {
     await handle.pendingHeartbeat;
   }
-  // Short retry for residual FS-level races (e.g. concurrent acquirers
-  // reading metadata). ENOTEMPTY clears as soon as those operations settle.
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      await rm(handle.lockDir, { recursive: true, force: true });
-      return;
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException).code !== "ENOTEMPTY") throw err;
-      await sleep(20);
-    }
-  }
-  await rm(handle.lockDir, { recursive: true, force: true });
+  await rm(handle.lockDir, LOCK_RM_OPTIONS);
 }

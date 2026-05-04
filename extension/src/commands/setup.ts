@@ -1,7 +1,7 @@
 import { existsSync, promises as fsp } from "node:fs";
 import { dirname, join } from "node:path";
 import * as vscode from "vscode";
-import { openDb } from "../db";
+import { DbCorruptError, openDb, type OpenResult } from "../db";
 import { acquireLock, releaseLock } from "../db/lock";
 import { migrateToV3, shouldMigrateV3 } from "../migration/v3ExternalDb";
 import {
@@ -85,6 +85,32 @@ export interface SetupEntrypointPlan {
   mentorEnabled: boolean;
 }
 
+export type SetupEntrypointPromptMode = "always" | "whenMissing";
+export type SetupInvocationSource =
+  | "commandPalette"
+  | "sidebarNoConfig"
+  | "sidebarMigration"
+  | "settingsManual"
+  | "migrationNotification"
+  | "versionNotification";
+export type SetupInvocationReason =
+  | "initialSetup"
+  | "manualRefresh"
+  | "migration"
+  | "promptUpdate";
+
+export interface RunSetupOptions {
+  entrypointPrompt?: SetupEntrypointPromptMode;
+  source?: SetupInvocationSource;
+  onCompleted?: () => Promise<void> | void;
+}
+
+export interface ResolvedSetupInvocation {
+  source: SetupInvocationSource;
+  reason: SetupInvocationReason;
+  options: Required<Pick<RunSetupOptions, "entrypointPrompt">>;
+}
+
 export function resolveSetupEntrypointPlan(
   input: ResolveSetupEntrypointPlanInput,
 ): SetupEntrypointPlan {
@@ -137,12 +163,89 @@ export function buildSetupCompletionMessage(
 ): string {
   if (mentorEnabled) {
     return isJa
-      ? "Mentor Studio Code のセットアップが完了しました！ダッシュボードを有効にするにはリロードしてください。"
-      : "Mentor Studio Code setup complete! Reload to activate the dashboard.";
+      ? "Mentor Studio Code のセットアップが完了しました！"
+      : "Mentor Studio Code setup complete!";
   }
   return isJa
     ? "Mentor Studio Code のセットアップは完了しましたが、Mentor はまだ無効です。CLAUDE.md または AGENTS.md のエントリポイントを設定してから、Settings か Setup でもう一度有効化してください。"
     : "Mentor Studio Code setup finished, but Mentor is still disabled. Configure a CLAUDE.md or AGENTS.md entrypoint, then enable Mentor from Settings or run Setup again.";
+}
+
+export interface BuildSetupCompletionNoticeInput {
+  isJa: boolean;
+  mentorEnabled: boolean;
+}
+
+export interface SetupCompletionNotice {
+  message: string;
+}
+
+export function buildSetupCompletionNotice(
+  input: BuildSetupCompletionNoticeInput,
+): SetupCompletionNotice {
+  return {
+    message: buildSetupCompletionMessage(input.isJa, input.mentorEnabled),
+  };
+}
+
+export function resolveSetupInvocation(
+  source: SetupInvocationSource,
+): ResolvedSetupInvocation {
+  if (source === "migrationNotification" || source === "sidebarMigration") {
+    return {
+      source,
+      reason: "migration",
+      options: {
+        entrypointPrompt: "whenMissing",
+      },
+    };
+  }
+
+  if (source === "versionNotification") {
+    return {
+      source,
+      reason: "promptUpdate",
+      options: {
+        entrypointPrompt: "whenMissing",
+      },
+    };
+  }
+
+  return {
+    source,
+    reason: source === "sidebarNoConfig" ? "initialSetup" : "manualRefresh",
+    options: {
+      entrypointPrompt: "whenMissing",
+    },
+  };
+}
+
+export interface ShouldPromptForSetupEntrypointsInput {
+  mode: SetupEntrypointPromptMode;
+  hasExistingEntrypoint: boolean;
+}
+
+export function shouldPromptForSetupEntrypoints(
+  input: ShouldPromptForSetupEntrypointsInput,
+): boolean {
+  return input.mode === "always" || !input.hasExistingEntrypoint;
+}
+
+export interface BuildSetupFinalConfigInput {
+  staleConfig: Record<string, unknown>;
+  latestConfig: Record<string, unknown>;
+  mentorEnabled: boolean;
+}
+
+export function buildSetupFinalConfig(
+  input: BuildSetupFinalConfigInput,
+): Record<string, unknown> {
+  return {
+    ...input.latestConfig,
+    extensionVersion: input.staleConfig.extensionVersion,
+    workspacePath: input.staleConfig.workspacePath,
+    enableMentor: input.mentorEnabled,
+  };
 }
 
 /**
@@ -184,17 +287,25 @@ export async function ensureExternalDb(
     }
   }
 
-  let bootstrapped = false;
-  if (!existsSync(paths.dbPath)) {
-    // bootstrap acquires `<dbPath>.lock` via mkdir, which fails if the parent
-    // `<workspaceId>/` doesn't exist yet (fresh install with no v3 migration).
-    await fsp.mkdir(dirname(paths.dbPath), { recursive: true });
-    await openDb(paths.dbPath, {
+  // bootstrap acquires `<dbPath>.lock` via mkdir, which fails if the parent
+  // `<workspaceId>/` doesn't exist yet (fresh install with no v3 migration).
+  await fsp.mkdir(dirname(paths.dbPath), { recursive: true });
+  let opened: OpenResult;
+  try {
+    opened = await openDb(paths.dbPath, {
       wasmPath: input.wasmPath,
       bootstrap: { topics: DEFAULT_TOPICS },
     });
-    bootstrapped = true;
+  } catch (err) {
+    if (!(err instanceof DbCorruptError)) {
+      throw err;
+    }
+    opened = await openDb(paths.dbPath, {
+      wasmPath: input.wasmPath,
+      bootstrap: { topics: DEFAULT_TOPICS },
+    });
   }
+  const bootstrapped = opened.created;
 
   return {
     workspaceId,
@@ -250,6 +361,13 @@ async function writeIfMissing(
   }
 }
 
+async function readJsonFile(
+  uri: vscode.Uri,
+): Promise<Record<string, unknown>> {
+  const raw = await vscode.workspace.fs.readFile(uri);
+  return JSON.parse(Buffer.from(raw).toString()) as Record<string, unknown>;
+}
+
 /**
  * Returns `true` if the folder is ours, `false` if it exists but is not ours,
  * or `null` if the folder does not exist.
@@ -280,7 +398,15 @@ async function isMentorStudioFolder(
 export async function runSetup(
   context: vscode.ExtensionContext,
   outputChannel: vscode.OutputChannel,
+  options: RunSetupOptions = {},
 ): Promise<void> {
+  const invocation = resolveSetupInvocation(
+    options.source ?? "commandPalette",
+  );
+  const setupOptions = {
+    ...invocation.options,
+    ...options,
+  };
   const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
   if (!wsRoot) {
     const isJa = vscode.env.language.startsWith("ja");
@@ -367,11 +493,7 @@ export async function runSetup(
 
   let existingConfig: Record<string, unknown> | null = null;
   try {
-    const raw = await vscode.workspace.fs.readFile(configUri);
-    existingConfig = JSON.parse(Buffer.from(raw).toString()) as Record<
-      string,
-      unknown
-    >;
+    existingConfig = await readJsonFile(configUri);
   } catch {
     // doesn't exist yet
   }
@@ -547,11 +669,18 @@ export async function runSetup(
     : detectedLocale === "ja";
 
   const currentEntrypoints = await getEntrypointStatus(wsRoot);
-  const entrypointSelection = await promptForSetupEntrypointFiles(isJa, {
-    claudeMdEnabled:
-      currentEntrypoints.projectClaudeMd || currentEntrypoints.personalClaudeMd,
-    agentsMdEnabled: currentEntrypoints.projectAgentsMd,
-  });
+  const entrypointPrompt = setupOptions.entrypointPrompt;
+  const entrypointSelection = shouldPromptForSetupEntrypoints({
+    mode: entrypointPrompt,
+    hasExistingEntrypoint: currentEntrypoints.hasEntrypointFile,
+  })
+    ? await promptForSetupEntrypointFiles(isJa, {
+        claudeMdEnabled:
+          currentEntrypoints.projectClaudeMd ||
+          currentEntrypoints.personalClaudeMd,
+        agentsMdEnabled: currentEntrypoints.projectAgentsMd,
+      })
+    : undefined;
   const selectedClaudeScope = entrypointSelection?.claudeMd
     ? await promptForClaudeMdScope(isJa)
     : undefined;
@@ -560,6 +689,7 @@ export async function runSetup(
     selection: entrypointSelection,
     selectedClaudeScope,
   });
+
   let claudeAction = "kept existing CLAUDE.md entrypoints";
   let agentsAction = "kept existing AGENTS.md entrypoint";
 
@@ -596,10 +726,15 @@ export async function runSetup(
       : "not configured";
   }
 
-  configData.enableMentor = entrypointPlan.mentorEnabled;
+  const latestConfigData = await readJsonFile(configUri);
+  const finalConfigData = buildSetupFinalConfig({
+    staleConfig: configData,
+    latestConfig: latestConfigData,
+    mentorEnabled: entrypointPlan.mentorEnabled,
+  });
   await vscode.workspace.fs.writeFile(
     configUri,
-    Buffer.from(JSON.stringify(configData, null, 2) + "\n"),
+    Buffer.from(JSON.stringify(finalConfigData, null, 2) + "\n"),
   );
 
   // Output results
@@ -643,21 +778,10 @@ export async function runSetup(
     );
   }
 
-  // Prompt reload with a button
-  if (entrypointPlan.mentorEnabled) {
-    const reloadButton = isJa ? "ウィンドウを再読み込み" : "Reload Window";
-    const choice = await vscode.window.showInformationMessage(
-      buildSetupCompletionMessage(isJa, true),
-      { modal: true },
-      reloadButton,
-    );
-    if (choice === reloadButton) {
-      vscode.commands.executeCommand("workbench.action.reloadWindow");
-    }
-    return;
-  }
-
-  await vscode.window.showInformationMessage(
-    buildSetupCompletionMessage(isJa, false),
-  );
+  const completionNotice = buildSetupCompletionNotice({
+    isJa,
+    mentorEnabled: entrypointPlan.mentorEnabled,
+  });
+  await setupOptions.onCompleted?.();
+  await vscode.window.showInformationMessage(completionNotice.message);
 }

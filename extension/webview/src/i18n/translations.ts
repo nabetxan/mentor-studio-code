@@ -354,12 +354,12 @@ const translations = {
 
   // No-config screen
   "app.needsMigration.title": {
-    ja: "v0.6.6 への移行が必要です",
-    en: "Migration to v0.6.6 required",
+    ja: "学習履歴の保存場所を更新してください",
+    en: "Update learning-history storage",
   },
   "app.needsMigration.instruction": {
-    ja: "Mentor Studio Code v0.6.6 では学習履歴 DB の保存場所がワークスペース外に変わりました。Setup を実行してデータを新しい保存場所へ移行してください。",
-    en: "Mentor Studio Code v0.6.6 moved the learning-history DB outside the workspace. Run Setup to migrate your data to the new location.",
+    ja: "Setup を実行すると、学習履歴 DB をワークスペース外の安全な保存場所へ移動します。既存の履歴は保持されます。",
+    en: "Run Setup to move the learning-history DB to safer storage outside the workspace. Your existing history is preserved.",
   },
   "app.needsMigration.button": {
     ja: "Setup を実行",

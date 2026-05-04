@@ -744,7 +744,9 @@ export function Settings({
         </p>
         <button
           className="btn-primary"
-          onClick={() => postMessage({ type: "runSetup" })}
+          onClick={() =>
+            postMessage({ type: "runSetup", source: "settingsManual" })
+          }
         >
           {t("settings.setup.button", locale)}
         </button>

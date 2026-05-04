@@ -3,12 +3,13 @@ import * as path from "path";
 import * as vscode from "vscode";
 
 export const MENTOR_REF = "@.mentor/rules/MENTOR_RULES.md";
+export const AGENTS_MENTOR_REF = `Follow ${MENTOR_REF}`;
 export const AGENTS_ENTRYPOINT_START = "<!-- msc:agents:start -->";
 export const AGENTS_ENTRYPOINT_END = "<!-- msc:agents:end -->";
 
 const AGENTS_ENTRYPOINT_BLOCK = [
   AGENTS_ENTRYPOINT_START,
-  MENTOR_REF,
+  AGENTS_MENTOR_REF,
   AGENTS_ENTRYPOINT_END,
 ].join("\n");
 

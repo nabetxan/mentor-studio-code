@@ -2,6 +2,16 @@
 
 All notable changes to "Mentor Studio Code" will be documented in this file.
 
+## [0.6.9] - 2026-05-04
+
+### Changed
+
+- Project `AGENTS.md` wiring now writes `Follow @.mentor/rules/MENTOR_RULES.md` inside the managed block, making the Mentor instruction explicit for tools that do not expand `@...` includes while preserving the path reference for future include support.
+
+### Fixed
+
+- Setup flow
+
 ## [0.6.8] - 2026-05-03
 
 ### Added

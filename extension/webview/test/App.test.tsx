@@ -91,6 +91,17 @@ describe("App", () => {
     ).toBeGreaterThan(0);
   });
 
+  it("sends sidebarNoConfig setup source from the no-config setup button", () => {
+    render(<App />);
+    simulateMessage({ type: "noConfig", locale: "ja" });
+    mockApi.postMessage.mockClear();
+    fireEvent.click(screen.getByText("セットアップを実行する"));
+    expect(mockApi.postMessage).toHaveBeenCalledWith({
+      type: "runSetup",
+      source: "sidebarNoConfig",
+    });
+  });
+
   it("shows Actions tab by default (ja)", () => {
     render(<App />);
     expect(screen.getByText("タスクを始める")).toBeTruthy();
@@ -224,14 +235,16 @@ describe("App", () => {
   it("shows v3 migration prompt when needsMigration is received (ja)", () => {
     render(<App />);
     simulateMessage({ type: "needsMigration", locale: "ja" });
-    expect(screen.getByText("v0.6.6 への移行が必要です")).toBeTruthy();
+    expect(
+      screen.getByText("学習履歴の保存場所を更新してください"),
+    ).toBeTruthy();
     expect(screen.getByText("Setup を実行")).toBeTruthy();
   });
 
   it("shows v3 migration prompt in English when locale is en", () => {
     render(<App />);
     simulateMessage({ type: "needsMigration", locale: "en" });
-    expect(screen.getByText("Migration to v0.6.6 required")).toBeTruthy();
+    expect(screen.getByText("Update learning-history storage")).toBeTruthy();
     expect(screen.getByText("Run Setup")).toBeTruthy();
   });
 
@@ -240,15 +253,22 @@ describe("App", () => {
     simulateMessage({ type: "needsMigration", locale: "ja" });
     mockApi.postMessage.mockClear();
     fireEvent.click(screen.getByText("Setup を実行"));
-    expect(mockApi.postMessage).toHaveBeenCalledWith({ type: "runSetup" });
+    expect(mockApi.postMessage).toHaveBeenCalledWith({
+      type: "runSetup",
+      source: "sidebarMigration",
+    });
   });
 
   it("hides needsMigration UI once a config message arrives", () => {
     render(<App />);
     simulateMessage({ type: "needsMigration", locale: "ja" });
-    expect(screen.getByText("v0.6.6 への移行が必要です")).toBeTruthy();
+    expect(
+      screen.getByText("学習履歴の保存場所を更新してください"),
+    ).toBeTruthy();
     simulateMessage({ type: "config", data: mockConfig });
-    expect(screen.queryByText("v0.6.6 への移行が必要です")).toBeNull();
+    expect(
+      screen.queryByText("学習履歴の保存場所を更新してください"),
+    ).toBeNull();
   });
 
   it("clears delete error when deleteTopicsResult is all success", () => {

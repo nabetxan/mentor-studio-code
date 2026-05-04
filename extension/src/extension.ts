@@ -1,14 +1,22 @@
 import type { CleanupOptions } from "@mentor-studio/shared";
 import * as vscode from "vscode";
+import type { RunSetupOptions, SetupInvocationSource } from "./commands/setup";
 import { runCleanupMentor, runRemoveMentor } from "./commands/removeMentor";
-import { runSetup } from "./commands/setup";
+import { resolveSetupInvocation, runSetup } from "./commands/setup";
 import { runMigrationsForActivation } from "./migration/runAll";
+import type { DerivedPaths } from "./utils/derivePaths";
 import { cleanupOrphanProgressJson } from "./migration/v2ProfileAppState";
 import { PlanPanel } from "./panels/planPanel";
 import { BroadcastBus } from "./services/broadcastBus";
 import { FileWatcherService } from "./services/fileWatcher";
 import { resolveLocale } from "./utils/locale";
 import { SidebarProvider } from "./views/sidebarProvider";
+
+type ConfiguredRuntimeMigrationResult = {
+  status: "ok";
+  workspaceId: string | null;
+  paths: DerivedPaths;
+};
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
@@ -17,10 +25,24 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(outputChannel);
   const getOutputChannel = (): vscode.OutputChannel => outputChannel;
 
-  // Setup command — always available
+  // Sidebar provider — package.json hides the view when workspaceFolderCount == 0,
+  // so this only runs when a folder is open.
+  const sidebarProvider = new SidebarProvider(context.extensionUri);
+  let runtimeStarted = false;
+  let onSetupCompleted = async (): Promise<void> => undefined;
+
+  // Setup command — always available. When a workspace exists, the completion
+  // hook starts the normal runtime after fresh setup creates config/DB.
   const setupCommand = vscode.commands.registerCommand(
     "mentor-studio.setup",
-    () => runSetup(context, getOutputChannel()),
+    (options?: RunSetupOptions | SetupInvocationSource) => {
+      const setupOptions =
+        typeof options === "string" ? { source: options } : options;
+      return runSetup(context, getOutputChannel(), {
+        ...setupOptions,
+        onCompleted: onSetupCompleted,
+      });
+    },
   );
   context.subscriptions.push(setupCommand);
 
@@ -29,10 +51,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     () => runRemoveMentor(getOutputChannel()),
   );
   context.subscriptions.push(removeMentorCommand);
-
-  // Sidebar provider — package.json hides the view when workspaceFolderCount == 0,
-  // so this only runs when a folder is open.
-  const sidebarProvider = new SidebarProvider(context.extensionUri);
 
   const cleanupMentorCommand = vscode.commands.registerCommand(
     "mentor-studio.cleanupMentor",
@@ -65,216 +83,255 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     "sql-wasm.wasm",
   ).fsPath;
 
+  const startConfiguredRuntime = async (
+    migrationResult: ConfiguredRuntimeMigrationResult,
+  ): Promise<void> => {
+    if (runtimeStarted) {
+      return;
+    }
+    runtimeStarted = true;
+
+    // Best-effort orphan-JSON cleanup (separate from migrations — covers the
+    // crash window between DB write and progress.json unlink).
+    try {
+      const orphan = await cleanupOrphanProgressJson(
+        migrationResult.paths.mentorRoot,
+        wasmPath,
+      );
+      if (!orphan.ok) {
+        getOutputChannel().appendLine(
+          `orphan progress.json cleanup failed: ${orphan.error} ${orphan.detail ?? ""}`,
+        );
+      }
+    } catch (err) {
+      getOutputChannel().appendLine(
+        `orphan progress.json cleanup threw: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+
+    const dbPath = migrationResult.paths.dbPath; // external from now on
+
+    const bus = new BroadcastBus();
+    let watcher: FileWatcherService;
+
+    // File watcher
+    watcher = new FileWatcherService(
+      workspaceRoot.fsPath,
+      mentorPath,
+      (data) => sidebarProvider.sendUpdate(data),
+      (config) => {
+        if (config !== null) {
+          void sidebarProvider.sendConfig(config);
+        } else {
+          sidebarProvider.sendNoConfig();
+        }
+        // Reuse dbChanged so the Plan Panel re-fetches initData — that's where
+        // locale lives, so a config-file edit (e.g. locale flipped in Settings)
+        // propagates to an open panel without needing its own message type.
+        bus.broadcast({ type: "dbChanged" });
+      },
+      (msg) => getOutputChannel().appendLine(msg),
+      context.globalState,
+      async () => {
+        bus.broadcast({ type: "dbChanged" });
+      },
+      dbPath,
+      wasmPath,
+    );
+
+    sidebarProvider.setTopicHandlers({
+      mergeTopic: (fromKey, toKey) => watcher.mergeTopic(fromKey, toKey),
+      updateTopicLabel: (key, newLabel) =>
+        watcher.updateTopicLabel(key, newLabel),
+      addTopic: (label) => watcher.addTopic(label),
+      deleteTopics: (keys) => watcher.deleteTopics(keys),
+    });
+
+    sidebarProvider.setPlanHandlers({
+      activatePlan: (id) => watcher.activatePlan(id),
+      deactivatePlan: (id) => watcher.deactivatePlan(id),
+      pauseActivePlan: (id) => watcher.pauseActivePlan(id),
+      changeActivePlanFile: (relPath) => watcher.changeActivePlanFile(relPath),
+      createAndActivatePlan: (relPath) => watcher.createAndActivatePlan(relPath),
+    });
+
+    const currentPkg = context.extension.packageJSON as Record<string, unknown>;
+    const currentVersion =
+      typeof currentPkg.version === "string" ? currentPkg.version : "0.0.0";
+
+    try {
+      await watcher.start();
+      const config = watcher.getConfig();
+      if (config) {
+        void sidebarProvider.sendConfig(config);
+        const promptVersion =
+          typeof config.extensionVersion === "string"
+            ? config.extensionVersion
+            : undefined;
+
+        if (promptVersion !== currentVersion) {
+          const isJa = config.locale !== "en";
+          const message = isJa
+            ? `Mentor Studio Code が更新されました (v${currentVersion})。最新のプロンプトを適用するには Setup を実行してください。`
+            : `Mentor Studio Code has been updated (v${currentVersion}). Run Setup to apply the latest prompts.`;
+          const button = isJa ? "Setup を実行" : "Run Setup";
+          void vscode.window
+            .showInformationMessage(message, button)
+            .then((choice) => {
+              if (choice === button) {
+                const setupInvocation = resolveSetupInvocation(
+                  "versionNotification",
+                );
+                void vscode.commands.executeCommand("mentor-studio.setup", {
+                  source: setupInvocation.source,
+                  ...setupInvocation.options,
+                });
+              }
+            });
+        }
+      } else {
+        sidebarProvider.sendNoConfig();
+      }
+    } catch (err: unknown) {
+      getOutputChannel().appendLine(
+        `Failed to start file watcher: ${String(err)}`,
+      );
+      sidebarProvider.sendNoConfig();
+      runtimeStarted = false;
+      return;
+    }
+
+    const unregisterSidebar = bus.register(sidebarProvider.getSubscriber());
+    context.subscriptions.push({ dispose: () => unregisterSidebar() });
+
+    context.subscriptions.push(
+      vscode.commands.registerCommand("mentor-studio.openPlanPanel", () => {
+        const workspaceRoot =
+          vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? "";
+        // Every Plan Panel write refreshes the sidebar dashboard and broadcasts
+        // dbChanged so the panel's own webview re-fetches a fresh snapshot.
+        // Mirrors what FileWatcherService runs for sidebar-initiated writes.
+        const onAfterWrite = async (): Promise<void> => {
+          await watcher.refresh();
+          bus.broadcast({ type: "dbChanged" });
+        };
+        PlanPanel.createOrShow(
+          context,
+          bus,
+          { dbPath, wasmPath, workspaceRoot },
+          onAfterWrite,
+        );
+      }),
+    );
+
+    context.subscriptions.push(
+      vscode.commands.registerCommand(
+        "mentor-studio.addFilesToPlan",
+        async (uri: vscode.Uri, uris?: vscode.Uri[]) => {
+          const targets = uris && uris.length > 0 ? uris : [uri];
+          await watcher.addFilesToPlan(targets);
+        },
+      ),
+    );
+
+    context.subscriptions.push(
+      vscode.commands.registerCommand(
+        "mentor-studio.setFileAsSpec",
+        async (uri: vscode.Uri) => {
+          if (!uri) return;
+          await watcher.setFileAsSpec(uri);
+        },
+      ),
+    );
+
+    context.subscriptions.push(watcher);
+  };
+
+  const startRuntimeFromCurrentWorkspace = async (): Promise<void> => {
+    let migrationResult: Awaited<ReturnType<typeof runMigrationsForActivation>>;
+    try {
+      migrationResult = await runMigrationsForActivation({
+        workspaceRoot: workspaceRoot.fsPath,
+        wasmPath,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      await context.globalState.update("mentor.migrationError", {
+        timestamp: new Date().toISOString(),
+        message,
+      });
+      const isJa = vscode.env.language.startsWith("ja");
+      void vscode.window.showErrorMessage(
+        isJa
+          ? `Mentor: データ移行に失敗しました。詳細: ${message}`
+          : `Mentor: data migration failed. Detail: ${message}`,
+      );
+      return;
+    }
+
+    if (migrationResult.status === "noConfig") {
+      sidebarProvider.sendNoConfig();
+      const isJa = vscode.env.language.startsWith("ja");
+      const button = isJa ? "Setup を実行" : "Run Setup";
+      void vscode.window
+        .showInformationMessage(
+          isJa
+            ? "Mentor Studio Code の Setup をしてください。"
+            : "Set up Mentor Studio Code.",
+          button,
+        )
+        .then((choice) => {
+          if (choice === button) {
+            const setupInvocation = resolveSetupInvocation("sidebarNoConfig");
+            void vscode.commands.executeCommand("mentor-studio.setup", {
+              source: setupInvocation.source,
+              ...setupInvocation.options,
+            });
+          }
+        });
+      return;
+    }
+
+    if (migrationResult.status === "needsMigration") {
+      sidebarProvider.sendNeedsMigration();
+      const locale = await resolveLocale(workspaceRoot.fsPath);
+      const isJa = locale === "ja";
+      const button = isJa ? "Setup を実行" : "Run Setup";
+      void vscode.window
+        .showInformationMessage(
+          isJa
+            ? "学習履歴の保存場所を更新するため、Setup を実行してください。"
+            : "Run Setup to update where Mentor stores your learning history.",
+          button,
+        )
+        .then((choice) => {
+          if (choice === button) {
+            const setupInvocation = resolveSetupInvocation(
+              "migrationNotification",
+            );
+            void vscode.commands.executeCommand("mentor-studio.setup", {
+              source: setupInvocation.source,
+              ...setupInvocation.options,
+            });
+          }
+        });
+      return;
+    }
+
+    await startConfiguredRuntime({
+      status: "ok",
+      workspaceId: migrationResult.workspaceId,
+      paths: migrationResult.paths,
+    });
+  };
+
+  onSetupCompleted = startRuntimeFromCurrentWorkspace;
+
   // Run migrations BEFORE computing dbPath / constructing the watcher / wiring
   // the openPlanPanel command — v3 relocates the DB file from the legacy
   // in-workspace path to an external per-workspaceId path, and downstream
   // closures must capture the post-migration dbPath.
-  let migrationResult: Awaited<ReturnType<typeof runMigrationsForActivation>>;
-  try {
-    migrationResult = await runMigrationsForActivation({
-      workspaceRoot: workspaceRoot.fsPath,
-      wasmPath,
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    await context.globalState.update("mentor.migrationError", {
-      timestamp: new Date().toISOString(),
-      message,
-    });
-    // Locale isn't reliably known at this point (config.json may exist but
-    // the watcher hasn't loaded it yet). Best-effort detect via vscode.env.language.
-    const isJa = vscode.env.language.startsWith("ja");
-    void vscode.window.showErrorMessage(
-      isJa
-        ? `Mentor: データ移行に失敗しました。詳細: ${message}`
-        : `Mentor: data migration failed. Detail: ${message}`,
-    );
-    return; // Do not proceed to feature activation — DB state is unknown.
-  }
-
-  if (migrationResult.status === "noConfig") {
-    // Setup has not run yet; sidebar shows the "Run Setup" prompt.
-    sidebarProvider.sendNoConfig();
-    return;
-  }
-
-  if (migrationResult.status === "needsMigration") {
-    // v0.6.6 moved the DB outside the workspace, but the actual relocation
-    // happens inside Setup so the user explicitly opts in. Skip feature wiring
-    // (commands / file watcher) and surface a Setup prompt — both via the
-    // sidebar and a toast — without registering anything that would touch the
-    // legacy DB path.
-    sidebarProvider.sendNeedsMigration();
-    const locale = await resolveLocale(workspaceRoot.fsPath);
-    const isJa = locale === "ja";
-    const button = isJa ? "Setup を実行" : "Run Setup";
-    void vscode.window
-      .showInformationMessage(
-        isJa
-          ? "Mentor Studio Code v0.6.6 への移行のため Setup を実行してください。"
-          : "Mentor Studio Code needs Setup to migrate to v0.6.6.",
-        button,
-      )
-      .then((choice) => {
-        if (choice === button) {
-          void vscode.commands.executeCommand("mentor-studio.setup");
-        }
-      });
-    return;
-  }
-
-  // Best-effort orphan-JSON cleanup (separate from migrations — covers the
-  // crash window between DB write and progress.json unlink).
-  try {
-    const orphan = await cleanupOrphanProgressJson(
-      migrationResult.paths.mentorRoot,
-      wasmPath,
-    );
-    if (!orphan.ok) {
-      getOutputChannel().appendLine(
-        `orphan progress.json cleanup failed: ${orphan.error} ${orphan.detail ?? ""}`,
-      );
-    }
-  } catch (err) {
-    getOutputChannel().appendLine(
-      `orphan progress.json cleanup threw: ${err instanceof Error ? err.message : String(err)}`,
-    );
-  }
-
-  const dbPath = migrationResult.paths.dbPath; // external from now on
-
-  const bus = new BroadcastBus();
-  const unregisterSidebar = bus.register(sidebarProvider.getSubscriber());
-  context.subscriptions.push({ dispose: () => unregisterSidebar() });
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand("mentor-studio.openPlanPanel", () => {
-      const workspaceRoot =
-        vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? "";
-      // Every Plan Panel write refreshes the sidebar dashboard and broadcasts
-      // dbChanged so the panel's own webview re-fetches a fresh snapshot.
-      // Mirrors what FileWatcherService runs for sidebar-initiated writes.
-      const onAfterWrite = async (): Promise<void> => {
-        await watcher.refresh();
-        bus.broadcast({ type: "dbChanged" });
-      };
-      PlanPanel.createOrShow(
-        context,
-        bus,
-        { dbPath, wasmPath, workspaceRoot },
-        onAfterWrite,
-      );
-    }),
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      "mentor-studio.addFilesToPlan",
-      async (uri: vscode.Uri, uris?: vscode.Uri[]) => {
-        const targets = uris && uris.length > 0 ? uris : [uri];
-        await watcher.addFilesToPlan(targets);
-      },
-    ),
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      "mentor-studio.setFileAsSpec",
-      async (uri: vscode.Uri) => {
-        if (!uri) return;
-        await watcher.setFileAsSpec(uri);
-      },
-    ),
-  );
-
-  // File watcher
-  const watcher = new FileWatcherService(
-    workspaceRoot.fsPath,
-    mentorPath,
-    (data) => sidebarProvider.sendUpdate(data),
-    (config) => {
-      if (config !== null) {
-        void sidebarProvider.sendConfig(config);
-      } else {
-        sidebarProvider.sendNoConfig();
-      }
-      // Reuse dbChanged so the Plan Panel re-fetches initData — that's where
-      // locale lives, so a config-file edit (e.g. locale flipped in Settings)
-      // propagates to an open panel without needing its own message type.
-      bus.broadcast({ type: "dbChanged" });
-    },
-    (msg) => getOutputChannel().appendLine(msg),
-    context.globalState,
-    async () => {
-      bus.broadcast({ type: "dbChanged" });
-    },
-    dbPath,
-    wasmPath,
-  );
-
-  sidebarProvider.setTopicHandlers({
-    mergeTopic: (fromKey, toKey) => watcher.mergeTopic(fromKey, toKey),
-    updateTopicLabel: (key, newLabel) =>
-      watcher.updateTopicLabel(key, newLabel),
-    addTopic: (label) => watcher.addTopic(label),
-    deleteTopics: (keys) => watcher.deleteTopics(keys),
-  });
-
-  sidebarProvider.setPlanHandlers({
-    activatePlan: (id) => watcher.activatePlan(id),
-    deactivatePlan: (id) => watcher.deactivatePlan(id),
-    pauseActivePlan: (id) => watcher.pauseActivePlan(id),
-    changeActivePlanFile: (relPath) => watcher.changeActivePlanFile(relPath),
-    createAndActivatePlan: (relPath) => watcher.createAndActivatePlan(relPath),
-  });
-
-  const currentPkg = context.extension.packageJSON as Record<string, unknown>;
-  const currentVersion =
-    typeof currentPkg.version === "string" ? currentPkg.version : "0.0.0";
-
-  // Version check using globalState (persists across sessions, independent of workspace)
-  const previousVersion = context.globalState.get<string>("extensionVersion");
-  const isVersionUpdated =
-    previousVersion !== undefined && previousVersion !== currentVersion;
-  void context.globalState.update("extensionVersion", currentVersion);
-
-  const startWatcher = (): void => {
-    void watcher
-      .start()
-      .then(() => {
-        const config = watcher.getConfig();
-        if (config) {
-          void sidebarProvider.sendConfig(config);
-
-          if (isVersionUpdated) {
-            const isJa = config.locale !== "en";
-            const message = isJa
-              ? `Mentor Studio Code が更新されました (v${currentVersion})。最新のプロンプトを適用するには Setup を実行してください。`
-              : `Mentor Studio Code has been updated (v${currentVersion}). Run Setup to apply the latest prompts.`;
-            const button = isJa ? "Setup を実行" : "Run Setup";
-            void vscode.window
-              .showInformationMessage(message, button)
-              .then((choice) => {
-                if (choice === button) {
-                  void vscode.commands.executeCommand("mentor-studio.setup");
-                }
-              });
-          }
-        } else {
-          sidebarProvider.sendNoConfig();
-        }
-      })
-      .catch((err: unknown) => {
-        getOutputChannel().appendLine(
-          `Failed to start file watcher: ${String(err)}`,
-        );
-        sidebarProvider.sendNoConfig();
-      });
-  };
-
-  startWatcher();
-
-  context.subscriptions.push(watcher);
+  await startRuntimeFromCurrentWorkspace();
 }
 
 export function deactivate(): void {

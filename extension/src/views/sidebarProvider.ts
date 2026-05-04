@@ -141,7 +141,9 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         } else if (message.type === "clearFile") {
           await this.updateMentorFile(message.field, null);
         } else if (message.type === "runSetup") {
-          await vscode.commands.executeCommand("mentor-studio.setup");
+          await vscode.commands.executeCommand("mentor-studio.setup", {
+            source: message.source ?? "sidebarNoConfig",
+          });
         } else if (message.type === "setLocale") {
           await this.updateLocale(message.locale);
         } else if (message.type === "setEnableMentor") {
