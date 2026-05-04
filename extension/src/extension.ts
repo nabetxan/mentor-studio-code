@@ -112,49 +112,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const dbPath = migrationResult.paths.dbPath; // external from now on
 
     const bus = new BroadcastBus();
-    const unregisterSidebar = bus.register(sidebarProvider.getSubscriber());
-    context.subscriptions.push({ dispose: () => unregisterSidebar() });
-
     let watcher: FileWatcherService;
-    context.subscriptions.push(
-      vscode.commands.registerCommand("mentor-studio.openPlanPanel", () => {
-        const workspaceRoot =
-          vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? "";
-        // Every Plan Panel write refreshes the sidebar dashboard and broadcasts
-        // dbChanged so the panel's own webview re-fetches a fresh snapshot.
-        // Mirrors what FileWatcherService runs for sidebar-initiated writes.
-        const onAfterWrite = async (): Promise<void> => {
-          await watcher.refresh();
-          bus.broadcast({ type: "dbChanged" });
-        };
-        PlanPanel.createOrShow(
-          context,
-          bus,
-          { dbPath, wasmPath, workspaceRoot },
-          onAfterWrite,
-        );
-      }),
-    );
-
-    context.subscriptions.push(
-      vscode.commands.registerCommand(
-        "mentor-studio.addFilesToPlan",
-        async (uri: vscode.Uri, uris?: vscode.Uri[]) => {
-          const targets = uris && uris.length > 0 ? uris : [uri];
-          await watcher.addFilesToPlan(targets);
-        },
-      ),
-    );
-
-    context.subscriptions.push(
-      vscode.commands.registerCommand(
-        "mentor-studio.setFileAsSpec",
-        async (uri: vscode.Uri) => {
-          if (!uri) return;
-          await watcher.setFileAsSpec(uri);
-        },
-      ),
-    );
 
     // File watcher
     watcher = new FileWatcherService(
@@ -242,6 +200,49 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       runtimeStarted = false;
       return;
     }
+
+    const unregisterSidebar = bus.register(sidebarProvider.getSubscriber());
+    context.subscriptions.push({ dispose: () => unregisterSidebar() });
+
+    context.subscriptions.push(
+      vscode.commands.registerCommand("mentor-studio.openPlanPanel", () => {
+        const workspaceRoot =
+          vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? "";
+        // Every Plan Panel write refreshes the sidebar dashboard and broadcasts
+        // dbChanged so the panel's own webview re-fetches a fresh snapshot.
+        // Mirrors what FileWatcherService runs for sidebar-initiated writes.
+        const onAfterWrite = async (): Promise<void> => {
+          await watcher.refresh();
+          bus.broadcast({ type: "dbChanged" });
+        };
+        PlanPanel.createOrShow(
+          context,
+          bus,
+          { dbPath, wasmPath, workspaceRoot },
+          onAfterWrite,
+        );
+      }),
+    );
+
+    context.subscriptions.push(
+      vscode.commands.registerCommand(
+        "mentor-studio.addFilesToPlan",
+        async (uri: vscode.Uri, uris?: vscode.Uri[]) => {
+          const targets = uris && uris.length > 0 ? uris : [uri];
+          await watcher.addFilesToPlan(targets);
+        },
+      ),
+    );
+
+    context.subscriptions.push(
+      vscode.commands.registerCommand(
+        "mentor-studio.setFileAsSpec",
+        async (uri: vscode.Uri) => {
+          if (!uri) return;
+          await watcher.setFileAsSpec(uri);
+        },
+      ),
+    );
 
     context.subscriptions.push(watcher);
   };

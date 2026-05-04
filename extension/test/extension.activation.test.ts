@@ -305,4 +305,104 @@ describe("activate", () => {
 
     expect(FileWatcherService).toHaveBeenCalledTimes(1);
   });
+
+  it("does not keep partial runtime command registrations when watcher startup fails", async () => {
+    const commandRegistrations = new Map<string, number>();
+    const registeredCommands = new Map<string, (...args: unknown[]) => unknown>();
+    vi.spyOn(vscode.commands, "registerCommand").mockImplementation(
+      ((command: string, handler: (...args: unknown[]) => unknown) => {
+        commandRegistrations.set(
+          command,
+          (commandRegistrations.get(command) ?? 0) + 1,
+        );
+        registeredCommands.set(command, handler);
+        return { dispose: vi.fn() };
+      }) as typeof vscode.commands.registerCommand,
+    );
+
+    const { runMigrationsForActivation } = await import(
+      "../src/migration/runAll.js"
+    );
+    vi.mocked(runMigrationsForActivation)
+      .mockResolvedValueOnce({
+        status: "ok",
+        workspaceId: "repo-123",
+        paths: {
+          mentorRoot: "/workspace/.mentor",
+          configPath: "/workspace/.mentor/config.json",
+          dbPath: "/state/workspace/data.db",
+          externalDbPath: "/state/workspace/data.db",
+          externalDataDir: "/state",
+          externalDataDirForWorkspace: "/state/workspace",
+          legacyInWorkspaceDbPath: "/workspace/.mentor/data.db",
+        },
+      })
+      .mockResolvedValueOnce({
+        status: "ok",
+        workspaceId: "repo-123",
+        paths: {
+          mentorRoot: "/workspace/.mentor",
+          configPath: "/workspace/.mentor/config.json",
+          dbPath: "/state/workspace/data.db",
+          externalDbPath: "/state/workspace/data.db",
+          externalDataDir: "/state",
+          externalDataDirForWorkspace: "/state/workspace",
+          legacyInWorkspaceDbPath: "/workspace/.mentor/data.db",
+        },
+      });
+
+    const { FileWatcherService } = await import(
+      "../src/services/fileWatcher.js"
+    );
+    vi.mocked(FileWatcherService).mockClear();
+    vi.mocked(FileWatcherService)
+      .mockImplementationOnce(
+        function () {
+          return {
+            start: vi.fn(async () => {
+              throw new Error("watcher failed");
+            }),
+            getConfig: vi.fn(),
+            refresh: vi.fn(async () => undefined),
+            dispose: vi.fn(),
+          };
+        } as never,
+      )
+      .mockImplementationOnce(
+        function () {
+          return {
+            start: vi.fn(async () => undefined),
+            getConfig: vi.fn(() => ({
+              repositoryName: "repo",
+              locale: "en",
+              extensionVersion: "0.6.9",
+            })),
+            refresh: vi.fn(async () => undefined),
+            dispose: vi.fn(),
+          };
+        } as never,
+      );
+
+    const { activate } = await import("../src/extension.js");
+    const context = {
+      extensionUri: vscodeMock.Uri.file("/ext"),
+      extension: { packageJSON: { version: "0.6.9" } },
+      subscriptions: [] as { dispose(): void }[],
+      globalState: {
+        get: vi.fn(() => undefined),
+        update: vi.fn(async () => undefined),
+      },
+    };
+
+    await activate(context as unknown as vscode.ExtensionContext);
+
+    const setupHandler = registeredCommands.get("mentor-studio.setup");
+    expect(setupHandler).toBeDefined();
+    await setupHandler?.({ source: "commandPalette" });
+
+    expect(FileWatcherService).toHaveBeenCalledTimes(2);
+    expect(commandRegistrations.get("mentor-studio.openPlanPanel")).toBe(1);
+    expect(commandRegistrations.get("mentor-studio.addFilesToPlan")).toBe(1);
+    expect(commandRegistrations.get("mentor-studio.setFileAsSpec")).toBe(1);
+  });
 });
