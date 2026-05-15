@@ -5,9 +5,8 @@ node_modules/
 dist/
 *.vsix
 
-# Documentation (generated)
+# Documentation
 docs/
-docsBackup/
 
 # OS
 .DS_Store

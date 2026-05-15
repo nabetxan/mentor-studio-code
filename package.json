@@ -16,6 +16,7 @@
     "test": "npm run test --workspaces --if-present"
   },
   "devDependencies": {
-    "@vscode/vsce": "3.9.1"
+    "@vscode/vsce": "3.9.1",
+    "vitest": "4.1.0"
   }
 }
