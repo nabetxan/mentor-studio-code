@@ -1,4 +1,4 @@
-![version](https://img.shields.io/badge/version-0.6.9-blue)
+![version](https://img.shields.io/badge/version-0.6.10-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 [![website](https://img.shields.io/badge/%F0%9F%8C%90_Website-Landing_Page-7ec8e3)](https://nabetxan.github.io/mentor-studio-code/)
 
@@ -66,12 +66,12 @@ The **Mentor** ON/OFF toggle in the navigation bar lets you enable or disable th
 
 Each button copies a prompt to your clipboard. Paste it into your AI tool to start the corresponding mentor session, such as Claude Code or any agent tool already reading your configured entrypoint file.
 
-| Button                      | When to use                            |
-| --------------------------- | -------------------------------------- |
-| Start task                  | Starting the next task                 |
-| Review implementation       | Asking for a code review after coding  |
-| Start review                | Reviewing what you've learned so far   |
-| Start Comprehension check   | Testing your understanding with a quiz |
+| Button                    | When to use                            |
+| ------------------------- | -------------------------------------- |
+| Start task                | Starting the next task                 |
+| Review implementation     | Asking for a code review after coding  |
+| Start review              | Reviewing what you've learned so far   |
+| Start Comprehension check | Testing your understanding with a quiz |
 
 ### Overview
 
@@ -79,14 +79,14 @@ Shows your current task, correct answer rate, per-topic progress, and unresolved
 
 ### Settings
 
-| Setting    | Description                                                                                               |
-| ---------- | --------------------------------------------------------------------------------------------------------- |
-| Entrypoint Files Using Mentor | Enable `CLAUDE.md` and/or `AGENTS.md`, and choose whether `CLAUDE.md` uses project or personal wiring |
-| Profile    | Register or update your learner profile                                                                   |
-| Plan       | Shows the active plan (Change / Detach) and the next queued plan on a single card                         |
-| Plan Panel | Open the Plan Panel to manage plans (add from file, grouped by status, badge dropdown for status changes) |
-| Spec file  | Link the spec file your mentor session references                                                         |
-| Language   | Switch between Japanese and English                                                                       |
+| Setting                       | Description                                                                                               |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Entrypoint Files Using Mentor | Enable `CLAUDE.md` and/or `AGENTS.md`, and choose whether `CLAUDE.md` uses project or personal wiring     |
+| Profile                       | Register or update your learner profile                                                                   |
+| Plan                          | Shows the active plan (Change / Detach) and the next queued plan on a single card                         |
+| Plan Panel                    | Open the Plan Panel to manage plans (add from file, grouped by status, badge dropdown for status changes) |
+| Spec file                     | Link the spec file your mentor session references                                                         |
+| Language                      | Switch between Japanese and English                                                                       |
 
 You can also open the Plan Panel via `Mentor Studio Code: Open Plan Panel` from the Command Palette, or right-click a markdown file — **either in the Explorer or on its editor tab** — and choose **Add to Mentor Plan** to register it. Use **Add to Mentor Spec** on the same context menu to set the clicked file as the active spec.
 
@@ -172,12 +172,12 @@ Mentor は学習履歴 DB を OS のユーザーデータディレクトリ(ワ�
 
 各ボタンを押すとプロンプトがクリップボードにコピーされます。Claude Code や、設定済みのエントリポイントファイルを読む AI ツールに貼り付けて、対応するメンターセッションを開始します。
 
-| ボタン                      | いつ使う？                             |
-| --------------------------- | -------------------------------------- |
-| タスクを始める              | 次のタスクを始めるとき                 |
-| 実装をレビューする          | コードを書いた後、レビューを受けるとき |
-| 復習を始める                | これまでの学習内容を復習するとき       |
-| 理解度チェックを始める      | クイズ形式で理解度をチェックするとき   |
+| ボタン                 | いつ使う？                             |
+| ---------------------- | -------------------------------------- |
+| タスクを始める         | 次のタスクを始めるとき                 |
+| 実装をレビューする     | コードを書いた後、レビューを受けるとき |
+| 復習を始める           | これまでの学習内容を復習するとき       |
+| 理解度チェックを始める | クイズ形式で理解度をチェックするとき   |
 
 ### Overview
 
@@ -185,14 +185,14 @@ Mentor は学習履歴 DB を OS のユーザーデータディレクトリ(ワ�
 
 ### Settings
 
-| 設定項目   | 内容                                                                                                      |
-| ---------- | --------------------------------------------------------------------------------------------------------- |
-| Mentor機能を利用するエントリポイントファイル | `CLAUDE.md` / `AGENTS.md` の有効化と、`CLAUDE.md` の設定先（プロジェクト / 個人）の切り替え |
-| Profile    | 学習者プロフィールの登録・更新                                                                            |
-| Plan       | アクティブなプラン（変更・外す）と次の queued プランを1つのカードに集約して表示                           |
-| Plan Panel | プランパネルを開いてプラン管理（ファイルから追加・6ステータスグループ表示・バッジボタンでステータス変更） |
-| Spec file  | メンターセッションで参照する仕様ファイルを紐付ける                                                        |
-| Language   | 日本語・英語を切り替える                                                                                  |
+| 設定項目                                     | 内容                                                                                                      |
+| -------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Mentor機能を利用するエントリポイントファイル | `CLAUDE.md` / `AGENTS.md` の有効化と、`CLAUDE.md` の設定先（プロジェクト / 個人）の切り替え               |
+| Profile                                      | 学習者プロフィールの登録・更新                                                                            |
+| Plan                                         | アクティブなプラン（変更・外す）と次の queued プランを1つのカードに集約して表示                           |
+| Plan Panel                                   | プランパネルを開いてプラン管理（ファイルから追加・6ステータスグループ表示・バッジボタンでステータス変更） |
+| Spec file                                    | メンターセッションで参照する仕様ファイルを紐付ける                                                        |
+| Language                                     | 日本語・英語を切り替える                                                                                  |
 
 Plan Panel はコマンドパレットから `Mentor Studio Code: Open Plan Panel` でも開けます。**エクスプローラーまたはエディタのタブ**で Markdown ファイルを右クリックし **Add to Mentor Plan** を選ぶと、そのファイルをプランとして登録できます。同じコンテキストメニューの **Add to Mentor Spec** を選ぶと、そのファイルがアクティブなスペックとして設定されます。
 

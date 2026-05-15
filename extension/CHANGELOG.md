@@ -2,6 +2,19 @@
 
 All notable changes to "Mentor Studio Code" will be documented in this file.
 
+## [0.6.10] - 2026-05-16
+
+### Added
+
+- Mentor session templates now support an optional Plan Orientation Map when a new active plan starts, letting the AI create a Mermaid, HTML/SVG, or short-text learning map under `.mentor/` before teaching begins.
+
+### Changed
+
+- Tightened mentor-session pacing rules.
+- Strengthened generated prompt guidance.
+- Pinned npm dependency versions and added npm install safeguards.
+- Updated Vitest wrapper scripts.
+
 ## [0.6.9] - 2026-05-04
 
 ### Changed
@@ -25,7 +38,6 @@ All notable changes to "Mentor Studio Code" will be documented in this file.
 - Settings now shows an **Entrypoint Files Using Mentor** section and warns when no entrypoint file is configured, which also blocks re-enabling Mentor until `CLAUDE.md` or `AGENTS.md` is set up.
 - Setup now preselects the entrypoint files that are already enabled, and Settings asks for confirmation before writing changes to `CLAUDE.md` or `AGENTS.md`.
 - Tuned the mentor skill templates and uninstall guidance to match file-based entrypoint cleanup, including the managed `AGENTS.md` block.
-
 
 ## [0.6.7] - 2026-04-29
 

@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   CREATE_PLAN_MD,
   INTAKE_SKILL_MD,
-  MENTOR_SESSION_SKILL_MD,
   MENTOR_RULES_MD,
+  MENTOR_SESSION_SKILL_MD,
   MENTOR_SKILLS,
   PLAN_HEALTH_MD,
   SHARED_RULES_MD,
@@ -192,8 +192,12 @@ describe("CREATE_PLAN_MD", () => {
 describe("MENTOR_RULES_MD uninstall guidance", () => {
   it("includes AGENTS.md and provider-aware removal instructions", () => {
     expect(MENTOR_RULES_MD).toMatch(/AGENTS\.md/);
-    expect(MENTOR_RULES_MD).toMatch(/remove the `@\.mentor\/rules\/MENTOR_RULES\.md` line/);
-    expect(MENTOR_RULES_MD).toMatch(/remove only the managed `<!-- msc:agents:start -->`\.\.\.`<!-- msc:agents:end -->` block/);
+    expect(MENTOR_RULES_MD).toMatch(
+      /remove the `@\.mentor\/rules\/MENTOR_RULES\.md` line/,
+    );
+    expect(MENTOR_RULES_MD).toMatch(
+      /remove only the managed `<!-- msc:agents:start -->`\.\.\.`<!-- msc:agents:end -->` block/,
+    );
   });
 });
 
@@ -205,7 +209,7 @@ describe("template brevity", () => {
   it("keeps the heaviest templates compact", () => {
     expect(wordCount(SHARED_RULES_MD)).toBeLessThanOrEqual(230);
     expect(wordCount(TEACHING_CYCLE_REFERENCE_MD)).toBeLessThanOrEqual(230);
-    expect(wordCount(MENTOR_SESSION_SKILL_MD)).toBeLessThanOrEqual(560);
+    expect(wordCount(MENTOR_SESSION_SKILL_MD)).toBeLessThanOrEqual(750);
     expect(wordCount(CREATE_PLAN_MD)).toBeLessThanOrEqual(360);
     expect(wordCount(INTAKE_SKILL_MD)).toBeLessThanOrEqual(470);
   });
