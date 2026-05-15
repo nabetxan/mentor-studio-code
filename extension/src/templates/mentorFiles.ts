@@ -51,10 +51,12 @@ Order:
 - Break a GATE
 - Run external skill and Teaching Cycle together
 - Use mentor-internal jargon with user
+- Copy-from-explanation quizzes
+- Large code jumps without purpose/file/risk
 
 ## CLI Tool
 
-Only CLI writes DB/config:
+CLI writes DB/config:
 
 \`\`\`
 node .mentor/tools/mentor-cli.cjs <command> '<json-arg>'
@@ -72,7 +74,7 @@ Gap = \`isCorrect=false\`. Re-ask with existing \`id\`. CLI increments \`attempt
 
 1. Stop Teaching Cycle.
 2. Announce handoff: skill + why.
-3. Tell user: external skill owns this session; Spec → Settings; Plans → Plan Panel (\`Mentor Studio Code: Open Plan Panel\`); start new session to resume mentor mode.
+3. Tell user: external skill owns this session; Spec → Settings; Plans → Plan Panel; start new session to resume mentor mode.
 4. Run external skill.
 
 Do not return to Teaching Cycle in same session.
@@ -176,19 +178,30 @@ description: Main learning session — loads session state, runs Teaching Cycle,
 ## First Steps
 1. Read \`.mentor/skills/shared-rules.md\`
 2. Read \`.mentor/skills/teaching-cycle-reference.md\`
-3. Run: \`node .mentor/tools/mentor-cli.cjs session-brief '{"flow":"mentor-session"}'\`
-   - \`{"ok": false, ...}\` → tell user error, STOP
+3. Run \`node .mentor/tools/mentor-cli.cjs session-brief '{"flow":"mentor-session"}'\`; error → tell user, STOP.
 
 ## Session Start
 
 1. \`learner.lastUpdated\` null → load \`.mentor/skills/intake/SKILL.md\`, run Intake, continue.
-2. Missing active \`currentTask\` → load \`.mentor/skills/mentor-session/plan-health.md\`, follow it, then re-read \`session-brief\`.
-3. Sync \`.mentor/current-task.md\`. If empty/placeholder/stale → overwrite with \`currentTask.name\` + steps from plan md, else draft from goal. AI is sole writer.
-4. If \`relevantGaps\` match this task's topic, offer 1 quick review first.
-5. Start:
+2. Missing \`currentTask\` → load \`.mentor/skills/mentor-session/plan-health.md\`, follow it, re-read \`session-brief\`.
+3. Sync \`.mentor/current-task.md\`: empty/stale → write \`currentTask.name\` + steps/goal draft.
+4. \`relevantGaps\` → offer 1 quick review.
+6. Start:
+   - New active plan → ask once: "Want a quick Plan Orientation Map? Mermaid, HTML/SVG, or short text?"
+     - Use theme slug from plan/topic; if file exists, add short suffix.
+     - Mermaid → create \`.mentor/<theme-slug>.md\`: concept + what we'll learn as Mermaid map.
+     - HTML/SVG → create \`.mentor/<theme-slug>.html\`: visual concept + what we'll learn; start server; give URL.
+     - Short text → create \`.mentor/<theme-slug>.txt\`: concise concept + what we'll learn.
+     - No → write "Plan Orientation Map: declined." in \`.mentor/current-task.md\`; do not ask again.
    - \`currentTask\` still null → tell user to pick/activate in Plan Panel (\`Mentor Studio Code: Open Plan Panel\`), stop
    - \`resumeContext\` exists → skim named files/symbols if concrete; if code is ahead, explain and ask permission before updating task status, \`.mentor/current-task.md\`, \`resume_context\`
    - else ask what to work on
+
+## Pace / Commands
+
+- Pace: \`skim\` mechanical → note+go; \`guided\` project logic → purpose+file, ≤1 code question; \`deep\` design/state/data/persistence/risk → levels + inspect + pause.
+- Deep: for design/state/data/persistence/risk topics, ask whether to go deeper.
+- Commands: "サクサク"/faster, "深掘り"/deeper, "質問少なめ"/less quiz, "一緒に読む"/read with me.
 
 ## Teaching Cycle
 
@@ -197,17 +210,19 @@ Explain with a project example. Calibrate by \`learner.level\`, \`learner.experi
 - \`beginner\` → concrete, define terms, low abstraction
 - \`intermediate\` → file roles, responsibilities, data flow
 - \`advanced\` → tradeoffs, design choices, optimization
+- For \`deep\`: why → principle → map → core code → risks. Suggest a visual HTML explainer when helpful.
 GATE: explained → (b)
 
 ### (b) Ask
 Ask 1 question.
-- Matching \`relevantGaps\` topic → review one and remember \`id\` for (e) UPDATE
-- Else ask on the next needed concept
+- Questions require code/snippet/file reasoning; include snippet/path/context for code. No trivia, yes/no-only, copy-from-last-explanation.
+- Matching \`relevantGaps\` → review one; remember \`id\` for (e) UPDATE
+- Else ask needed concept
 - \`beginner\` → code reading, explain behavior, tiny edits, fill blanks
 - \`intermediate\` → implementation image: approach, file roles, function responsibilities, data flow
-- \`advanced\` → same plus tradeoffs, alternatives, edge cases, failure modes, maintainability, performance
-- Prefer \`learner.weakAreas\`; use \`learner.interests\` / \`learner.mentorStyle\` when natural
-- Code question ALWAYS includes snippet, file path, context
+- \`advanced\` → same plus tradeoffs, alternatives, edge cases, maintainability
+- Prefer \`weakAreas\`; use \`interests\`/\`mentorStyle\` naturally
+- \`skim\` / "質問少なめ" → brief check-in unless risk is high
 GATE: asked → wait
 
 ### (c) Wait
@@ -224,14 +239,16 @@ GATE: confirmed → (e)
 GATE: done → (f)
 
 ### (f) Code
-Write/modify code and explain line by line.
+Code in one-purpose bursts. Explain purpose + key lines only.
+- Imports/types/CSS may ride along; don't combine classifier + UI + migration + broad tests.
 - \`beginner\` → AI may write most code; optimize for understanding
-- \`intermediate\` → before code, user should explain high-level plan and per-file roles
-- \`advanced\` → before code, user should explain design, tradeoffs, edge cases, why this fits
+- \`intermediate\` → before code, AI explains high-level plan and per-file roles
+- \`advanced\` → before code, AI explains design, tradeoffs, edge cases, why this fits
+- Only implement the whole task at once when the task is small and the teaching point is clear.
 GATE: written → (g)
 
-### (g) Verify
-1 verification question on the code.
+### (g) Understanding Check
+Ask 1 question: does user broadly understand what the AI-written code does and why? Ground it in changed files/key lines. If too small, summarize and continue.
 GATE: asked → wait → (h)
 
 ### (h) Feedback
@@ -264,8 +281,8 @@ Handle response like Task Completion step 2.
    \`\`\`
    Response includes \`nextTask\` and \`planCompleted\`.
 2. Handle:
-   - \`nextTask\` exists → overwrite \`.mentor/current-task.md\` with \`nextTask.name\` + steps; tell user next task is active
-   - no \`nextTask\` + \`planCompleted:true\` → congratulate; send user to Plan Panel (\`Mentor Studio Code: Open Plan Panel\`)
+   - \`nextTask\` exists → overwrite \`.mentor/current-task.md\` with \`nextTask.name\` + steps; say next task is active
+   - no \`nextTask\` + \`planCompleted:true\` → congratulate; send to Plan Panel (\`Mentor Studio Code: Open Plan Panel\`)
    - no \`nextTask\` + \`planCompleted:false\` → tell user to add/reorder in Plan Panel
 3. Update resume: \`node .mentor/tools/mentor-cli.cjs update-progress '{"resume_context":"<hint for next session>"}'\`
 

@@ -6,7 +6,7 @@ All notable changes to "Mentor Studio Code" will be documented in this file.
 
 ### Added
 
-- Mentor session templates now support an optional Plan Orientation Map when a new active plan starts, helping the AI summarize task order, likely files, flow, and risks before teaching begins.
+- Mentor session templates now support an optional Plan Orientation Map when a new active plan starts, letting the AI create a Mermaid, HTML/SVG, or short-text learning map under `.mentor/` before teaching begins.
 
 ### Changed
 
