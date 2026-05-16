@@ -9,6 +9,7 @@ import { listPlans } from "./listPlans";
 import { listTopics } from "./listTopics";
 import { listUnresolved } from "./listUnresolved";
 import { recordAnswer } from "./recordAnswer";
+import { registerTasks } from "./registerTasks";
 import { removePlan } from "./removePlan";
 import { sessionBrief } from "./sessionBrief";
 import type { CommandMap } from "./types";
@@ -32,6 +33,7 @@ export const COMMANDS: CommandMap = {
   "list-topics": listTopics,
   "list-unresolved": listUnresolved,
   "record-answer": recordAnswer,
+  "register-tasks": registerTasks,
   "remove-plan": removePlan,
   "session-brief": sessionBrief,
   "update-config": updateConfig,

@@ -16,10 +16,14 @@ declare global {
 /** Request without the requestId — the bridge fills it in. */
 export type BridgeRequest =
   | Omit<Extract<PanelRequest, { type: "reorderPlans" }>, "requestId">
+  | Omit<Extract<PanelRequest, { type: "reorderTasks" }>, "requestId">
   | Omit<Extract<PanelRequest, { type: "createPlan" }>, "requestId">
+  | Omit<Extract<PanelRequest, { type: "createTask" }>, "requestId">
   | Omit<Extract<PanelRequest, { type: "updatePlan" }>, "requestId">
+  | Omit<Extract<PanelRequest, { type: "updateTask" }>, "requestId">
   | Omit<Extract<PanelRequest, { type: "removePlan" }>, "requestId">
-  | Omit<Extract<PanelRequest, { type: "setPlanStatus" }>, "requestId">;
+  | Omit<Extract<PanelRequest, { type: "setPlanStatus" }>, "requestId">
+  | Omit<Extract<PanelRequest, { type: "setTaskStatus" }>, "requestId">;
 
 export interface Snapshot {
   plans: PlanDto[];

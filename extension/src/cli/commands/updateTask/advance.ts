@@ -7,6 +7,32 @@ export interface AdvanceResult {
   planCompleted: boolean;
 }
 
+function autoActivateFirstQueuedTask(db: Database, planId: number): void {
+  const hasActive = db.exec(
+    "SELECT 1 FROM tasks WHERE status = 'active' LIMIT 1",
+  );
+  if (hasActive[0]?.values?.length) return;
+
+  const firstQueued = db.prepare(
+    "SELECT id FROM tasks WHERE planId = ? AND status = 'queued' ORDER BY sortOrder ASC, id ASC LIMIT 1",
+  );
+  let firstId: number | null = null;
+  try {
+    firstQueued.bind([planId]);
+    if (firstQueued.step()) firstId = Number(firstQueued.get()[0]);
+  } finally {
+    firstQueued.free();
+  }
+  if (firstId === null) return;
+
+  const stmt = db.prepare("UPDATE tasks SET status = 'active' WHERE id = ?");
+  try {
+    stmt.run([firstId]);
+  } finally {
+    stmt.free();
+  }
+}
+
 export function autoAdvance(db: Database, planId: number): AdvanceResult {
   const nextStmt = db.prepare(
     "SELECT id, name FROM tasks WHERE planId = ? AND status = 'queued' ORDER BY sortOrder ASC, id ASC LIMIT 1",
@@ -63,6 +89,7 @@ export function autoAdvance(db: Database, planId: number): AdvanceResult {
     } finally {
       promote.free();
     }
+    autoActivateFirstQueuedTask(db, nextPlanId);
   }
 
   assertStatusInvariants(db);

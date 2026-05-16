@@ -1,3 +1,4 @@
+import type { TaskStatus } from "@mentor-studio/shared";
 import type { Database } from "sql.js";
 
 import { assertStatusInvariants, withWriteTransaction } from "../../db";
@@ -76,6 +77,78 @@ export async function createTask(
   });
 }
 
+export interface RegisteredTask {
+  id: number;
+  name: string;
+  status: TaskStatus;
+  sortOrder: number;
+}
+
+export async function registerTasks(
+  dbPath: string,
+  args: { planId: number; names: string[] },
+  wasmPath?: string,
+): Promise<{ tasks: RegisteredTask[]; activatedTask: RegisteredTask | null }> {
+  if (args.names.length === 0) {
+    throw new Error("names must be a non-empty array");
+  }
+  if (args.names.some((name) => name.trim().length === 0)) {
+    throw new Error("names must contain only non-empty strings after trimming");
+  }
+
+  return withWriteTransaction(dbPath, { wasmPath, purpose: "normal" }, (db) => {
+    const planStmt = db.prepare("SELECT status FROM plans WHERE id = ?");
+    let planStatus: string | null = null;
+    try {
+      planStmt.bind([args.planId]);
+      if (planStmt.step()) planStatus = String(planStmt.get()[0]);
+    } finally {
+      planStmt.free();
+    }
+    if (planStatus === null) {
+      throw new Error(`plan not found: ${args.planId}`);
+    }
+
+    const existing = db.exec(`SELECT 1 FROM tasks WHERE planId = ${args.planId} LIMIT 1`);
+    if (existing[0]?.values?.length) {
+      throw new Error(`tasks already exist for plan: ${args.planId}`);
+    }
+
+    const shouldActivate =
+      planStatus === "active" &&
+      !db.exec("SELECT 1 FROM tasks WHERE status = 'active' LIMIT 1")[0]
+        ?.values?.length;
+
+    const stmt = db.prepare(
+      "INSERT INTO tasks (planId, name, status, sortOrder) VALUES (?, ?, ?, ?)",
+    );
+    const tasks: RegisteredTask[] = [];
+    try {
+      for (let i = 0; i < args.names.length; i++) {
+        const status: TaskStatus = shouldActivate && i === 0 ? "active" : "queued";
+        const sortOrder = i + 1;
+        const name = args.names[i].trim();
+        stmt.run([args.planId, name, status, sortOrder]);
+        const idRes = db.exec("SELECT last_insert_rowid()");
+        tasks.push({
+          id: Number(idRes[0].values[0][0]),
+          name,
+          status,
+          sortOrder,
+        });
+      }
+    } finally {
+      stmt.free();
+    }
+
+    assertStatusInvariants(db);
+    return {
+      tasks,
+      activatedTask: tasks.find((task) => task.status === "active") ?? null,
+    };
+  });
+}
+
 export async function updateTask(
   dbPath: string,
   args: { id: number; name?: string },
@@ -90,6 +163,70 @@ export async function updateTask(
       const stmt = db.prepare("UPDATE tasks SET name = ? WHERE id = ?");
       try {
         stmt.run([args.name as string, args.id]);
+      } finally {
+        stmt.free();
+      }
+    }
+
+    assertStatusInvariants(db);
+  });
+}
+
+export async function setTaskStatus(
+  dbPath: string,
+  args: { id: number; status: TaskStatus },
+  wasmPath?: string,
+): Promise<void> {
+  await withWriteTransaction(dbPath, { wasmPath, purpose: "normal" }, (db) => {
+    const currentStmt = db.prepare("SELECT planId, status FROM tasks WHERE id = ?");
+    let current: { planId: number; status: TaskStatus } | null = null;
+    try {
+      currentStmt.bind([args.id]);
+      if (currentStmt.step()) {
+        const row = currentStmt.get();
+        current = {
+          planId: Number(row[0]),
+          status: String(row[1]) as TaskStatus,
+        };
+      }
+    } finally {
+      currentStmt.free();
+    }
+
+    if (current === null) {
+      throw new Error(`task not found: ${args.id}`);
+    }
+
+    if (args.status === "active") {
+      const planStatusRes = db.exec(
+        `SELECT p.status FROM plans p JOIN tasks t ON t.planId = p.id WHERE t.id = ${args.id}`,
+      );
+      const planStatus = String(planStatusRes[0]?.values?.[0]?.[0] ?? "");
+      if (planStatus !== "active") {
+        throw new Error(
+          `cannot activate task ${args.id}: parent plan is not active (status=${planStatus})`,
+        );
+      }
+      db.exec("UPDATE tasks SET status = 'queued' WHERE status = 'active'");
+    }
+
+    if (args.status === "queued") {
+      const maxQueued = db.exec(
+        `SELECT COALESCE(MAX(sortOrder), 0) FROM tasks WHERE planId = ${current.planId} AND status = 'queued'`,
+      );
+      const nextSort = Number(maxQueued[0]?.values?.[0]?.[0] ?? 0) + 1;
+      const stmt = db.prepare(
+        "UPDATE tasks SET status = 'queued', sortOrder = ? WHERE id = ?",
+      );
+      try {
+        stmt.run([nextSort, args.id]);
+      } finally {
+        stmt.free();
+      }
+    } else {
+      const stmt = db.prepare("UPDATE tasks SET status = ? WHERE id = ?");
+      try {
+        stmt.run([args.status, args.id]);
       } finally {
         stmt.free();
       }

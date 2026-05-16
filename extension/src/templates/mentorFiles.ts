@@ -157,7 +157,8 @@ Run \`node .mentor/tools/mentor-cli.cjs list-plans '{}'\`. Use \`taskCount\`. Ig
        4. Re-run plan-health from top.
      - **No**: Treat as Plan and continue.
   3. Else extract \`## Task N\` headings and keep the original numbered heading text in each DB task name, or generate tasks from goal.
-  4. Register silently in order: \`node .mentor/tools/mentor-cli.cjs add-task '{"planId":<planId>,"name":"<task name>"}'\`
+  4. Collect the full ordered task-name list first. Register once, never in parallel:
+     \`node .mentor/tools/mentor-cli.cjs register-tasks '{"planId":<planId>,"names":["<task 1>","<task 2>"]}'\`
 - File unreadable/missing:
   - Ask: remove plan, or fix manually?
   - Remove → \`node .mentor/tools/mentor-cli.cjs remove-plan '{"id":<planId>}'\` → re-run plan-health.
@@ -165,7 +166,7 @@ Run \`node .mentor/tools/mentor-cli.cjs list-plans '{}'\`. Use \`taskCount\`. Ig
 
 **Case C — Active plan with tasks**: no action. If \`currentTask\` still null after re-running \`session-brief\`, activate first queued task: \`node .mentor/tools/mentor-cli.cjs activate-task '{"id":<taskId>}'\`.
 
-After health check: re-run \`session-brief\`, return to \`.mentor/skills/mentor-session/SKILL.md\`.
+After health check: re-run \`session-brief\`, sync \`.mentor/current-task.md\` from DB state, return to \`.mentor/skills/mentor-session/SKILL.md\`.
 `;
 
 export const MENTOR_SESSION_SKILL_MD = `---

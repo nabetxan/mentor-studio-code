@@ -107,6 +107,7 @@
   "scripts": {
     "build": "node esbuild.config.mjs",
     "package:vsix": "vsce package --no-dependencies",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "watch": "node esbuild.config.mjs --watch",
     "test": "./scripts/run-vitest.sh run",
     "test:watch": "./scripts/run-vitest.sh",

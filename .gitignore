@@ -7,6 +7,7 @@ dist/
 
 # Documentation
 docs/
+.scratch/
 
 # OS
 .DS_Store

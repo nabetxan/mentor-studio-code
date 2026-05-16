@@ -7,6 +7,7 @@ import { toWorkspaceRelative } from "../utils/workspacePath";
 import type { PanelRequest } from "./protocol";
 import { readSnapshot } from "./snapshot";
 import * as planWrites from "./writes/planWrites";
+import * as taskWrites from "./writes/taskWrites";
 
 interface DbPaths {
   dbPath: string;
@@ -27,6 +28,7 @@ async function handleWrite(
     | { type: "openMarkdownFile" }
     | { type: "pickPlanFile" }
     | { type: "setPlanStatus" }
+    | { type: "setTaskStatus" }
   >,
   dbPath: string,
   wasmPath: string,
@@ -39,10 +41,24 @@ async function handleWrite(
         wasmPath,
       );
       return;
+    case "reorderTasks":
+      await taskWrites.reorderTasks(
+        dbPath,
+        { planId: req.planId, orderedIds: req.orderedIds },
+        wasmPath,
+      );
+      return;
     case "createPlan":
       await planWrites.addPlanToBacklog(
         dbPath,
         { name: req.name, filePath: req.filePath },
+        wasmPath,
+      );
+      return;
+    case "createTask":
+      await taskWrites.createTask(
+        dbPath,
+        { planId: req.planId, name: req.name },
         wasmPath,
       );
       return;
@@ -53,8 +69,18 @@ async function handleWrite(
         wasmPath,
       );
       return;
+    case "updateTask":
+      await taskWrites.updateTask(
+        dbPath,
+        { id: req.id, name: req.name },
+        wasmPath,
+      );
+      return;
     case "removePlan":
       await planWrites.removePlan(dbPath, { id: req.id }, wasmPath);
+      return;
+    case "deleteTask":
+      await taskWrites.deleteTask(dbPath, { id: req.id }, wasmPath);
       return;
     default: {
       const _exhaustive: never = req;
@@ -186,10 +212,35 @@ export class PlanPanel {
             await promise;
             return;
           }
+          case "setTaskStatus":
+            try {
+              await taskWrites.setTaskStatus(
+                this.dbPath,
+                { id: req.id, status: req.toStatus },
+                this.wasmPath,
+              );
+              void this.panel.webview.postMessage({
+                type: "writeOk",
+                requestId: req.requestId,
+              });
+            } catch (e) {
+              void this.panel.webview.postMessage({
+                type: "writeError",
+                requestId: req.requestId,
+                error: e instanceof Error ? e.message : String(e),
+              });
+            } finally {
+              void this.runAfterWrite();
+            }
+            return;
           case "reorderPlans":
+          case "reorderTasks":
           case "createPlan":
+          case "createTask":
           case "updatePlan":
+          case "updateTask":
           case "removePlan":
+          case "deleteTask":
             try {
               await handleWrite(req, this.dbPath, this.wasmPath);
               void this.panel.webview.postMessage({

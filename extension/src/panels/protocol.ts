@@ -3,6 +3,7 @@ import type {
   PlanDto,
   PlanStatus,
   TaskDto,
+  TaskStatus,
   TopicDto,
 } from "@mentor-studio/shared";
 
@@ -23,7 +24,14 @@ export type PanelMessage =
 // Panel → Extension
 export type PanelRequest =
   | { type: "reorderPlans"; requestId: string; orderedIds: number[] }
+  | {
+      type: "reorderTasks";
+      requestId: string;
+      planId: number;
+      orderedIds: number[];
+    }
   | { type: "createPlan"; requestId: string; name: string; filePath: string }
+  | { type: "createTask"; requestId: string; planId: number; name: string }
   | {
       type: "updatePlan";
       requestId: string;
@@ -31,12 +39,20 @@ export type PanelRequest =
       name?: string;
       filePath?: string | null;
     }
+  | { type: "updateTask"; requestId: string; id: number; name?: string }
   | { type: "removePlan"; requestId: string; id: number }
+  | { type: "deleteTask"; requestId: string; id: number }
   | {
       type: "setPlanStatus";
       requestId: string;
       id: number;
       toStatus: PlanStatus;
+    }
+  | {
+      type: "setTaskStatus";
+      requestId: string;
+      id: number;
+      toStatus: TaskStatus;
     }
   | { type: "openMarkdownFile"; filePath: string }
   | { type: "pickPlanFile"; requestId: string }

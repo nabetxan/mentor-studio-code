@@ -102,6 +102,8 @@ describe("autoAdvance", () => {
     ]);
     await seedTasks(env.paths.dbPath, [
       { planId: 1, name: "T1", status: "completed", sortOrder: 0 },
+      { planId: 2, name: "T2", status: "queued", sortOrder: 0 },
+      { planId: 2, name: "T3", status: "queued", sortOrder: 1 },
     ]);
 
     let result: ReturnType<typeof autoAdvance> | null = null;
@@ -121,6 +123,19 @@ describe("autoAdvance", () => {
     expect(statuses).toEqual([
       { id: 1, status: "completed" },
       { id: 2, status: "active" },
+    ]);
+
+    const taskStatuses = await withDb(env.paths.dbPath, (db) => {
+      const r = db.exec("SELECT id, status FROM tasks ORDER BY id");
+      return r[0].values.map((v) => ({
+        id: Number(v[0]),
+        status: String(v[1]),
+      }));
+    });
+    expect(taskStatuses).toEqual([
+      { id: 1, status: "completed" },
+      { id: 2, status: "active" },
+      { id: 3, status: "queued" },
     ]);
   });
 

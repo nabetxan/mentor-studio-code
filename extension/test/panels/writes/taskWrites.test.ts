@@ -4,7 +4,9 @@ import {
   activateTask,
   createTask,
   deleteTask,
+  registerTasks,
   reorderTasks,
+  setTaskStatus,
   updateTask,
 } from "../../../src/panels/writes/taskWrites";
 import {
@@ -350,6 +352,123 @@ describe("taskWrites", () => {
       // Rolled back: original active unchanged, target still queued.
       expect((await readTask(env.paths.dbPath, 1))?.status).toBe("active");
       expect((await readTask(env.paths.dbPath, 3))?.status).toBe("queued");
+    });
+  });
+
+  describe("registerTasks", () => {
+    beforeEach(async () => {
+      await seedPlans(env.paths.dbPath, [
+        {
+          name: "P1",
+          status: "active",
+          sortOrder: 1,
+          createdAt: "2026-04-01T00:00:00.000Z",
+        },
+      ]);
+    });
+
+    it("registers all tasks in order and activates the first one", async () => {
+      const result = await registerTasks(
+        env.paths.dbPath,
+        { planId: 1, names: ["Task 1", "Task 2"] },
+        WASM,
+      );
+
+      expect(result.activatedTask).toMatchObject({
+        id: 1,
+        name: "Task 1",
+        status: "active",
+      });
+      expect(await listTasks(env.paths.dbPath)).toMatchObject([
+        { id: 1, status: "active", sortOrder: 1 },
+        { id: 2, status: "queued", sortOrder: 2 },
+      ]);
+    });
+
+    it("rejects plans that already have tasks", async () => {
+      await seedTasks(env.paths.dbPath, [
+        { planId: 1, name: "Existing", status: "active", sortOrder: 1 },
+      ]);
+
+      await expect(
+        registerTasks(env.paths.dbPath, { planId: 1, names: ["Task 1"] }, WASM),
+      ).rejects.toThrow("tasks already exist");
+    });
+
+    it("rejects empty task batches before writing", async () => {
+      await expect(
+        registerTasks(env.paths.dbPath, { planId: 1, names: [] }, WASM),
+      ).rejects.toThrow("names must be a non-empty array");
+
+      expect(await listTasks(env.paths.dbPath)).toEqual([]);
+    });
+
+    it("rejects blank task names before writing", async () => {
+      await expect(
+        registerTasks(
+          env.paths.dbPath,
+          { planId: 1, names: ["Task 1", "   "] },
+          WASM,
+        ),
+      ).rejects.toThrow("names must contain only non-empty strings");
+
+      expect(await listTasks(env.paths.dbPath)).toEqual([]);
+    });
+  });
+
+  describe("setTaskStatus", () => {
+    beforeEach(async () => {
+      await seedPlans(env.paths.dbPath, [
+        {
+          name: "P1",
+          status: "active",
+          sortOrder: 1,
+          createdAt: "2026-04-01T00:00:00.000Z",
+        },
+        {
+          name: "P2",
+          status: "queued",
+          sortOrder: 2,
+          createdAt: "2026-04-02T00:00:00.000Z",
+        },
+      ]);
+      await seedTasks(env.paths.dbPath, [
+        { planId: 1, name: "T1", status: "active", sortOrder: 1 },
+        { planId: 1, name: "T2", status: "queued", sortOrder: 2 },
+        { planId: 1, name: "T3", status: "completed", sortOrder: 3 },
+        { planId: 2, name: "T4", status: "queued", sortOrder: 1 },
+      ]);
+    });
+
+    it("completing the active task from the panel does not auto-advance", async () => {
+      await setTaskStatus(
+        env.paths.dbPath,
+        { id: 1, status: "completed" },
+        WASM,
+      );
+
+      expect((await readTask(env.paths.dbPath, 1))?.status).toBe("completed");
+      expect((await readTask(env.paths.dbPath, 2))?.status).toBe("queued");
+      const activeCount = await withDb(env.paths.dbPath, (db) => {
+        const r = db.exec("SELECT COUNT(*) FROM tasks WHERE status = 'active'");
+        return Number(r[0].values[0][0]);
+      });
+      expect(activeCount).toBe(0);
+    });
+
+    it("requeues completed tasks at the end of the queued sequence", async () => {
+      await setTaskStatus(env.paths.dbPath, { id: 3, status: "queued" }, WASM);
+
+      expect(await readTask(env.paths.dbPath, 3)).toMatchObject({
+        status: "queued",
+        sortOrder: 3,
+      });
+    });
+
+    it("rejects activation under a non-active parent plan", async () => {
+      await expect(
+        setTaskStatus(env.paths.dbPath, { id: 4, status: "active" }, WASM),
+      ).rejects.toThrow(/parent plan is not active/);
     });
   });
 });

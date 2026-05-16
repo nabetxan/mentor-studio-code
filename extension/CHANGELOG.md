@@ -7,11 +7,16 @@ All notable changes to "Mentor Studio Code" will be documented in this file.
 ### Added
 
 - Mentor session templates now support an optional Plan Orientation Map when a new active plan starts, letting the AI create a Mermaid, HTML/SVG, or short-text learning map under `.mentor/` before teaching begins.
+- Plan Panel now shows tasks under each visible plan, with inline task rename, status changes, and drag-and-drop reordering for queued tasks. Task deletion remains a low-level cleanup path for mistaken registrations rather than a normal Task row action.
+- New `register-tasks` CLI command registers a full ordered task list atomically and activates the first task when appropriate.
+- Added workspace-level and extension-level `typecheck` scripts.
 
 ### Changed
 
 - Tightened mentor-session pacing rules.
 - Strengthened generated prompt guidance.
+- Plan Health Check now collects all task names first and calls `register-tasks` once, instead of adding tasks one by one.
+- Completing or skipping the active task from the Plan Panel is treated as manual state synchronization and does not auto-advance; Mentor session completion via CLI still advances to the next queued task.
 - Pinned npm dependency versions and added npm install safeguards.
 - Updated Vitest wrapper scripts.
 

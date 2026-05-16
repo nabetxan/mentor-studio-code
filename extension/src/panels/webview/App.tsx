@@ -1,9 +1,9 @@
-import type { PlanStatus } from "@mentor-studio/shared";
+import type { PlanStatus, TaskStatus } from "@mentor-studio/shared";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { LocaleContext } from "./i18n";
 import { PlansBoard } from "./PlansBoard";
 import { s } from "./styles";
-import type { UiPlan } from "./types";
+import type { UiPlan, UiTask } from "./types";
 import { useVsCodeBridge } from "./useVsCodeBridge";
 
 function basenameWithoutExt(filePath: string): string {
@@ -28,6 +28,12 @@ export function App(): JSX.Element {
     null,
   );
   const [plansError, setPlansError] = useState<string | null>(null);
+  const [taskOverrides, setTaskOverrides] = useState<
+    Record<number, Partial<UiTask>>
+  >({});
+  const [taskOrderOverrides, setTaskOrderOverrides] = useState<
+    Record<number, number[]>
+  >({});
 
   // Fresh snapshot clears all optimistic state
   useEffect(() => {
@@ -35,6 +41,8 @@ export function App(): JSX.Element {
     setTentativePlans([]);
     setPlanOverrides({});
     setPlanOrderOverride(null);
+    setTaskOverrides({});
+    setTaskOrderOverrides({});
   }, [ready, snapshot]);
 
   const plans: UiPlan[] = useMemo(() => {
@@ -56,6 +64,28 @@ export function App(): JSX.Element {
     }
     return merged;
   }, [snapshot.plans, tentativePlans, planOverrides, planOrderOverride]);
+
+  const tasks: UiTask[] = useMemo(() => {
+    const merged: UiTask[] = snapshot.tasks.map((task) => ({
+      ...task,
+      ...taskOverrides[task.id],
+      pending: taskOverrides[task.id]?.pending,
+    }));
+    return merged.sort((a, b) => {
+      if (a.planId !== b.planId) return a.planId - b.planId;
+      const override = taskOrderOverrides[a.planId];
+      if (override) {
+        const ai = override.indexOf(a.id);
+        const bi = override.indexOf(b.id);
+        if (ai !== -1 || bi !== -1) {
+          if (ai === -1) return 1;
+          if (bi === -1) return -1;
+          return ai - bi;
+        }
+      }
+      return a.sortOrder - b.sortOrder || a.id - b.id;
+    });
+  }, [snapshot.tasks, taskOverrides, taskOrderOverrides]);
 
   async function handleCreatePlanFromFile(): Promise<void> {
     setPlansError(null);
@@ -149,11 +179,79 @@ export function App(): JSX.Element {
     }
   }
 
+  async function handleReorderTasks(
+    planId: number,
+    orderedIds: number[],
+  ): Promise<void> {
+    setTaskOrderOverrides((prev) => ({ ...prev, [planId]: orderedIds }));
+    setPlansError(null);
+    try {
+      await sendRequest({ type: "reorderTasks", planId, orderedIds });
+    } catch (e) {
+      setTaskOrderOverrides((prev) => {
+        const next = { ...prev };
+        delete next[planId];
+        return next;
+      });
+      setPlansError(errMsg(e));
+    }
+  }
+
+  async function handleRenameTask(id: number, name: string): Promise<void> {
+    setTaskOverrides((prev) => ({
+      ...prev,
+      [id]: { ...prev[id], name, pending: true },
+    }));
+    setPlansError(null);
+    try {
+      await sendRequest({ type: "updateTask", id, name });
+      setTaskOverrides((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    } catch (e) {
+      setTaskOverrides((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      setPlansError(errMsg(e));
+    }
+  }
+
+  async function handleSetTaskStatus(
+    id: number,
+    toStatus: TaskStatus,
+  ): Promise<void> {
+    setTaskOverrides((prev) => ({
+      ...prev,
+      [id]: { ...prev[id], status: toStatus, pending: true },
+    }));
+    setPlansError(null);
+    try {
+      await sendRequest({ type: "setTaskStatus", id, toStatus });
+      setTaskOverrides((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    } catch (e) {
+      setTaskOverrides((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      setPlansError(errMsg(e));
+    }
+  }
+
   return (
     <LocaleContext.Provider value={snapshot.locale}>
       <div style={s.app}>
         <PlansBoard
           plans={plans}
+          tasks={tasks}
           onCreatePlanFromFile={() => void handleCreatePlanFromFile()}
           onRenamePlan={(id, name) => void handleRenamePlan(id, name)}
           onSetPlanStatus={(id, toStatus) =>
@@ -161,6 +259,11 @@ export function App(): JSX.Element {
           }
           onOpenFile={openFile}
           onReorder={(ids) => void handleReorderPlans(ids)}
+          onReorderTasks={(planId, ids) => void handleReorderTasks(planId, ids)}
+          onRenameTask={(id, name) => void handleRenameTask(id, name)}
+          onSetTaskStatus={(id, toStatus) =>
+            void handleSetTaskStatus(id, toStatus)
+          }
           error={plansError}
         />
       </div>
