@@ -2,7 +2,7 @@
 
 All notable changes to "Mentor Studio Code" will be documented in this file.
 
-## [0.6.10] - 2026-05-16
+## [0.6.10] - 2026-05-18
 
 ### Added
 

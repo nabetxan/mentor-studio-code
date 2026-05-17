@@ -124,6 +124,19 @@ describe("protocol types", () => {
     }
   });
 
+  it("PanelRequest reorderQueuedTasks carries queuedTaskIds array", () => {
+    const req: PanelRequest = {
+      type: "reorderQueuedTasks",
+      requestId: "r-qt",
+      planId: 1,
+      queuedTaskIds: [5, 4],
+    };
+    if (req.type === "reorderQueuedTasks") {
+      expect(req.planId).toBe(1);
+      expect(req.queuedTaskIds).toEqual([5, 4]);
+    }
+  });
+
   it("PanelRequest removePlan carries id", () => {
     const req: PanelRequest = {
       type: "removePlan",

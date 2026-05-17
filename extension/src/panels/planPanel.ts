@@ -41,10 +41,10 @@ async function handleWrite(
         wasmPath,
       );
       return;
-    case "reorderTasks":
-      await taskWrites.reorderTasks(
+    case "reorderQueuedTasks":
+      await taskWrites.reorderQueuedTasks(
         dbPath,
-        { planId: req.planId, orderedIds: req.orderedIds },
+        { planId: req.planId, queuedTaskIds: req.queuedTaskIds },
         wasmPath,
       );
       return;
@@ -234,7 +234,7 @@ export class PlanPanel {
             }
             return;
           case "reorderPlans":
-          case "reorderTasks":
+          case "reorderQueuedTasks":
           case "createPlan":
           case "createTask":
           case "updatePlan":

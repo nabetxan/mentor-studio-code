@@ -16,7 +16,7 @@ declare global {
 /** Request without the requestId — the bridge fills it in. */
 export type BridgeRequest =
   | Omit<Extract<PanelRequest, { type: "reorderPlans" }>, "requestId">
-  | Omit<Extract<PanelRequest, { type: "reorderTasks" }>, "requestId">
+  | Omit<Extract<PanelRequest, { type: "reorderQueuedTasks" }>, "requestId">
   | Omit<Extract<PanelRequest, { type: "createPlan" }>, "requestId">
   | Omit<Extract<PanelRequest, { type: "createTask" }>, "requestId">
   | Omit<Extract<PanelRequest, { type: "updatePlan" }>, "requestId">

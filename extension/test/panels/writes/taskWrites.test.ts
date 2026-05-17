@@ -5,7 +5,7 @@ import {
   createTask,
   deleteTask,
   registerTasks,
-  reorderTasks,
+  reorderQueuedTasks,
   setTaskStatus,
   updateTask,
 } from "../../../src/panels/writes/taskWrites";
@@ -210,7 +210,7 @@ describe("taskWrites", () => {
     });
   });
 
-  describe("reorderTasks", () => {
+  describe("reorderQueuedTasks", () => {
     beforeEach(async () => {
       await seedPlans(env.paths.dbPath, [
         {
@@ -234,11 +234,11 @@ describe("taskWrites", () => {
       ]);
     });
 
-    it("reorders 3 tasks correctly and leaves other plans untouched", async () => {
+    it("reorders queued tasks correctly and leaves other plans untouched", async () => {
       // Original 1,2,3 for ids 1,2,3. Reorder to [3,1,2] -> ids 3=1, 1=2, 2=3.
-      await reorderTasks(
+      await reorderQueuedTasks(
         env.paths.dbPath,
-        { planId: 1, orderedIds: [3, 1, 2] },
+        { planId: 1, queuedTaskIds: [3, 1, 2] },
         WASM,
       );
       const t1 = await readTask(env.paths.dbPath, 1);
@@ -257,9 +257,9 @@ describe("taskWrites", () => {
     it("throws when an id belongs to a different planId", async () => {
       // Task id 4 is in plan 2. Passing it with planId=1 should throw.
       await expect(
-        reorderTasks(
+        reorderQueuedTasks(
           env.paths.dbPath,
-          { planId: 1, orderedIds: [1, 4, 2] },
+          { planId: 1, queuedTaskIds: [1, 4, 2] },
           WASM,
         ),
       ).rejects.toThrow("task 4 does not belong to plan 1");
@@ -267,9 +267,9 @@ describe("taskWrites", () => {
 
     it("throws when an id does not exist at all", async () => {
       await expect(
-        reorderTasks(
+        reorderQueuedTasks(
           env.paths.dbPath,
-          { planId: 1, orderedIds: [1, 999, 2] },
+          { planId: 1, queuedTaskIds: [1, 999, 2] },
           WASM,
         ),
       ).rejects.toThrow("task not found: 999");
@@ -277,9 +277,9 @@ describe("taskWrites", () => {
 
     it("throws when planId does not exist", async () => {
       await expect(
-        reorderTasks(
+        reorderQueuedTasks(
           env.paths.dbPath,
-          { planId: 999, orderedIds: [1, 2, 3] },
+          { planId: 999, queuedTaskIds: [1, 2, 3] },
           WASM,
         ),
       ).rejects.toThrow("plan not found: 999");
@@ -287,13 +287,73 @@ describe("taskWrites", () => {
 
     it("invariant violation (active task moved to wrong plan) does not occur for sort-only changes", async () => {
       // Sanity: reorder does not change planId, so invariants remain satisfied.
-      await reorderTasks(
+      await reorderQueuedTasks(
         env.paths.dbPath,
-        { planId: 1, orderedIds: [1, 2, 3] },
+        { planId: 1, queuedTaskIds: [1, 2, 3] },
         WASM,
       );
       const rows = await listTasks(env.paths.dbPath);
       expect(rows.length).toBe(4);
+    });
+
+    it("reorders queued tasks within existing queued slots", async () => {
+      await seedPlans(env.paths.dbPath, [
+        {
+          name: "Active Plan",
+          status: "active",
+          sortOrder: 3,
+          createdAt: "2026-04-01T00:00:00.000Z",
+        },
+      ]);
+      await seedTasks(env.paths.dbPath, [
+        { planId: 3, name: "Done 1", status: "completed", sortOrder: 1 },
+        { planId: 3, name: "Done 2", status: "completed", sortOrder: 2 },
+        { planId: 3, name: "Current", status: "active", sortOrder: 3 },
+        { planId: 3, name: "Queued 4", status: "queued", sortOrder: 4 },
+        { planId: 3, name: "Queued 5", status: "queued", sortOrder: 5 },
+      ]);
+
+      await reorderQueuedTasks(
+        env.paths.dbPath,
+        { planId: 3, queuedTaskIds: [9, 8] },
+        WASM,
+      );
+
+      const rows = (await listTasks(env.paths.dbPath))
+        .filter((task) => task.planId === 3)
+        .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id);
+      expect(rows.map((task) => task.name)).toEqual([
+        "Done 1",
+        "Done 2",
+        "Current",
+        "Queued 5",
+        "Queued 4",
+      ]);
+      expect(rows.map((task) => task.sortOrder)).toEqual([1, 2, 3, 4, 5]);
+    });
+
+    it("rejects non-queued task ids", async () => {
+      await seedTasks(env.paths.dbPath, [
+        { planId: 1, name: "Done", status: "completed", sortOrder: 4 },
+      ]);
+
+      await expect(
+        reorderQueuedTasks(
+          env.paths.dbPath,
+          { planId: 1, queuedTaskIds: [1, 2, 5] },
+          WASM,
+        ),
+      ).rejects.toThrow("task 5 is not queued");
+    });
+
+    it("rejects duplicate queued task ids", async () => {
+      await expect(
+        reorderQueuedTasks(
+          env.paths.dbPath,
+          { planId: 1, queuedTaskIds: [1, 1, 2] },
+          WASM,
+        ),
+      ).rejects.toThrow("duplicate queued task id: 1");
     });
   });
 

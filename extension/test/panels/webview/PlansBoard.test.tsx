@@ -183,9 +183,60 @@ describe("PlansBoard (grouped)", () => {
     });
 
     const rows = screen.getAllByTestId("task-row");
-    expect(rows[0].textContent).toContain("Task 2");
-    expect(rows[1].textContent).toContain("Task 1");
+    expect(rows[0].textContent).toContain("Task 1");
+    expect(rows[1].textContent).toContain("Task 2");
     expect(rows[2].textContent).toContain("Task 3");
+  });
+
+  it("keeps task order when a queued task is completed", () => {
+    renderBoard({
+      tasks: [
+        {
+          id: 1,
+          planId: 1,
+          name: "Task 1",
+          status: "completed",
+          sortOrder: 1,
+        },
+        {
+          id: 2,
+          planId: 1,
+          name: "Task 2",
+          status: "completed",
+          sortOrder: 2,
+        },
+        {
+          id: 3,
+          planId: 1,
+          name: "Task 3",
+          status: "active",
+          sortOrder: 3,
+        },
+        {
+          id: 4,
+          planId: 1,
+          name: "Task 4",
+          status: "queued",
+          sortOrder: 4,
+        },
+        {
+          id: 5,
+          planId: 1,
+          name: "Task 5",
+          status: "queued",
+          sortOrder: 5,
+        },
+      ],
+    });
+
+    const rows = screen.getAllByTestId("task-row");
+    expect(rows.map((row) => row.textContent?.match(/Task \d/)?.[0])).toEqual([
+      "Task 1",
+      "Task 2",
+      "Task 3",
+      "Task 4",
+      "Task 5",
+    ]);
   });
 
   it("shows status icons in the handle column for active and completed tasks", () => {
@@ -210,6 +261,17 @@ describe("PlansBoard (grouped)", () => {
     expect(rows[2].textContent).not.toContain("Delete");
   });
 
+  it("changes task status from the task status menu", () => {
+    const onSetTaskStatus = vi.fn();
+    renderBoard({ tasks: activePlanTasks, onSetTaskStatus });
+
+    const activeTaskButton = screen.getAllByTestId("task-status-btn")[1];
+    fireEvent.click(activeTaskButton);
+    fireEvent.click(screen.getByRole("menuitem", { name: /Queued/ }));
+
+    expect(onSetTaskStatus).toHaveBeenCalledWith(2, "queued");
+  });
+
   it("Add Plan from File button calls onCreatePlanFromFile", () => {
     const onCreate = vi.fn();
     renderBoard({ onCreatePlanFromFile: onCreate });
@@ -227,7 +289,7 @@ describe("PlansBoard (grouped)", () => {
     expect(computeReorderedIds([1, 2, 3], 1, 1)).toEqual([1, 2, 3]);
   });
 
-  it("groups task display sections without treating no-active state as history-first", () => {
+  it("gets task display sections without reordering by status", () => {
     const sections = getTaskDisplaySections([
       {
         id: 1,
@@ -252,11 +314,8 @@ describe("PlansBoard (grouped)", () => {
       },
     ]);
 
-    expect(sections.leadingHistoryTasks).toEqual([]);
+    expect(sections.orderedTasks.map((task) => task.id)).toEqual([1, 2, 3]);
     expect(sections.queuedTasks.map((task) => task.id)).toEqual([2]);
-    expect(sections.trailingHistoryTasks.map((task) => task.id)).toEqual([
-      1, 3,
-    ]);
   });
 
   it("no Show Completed / Show Removed checkboxes", () => {

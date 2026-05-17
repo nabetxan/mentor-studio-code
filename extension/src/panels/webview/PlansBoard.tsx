@@ -28,7 +28,7 @@ interface Props {
   onSetPlanStatus: (id: number, toStatus: PlanStatus) => void;
   onOpenFile: (filePath: string) => void;
   onReorder: (orderedIds: number[]) => void;
-  onReorderTasks?: (planId: number, orderedIds: number[]) => void;
+  onReorderQueuedTasks?: (planId: number, queuedTaskIds: number[]) => void;
   onRenameTask?: (id: number, name: string) => void;
   onSetTaskStatus?: (id: number, toStatus: TaskStatus) => void;
   error: string | null;
@@ -47,38 +47,14 @@ export function computeReorderedIds(
 }
 
 export interface TaskDisplaySections {
-  leadingHistoryTasks: UiTask[];
-  activeTasks: UiTask[];
+  orderedTasks: UiTask[];
   queuedTasks: UiTask[];
-  trailingHistoryTasks: UiTask[];
 }
 
 export function getTaskDisplaySections(tasks: UiTask[]): TaskDisplaySections {
-  const activeTasks = tasks.filter((task) => task.status === "active");
-  const queuedTasks = tasks.filter((task) => task.status === "queued");
-  const historyTasks = tasks.filter(
-    (task) => task.status === "completed" || task.status === "skipped",
-  );
-
-  if (activeTasks.length === 0) {
-    return {
-      leadingHistoryTasks: [],
-      activeTasks,
-      queuedTasks,
-      trailingHistoryTasks: historyTasks,
-    };
-  }
-
-  const firstActiveSortOrder = activeTasks[0].sortOrder;
   return {
-    leadingHistoryTasks: historyTasks.filter(
-      (task) => task.sortOrder < firstActiveSortOrder,
-    ),
-    activeTasks,
-    queuedTasks,
-    trailingHistoryTasks: historyTasks.filter(
-      (task) => task.sortOrder >= firstActiveSortOrder,
-    ),
+    orderedTasks: tasks,
+    queuedTasks: tasks.filter((task) => task.status === "queued"),
   };
 }
 
@@ -118,7 +94,7 @@ export function PlansBoard(props: Props): JSX.Element {
     onSetPlanStatus,
     onOpenFile,
     onReorder,
-    onReorderTasks = () => {},
+    onReorderQueuedTasks = () => {},
     onRenameTask = () => {},
     onSetTaskStatus = () => {},
     error,
@@ -189,7 +165,7 @@ export function PlansBoard(props: Props): JSX.Element {
         Number(active.id),
         Number(over.id),
       );
-      if (reordered !== ids) onReorderTasks(planId, reordered);
+      if (reordered !== ids) onReorderQueuedTasks(planId, reordered);
     };
   }
 
@@ -199,12 +175,7 @@ export function PlansBoard(props: Props): JSX.Element {
     if (planTasks.length === 0) {
       return <div style={s.taskEmpty}>{tr.noTasks}</div>;
     }
-    const {
-      leadingHistoryTasks,
-      activeTasks,
-      queuedTasks,
-      trailingHistoryTasks,
-    } = getTaskDisplaySections(planTasks);
+    const { orderedTasks, queuedTasks } = getTaskDisplaySections(planTasks);
     const taskRow = (task: UiTask, reorderable: boolean): JSX.Element => (
       <TaskRow
         key={task.id}
@@ -217,25 +188,22 @@ export function PlansBoard(props: Props): JSX.Element {
     );
 
     return (
-      <div style={s.taskList} data-testid="task-list">
-        {leadingHistoryTasks.map((task) => taskRow(task, false))}
-        {activeTasks.map((task) => taskRow(task, false))}
-        {queuedTasks.length > 0 ? (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleTaskDragEnd(plan.id, queuedTasks)}
-          >
-            <SortableContext
-              items={queuedTasks.map((task) => task.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              {queuedTasks.map((task) => taskRow(task, true))}
-            </SortableContext>
-          </DndContext>
-        ) : null}
-        {trailingHistoryTasks.map((task) => taskRow(task, false))}
-      </div>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleTaskDragEnd(plan.id, queuedTasks)}
+      >
+        <SortableContext
+          items={queuedTasks.map((task) => task.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div style={s.taskList} data-testid="task-list">
+            {orderedTasks.map((task) =>
+              taskRow(task, task.status === "queued"),
+            )}
+          </div>
+        </SortableContext>
+      </DndContext>
     );
   }
 

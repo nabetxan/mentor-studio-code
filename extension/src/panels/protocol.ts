@@ -25,10 +25,10 @@ export type PanelMessage =
 export type PanelRequest =
   | { type: "reorderPlans"; requestId: string; orderedIds: number[] }
   | {
-      type: "reorderTasks";
+      type: "reorderQueuedTasks";
       requestId: string;
       planId: number;
-      orderedIds: number[];
+      queuedTaskIds: number[];
     }
   | { type: "createPlan"; requestId: string; name: string; filePath: string }
   | { type: "createTask"; requestId: string; planId: number; name: string }

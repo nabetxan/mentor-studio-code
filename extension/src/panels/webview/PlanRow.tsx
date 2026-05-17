@@ -107,7 +107,8 @@ export function PlanRow({
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen((prev) => !prev)}
         >
-          {labels[plan.status]} ▾
+          <span>{labels[plan.status]}</span>
+          <span style={s.statusChevron} aria-hidden="true" />
         </button>
         {menuOpen ? (
           <StatusMenu

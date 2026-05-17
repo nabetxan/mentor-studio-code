@@ -5,6 +5,7 @@ import type { CSSProperties } from "react";
 import { useContext, useEffect, useState } from "react";
 import { LocaleContext, t } from "./i18n";
 import { s } from "./styles";
+import { TaskStatusMenu } from "./TaskStatusMenu";
 import type { UiTask } from "./types";
 
 interface Props {
@@ -14,13 +15,6 @@ interface Props {
   onRename: (name: string) => void;
   onSetStatus: (toStatus: TaskStatus) => void;
 }
-
-const TASK_STATUS_ORDER: TaskStatus[] = [
-  "active",
-  "queued",
-  "completed",
-  "skipped",
-];
 
 export function TaskRow({
   task,
@@ -35,6 +29,7 @@ export function TaskRow({
     useSortable({ id: task.id, disabled: !reorderable });
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(task.name);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!editing) setDraft(task.name);
@@ -135,18 +130,36 @@ export function TaskRow({
           {task.name}
         </span>
       )}
-      <select
-        style={s.taskStatusSelect}
-        value={task.status}
-        disabled={!statusEditable}
-        onChange={(e) => onSetStatus(e.target.value as TaskStatus)}
-      >
-        {TASK_STATUS_ORDER.map((status) => (
-          <option key={status} value={status}>
-            {tr.taskStatus[status]}
-          </option>
-        ))}
-      </select>
+      <span style={s.taskStatusMenuAnchor}>
+        <button
+          style={{
+            ...s.taskStatusButton,
+            ...(task.status === "active" ? s.taskStatusButtonActive : {}),
+            ...(task.status === "queued" ? s.taskStatusButtonQueued : {}),
+            ...(task.status === "skipped" ? s.taskStatusButtonSkipped : {}),
+            ...(!statusEditable ? s.taskStatusButtonDisabled : {}),
+          }}
+          type="button"
+          data-testid="task-status-btn"
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          disabled={!statusEditable}
+          onClick={() => setMenuOpen((prev) => !prev)}
+        >
+          <span>{tr.taskStatus[task.status]}</span>
+          <span style={s.statusChevron} aria-hidden="true" />
+        </button>
+        {menuOpen ? (
+          <TaskStatusMenu
+            currentStatus={task.status}
+            onSelect={(toStatus) => {
+              setMenuOpen(false);
+              onSetStatus(toStatus);
+            }}
+            onClose={() => setMenuOpen(false)}
+          />
+        ) : null}
+      </span>
     </div>
   );
 }

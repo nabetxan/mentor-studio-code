@@ -8,7 +8,10 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PanelMessage, PanelRequest } from "../../../src/panels/protocol";
-import { App } from "../../../src/panels/webview/App";
+import {
+  App,
+  buildQueuedTaskSlotSortOrders,
+} from "../../../src/panels/webview/App";
 
 interface FakeApi {
   postMessage: (msg: PanelRequest) => void;
@@ -187,5 +190,56 @@ describe("App <Plan Panel>", () => {
       type: "openMarkdownFile",
       filePath: "/work/a.md",
     });
+  });
+
+  it("keeps active task before queued tasks during optimistic queued reorder", () => {
+    const tasks = [
+      {
+        id: 1,
+        planId: 1,
+        name: "Task 1",
+        status: "completed",
+        sortOrder: 1,
+      },
+      {
+        id: 2,
+        planId: 1,
+        name: "Task 2",
+        status: "completed",
+        sortOrder: 2,
+      },
+      {
+        id: 3,
+        planId: 1,
+        name: "Task 3",
+        status: "active",
+        sortOrder: 3,
+      },
+      {
+        id: 4,
+        planId: 1,
+        name: "Task 4",
+        status: "queued",
+        sortOrder: 4,
+      },
+      {
+        id: 5,
+        planId: 1,
+        name: "Task 5",
+        status: "queued",
+        sortOrder: 5,
+      },
+    ] as const;
+
+    const slotSortOrders = buildQueuedTaskSlotSortOrders([...tasks], {
+      1: [5, 4],
+    });
+    const sorted = [...tasks].sort((a, b) => {
+      const aSortOrder = slotSortOrders.get(a.id) ?? a.sortOrder;
+      const bSortOrder = slotSortOrders.get(b.id) ?? b.sortOrder;
+      return aSortOrder - bSortOrder || a.id - b.id;
+    });
+
+    expect(sorted.map((task) => task.id)).toEqual([1, 2, 3, 5, 4]);
   });
 });

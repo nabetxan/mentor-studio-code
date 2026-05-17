@@ -16,6 +16,26 @@ function basenameWithoutExt(filePath: string): string {
   return dot > 0 ? base.slice(0, dot) : base;
 }
 
+export function buildQueuedTaskSlotSortOrders(
+  tasks: UiTask[],
+  queuedTaskOrderOverrides: Record<number, number[]>,
+): Map<number, number> {
+  const queuedSlotSortOrders = new Map<number, number>();
+  for (const [planIdText, queuedTaskIds] of Object.entries(
+    queuedTaskOrderOverrides,
+  )) {
+    const planId = Number(planIdText);
+    const queuedSlots = tasks
+      .filter((task) => task.planId === planId && task.status === "queued")
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id)
+      .map((task) => task.sortOrder);
+    for (let i = 0; i < queuedTaskIds.length && i < queuedSlots.length; i++) {
+      queuedSlotSortOrders.set(queuedTaskIds[i], queuedSlots[i]);
+    }
+  }
+  return queuedSlotSortOrders;
+}
+
 export function App(): JSX.Element {
   const { ready, snapshot, sendRequest, pickPlanFile, openFile } =
     useVsCodeBridge();
@@ -31,7 +51,7 @@ export function App(): JSX.Element {
   const [taskOverrides, setTaskOverrides] = useState<
     Record<number, Partial<UiTask>>
   >({});
-  const [taskOrderOverrides, setTaskOrderOverrides] = useState<
+  const [queuedTaskOrderOverrides, setQueuedTaskOrderOverrides] = useState<
     Record<number, number[]>
   >({});
 
@@ -42,7 +62,7 @@ export function App(): JSX.Element {
     setPlanOverrides({});
     setPlanOrderOverride(null);
     setTaskOverrides({});
-    setTaskOrderOverrides({});
+    setQueuedTaskOrderOverrides({});
   }, [ready, snapshot]);
 
   const plans: UiPlan[] = useMemo(() => {
@@ -71,21 +91,18 @@ export function App(): JSX.Element {
       ...taskOverrides[task.id],
       pending: taskOverrides[task.id]?.pending,
     }));
+    const queuedSlotSortOrders = buildQueuedTaskSlotSortOrders(
+      merged,
+      queuedTaskOrderOverrides,
+    );
+
     return merged.sort((a, b) => {
       if (a.planId !== b.planId) return a.planId - b.planId;
-      const override = taskOrderOverrides[a.planId];
-      if (override) {
-        const ai = override.indexOf(a.id);
-        const bi = override.indexOf(b.id);
-        if (ai !== -1 || bi !== -1) {
-          if (ai === -1) return 1;
-          if (bi === -1) return -1;
-          return ai - bi;
-        }
-      }
-      return a.sortOrder - b.sortOrder || a.id - b.id;
+      const aSortOrder = queuedSlotSortOrders.get(a.id) ?? a.sortOrder;
+      const bSortOrder = queuedSlotSortOrders.get(b.id) ?? b.sortOrder;
+      return aSortOrder - bSortOrder || a.id - b.id;
     });
-  }, [snapshot.tasks, taskOverrides, taskOrderOverrides]);
+  }, [snapshot.tasks, taskOverrides, queuedTaskOrderOverrides]);
 
   async function handleCreatePlanFromFile(): Promise<void> {
     setPlansError(null);
@@ -179,16 +196,19 @@ export function App(): JSX.Element {
     }
   }
 
-  async function handleReorderTasks(
+  async function handleReorderQueuedTasks(
     planId: number,
-    orderedIds: number[],
+    queuedTaskIds: number[],
   ): Promise<void> {
-    setTaskOrderOverrides((prev) => ({ ...prev, [planId]: orderedIds }));
+    setQueuedTaskOrderOverrides((prev) => ({
+      ...prev,
+      [planId]: queuedTaskIds,
+    }));
     setPlansError(null);
     try {
-      await sendRequest({ type: "reorderTasks", planId, orderedIds });
+      await sendRequest({ type: "reorderQueuedTasks", planId, queuedTaskIds });
     } catch (e) {
-      setTaskOrderOverrides((prev) => {
+      setQueuedTaskOrderOverrides((prev) => {
         const next = { ...prev };
         delete next[planId];
         return next;
@@ -259,7 +279,9 @@ export function App(): JSX.Element {
           }
           onOpenFile={openFile}
           onReorder={(ids) => void handleReorderPlans(ids)}
-          onReorderTasks={(planId, ids) => void handleReorderTasks(planId, ids)}
+          onReorderQueuedTasks={(planId, ids) =>
+            void handleReorderQueuedTasks(planId, ids)
+          }
           onRenameTask={(id, name) => void handleRenameTask(id, name)}
           onSetTaskStatus={(id, toStatus) =>
             void handleSetTaskStatus(id, toStatus)

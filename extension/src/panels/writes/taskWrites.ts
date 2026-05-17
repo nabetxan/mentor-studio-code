@@ -109,15 +109,17 @@ export async function registerTasks(
       throw new Error(`plan not found: ${args.planId}`);
     }
 
-    const existing = db.exec(`SELECT 1 FROM tasks WHERE planId = ${args.planId} LIMIT 1`);
+    const existing = db.exec(
+      `SELECT 1 FROM tasks WHERE planId = ${args.planId} LIMIT 1`,
+    );
     if (existing[0]?.values?.length) {
       throw new Error(`tasks already exist for plan: ${args.planId}`);
     }
 
     const shouldActivate =
       planStatus === "active" &&
-      !db.exec("SELECT 1 FROM tasks WHERE status = 'active' LIMIT 1")[0]
-        ?.values?.length;
+      !db.exec("SELECT 1 FROM tasks WHERE status = 'active' LIMIT 1")[0]?.values
+        ?.length;
 
     const stmt = db.prepare(
       "INSERT INTO tasks (planId, name, status, sortOrder) VALUES (?, ?, ?, ?)",
@@ -125,7 +127,8 @@ export async function registerTasks(
     const tasks: RegisteredTask[] = [];
     try {
       for (let i = 0; i < args.names.length; i++) {
-        const status: TaskStatus = shouldActivate && i === 0 ? "active" : "queued";
+        const status: TaskStatus =
+          shouldActivate && i === 0 ? "active" : "queued";
         const sortOrder = i + 1;
         const name = args.names[i].trim();
         stmt.run([args.planId, name, status, sortOrder]);
@@ -178,7 +181,9 @@ export async function setTaskStatus(
   wasmPath?: string,
 ): Promise<void> {
   await withWriteTransaction(dbPath, { wasmPath, purpose: "normal" }, (db) => {
-    const currentStmt = db.prepare("SELECT planId, status FROM tasks WHERE id = ?");
+    const currentStmt = db.prepare(
+      "SELECT planId, status FROM tasks WHERE id = ?",
+    );
     let current: { planId: number; status: TaskStatus } | null = null;
     try {
       currentStmt.bind([args.id]);
@@ -255,31 +260,70 @@ export async function deleteTask(
   });
 }
 
-export async function reorderTasks(
+interface TaskOrderRow {
+  id: number;
+  status: string;
+  sortOrder: number;
+}
+
+export async function reorderQueuedTasks(
   dbPath: string,
-  args: { planId: number; orderedIds: number[] },
+  args: { planId: number; queuedTaskIds: number[] },
   wasmPath?: string,
 ): Promise<void> {
   await withWriteTransaction(dbPath, { wasmPath, purpose: "normal" }, (db) => {
     if (!rowExists(db, "plans", args.planId)) {
       throw new Error(`plan not found: ${args.planId}`);
     }
+
+    const rowsRes = db.exec(
+      `SELECT id, status, sortOrder FROM tasks WHERE planId = ${args.planId} ORDER BY sortOrder ASC, id ASC`,
+    );
+    const rows: TaskOrderRow[] = (rowsRes[0]?.values ?? []).map((row) => ({
+      id: Number(row[0]),
+      status: String(row[1]),
+      sortOrder: Number(row[2]),
+    }));
+    const rowsById = new Map(rows.map((row) => [row.id, row]));
+    const queuedRows = rows.filter((row) => row.status === "queued");
+
+    const seen = new Set<number>();
+    for (const id of args.queuedTaskIds) {
+      if (seen.has(id)) {
+        throw new Error(`duplicate queued task id: ${id}`);
+      }
+      seen.add(id);
+
+      if (!rowExists(db, "tasks", id)) {
+        throw new Error(`task not found: ${id}`);
+      }
+      const row = rowsById.get(id);
+      if (!row) {
+        throw new Error(`task ${id} does not belong to plan ${args.planId}`);
+      }
+      if (row.status !== "queued") {
+        throw new Error(`task ${id} is not queued`);
+      }
+    }
+
+    const queuedIds = new Set(queuedRows.map((row) => row.id));
+    if (args.queuedTaskIds.length !== queuedRows.length) {
+      throw new Error(
+        `queued task id count mismatch for plan ${args.planId}: expected ${queuedRows.length}, got ${args.queuedTaskIds.length}`,
+      );
+    }
+    for (const id of queuedIds) {
+      if (!seen.has(id)) {
+        throw new Error(`missing queued task id: ${id}`);
+      }
+    }
+
     const stmt = db.prepare(
       "UPDATE tasks SET sortOrder = ? WHERE id = ? AND planId = ?",
     );
     try {
-      for (let i = 0; i < args.orderedIds.length; i++) {
-        const id = args.orderedIds[i];
-        if (!rowExists(db, "tasks", id)) {
-          throw new Error(`task not found: ${id}`);
-        }
-        const r = db.exec(
-          `SELECT 1 FROM tasks WHERE id = ${id} AND planId = ${args.planId}`,
-        );
-        if (!r[0]?.values?.length) {
-          throw new Error(`task ${id} does not belong to plan ${args.planId}`);
-        }
-        stmt.run([i + 1, id, args.planId]);
+      for (let i = 0; i < args.queuedTaskIds.length; i++) {
+        stmt.run([queuedRows[i].sortOrder, args.queuedTaskIds[i], args.planId]);
       }
     } finally {
       stmt.free();

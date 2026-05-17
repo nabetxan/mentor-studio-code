@@ -41,7 +41,7 @@ vi.mock("../../src/panels/writes/taskWrites", () => ({
   createTask: vi.fn().mockResolvedValue({ id: 1 }),
   updateTask: vi.fn().mockResolvedValue(undefined),
   deleteTask: vi.fn().mockResolvedValue(undefined),
-  reorderTasks: vi.fn().mockResolvedValue(undefined),
+  reorderQueuedTasks: vi.fn().mockResolvedValue(undefined),
   activateTask: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -450,6 +450,28 @@ describe("PlanPanel", () => {
     expect(panel.__posted).toContainEqual({
       type: "writeOk",
       requestId: "req-rp",
+    });
+  });
+
+  it("'reorderQueuedTasks' dispatches to taskWrites.reorderQueuedTasks and posts writeOk", async () => {
+    const { panel } = createPanel();
+    const taskWritesMod = await import("../../src/panels/writes/taskWrites.js");
+
+    await panel.webview.__triggerMessage({
+      type: "reorderQueuedTasks",
+      requestId: "req-rqt",
+      planId: 7,
+      queuedTaskIds: [5, 4],
+    });
+
+    expect(taskWritesMod.reorderQueuedTasks).toHaveBeenCalledWith(
+      FAKE_PATHS.dbPath,
+      { planId: 7, queuedTaskIds: [5, 4] },
+      FAKE_PATHS.wasmPath,
+    );
+    expect(panel.__posted).toContainEqual({
+      type: "writeOk",
+      requestId: "req-rqt",
     });
   });
 
